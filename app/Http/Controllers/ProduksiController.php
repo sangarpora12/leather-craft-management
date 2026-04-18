@@ -573,29 +573,35 @@ class ProduksiController extends Controller
             $produkJadi->increment('stok', $totalQtyDiselesaikan);
 
             // ── 6. Kirim notifikasi ke admin ──────────────────────────────
-            $isProdNotifAktif = Pengaturan::where('nama_pengaturan', 'notif_produksi_selesai')->value('nilai') ?? '1';
-            $isEmailAktif     = Pengaturan::where('nama_pengaturan', 'notif_gmail_aktif')->value('nilai') ?? '1';
+$isProdNotifAktif = Pengaturan::where('nama_pengaturan', 'notif_produksi_selesai')->value('nilai') ?? '1';
+$isEmailAktif     = Pengaturan::where('nama_pengaturan', 'notif_gmail_aktif')->value('nilai') ?? '1';
 
-            if ($isProdNotifAktif == '1' && $isEmailAktif == '1') {
-                $admins = User::where('role', 'admin')->whereNotNull('email')->get();
-                foreach ($admins as $admin) {
-                    \Mail::to($admin)->send(new \App\Mail\SystemAlertMail(
-                        '✅ Produksi Selesai: ' . $produksi->product->nama_produk,
-                        'Batch Produksi Selesai — ' . $produksi->product->nama_produk,
-                        'Operator ' . $produksi->operator->name . ' menyelesaikan kloter produksi.',
-                        [
-                            'Produk'        => $produksi->product->nama_produk,
-                            'Jumlah Kloter' => $totalQtyDiselesaikan . ' Unit (' . count($idsToFinish) . ' SPK)',
-                            'Foto Bukti'    => count($fotoPaths) . ' foto',
-                            'Operator'      => $produksi->operator->name,
-                            'Selesai Pada'  => now()->format('d/m/Y H:i'),
-                        ],
-                        'Lihat Produksi',
-                        route('admin.produksi.index'),
-                        'success'
-                    ));
-                }
-            }
+if ($isProdNotifAktif == '1') {
+    $admins = User::where('role', 'admin')->whereNotNull('email')->get();
+    foreach ($admins as $admin) {
+        // Kirim notifikasi database
+        $admin->notify(new \App\Notifications\ProduksiSelesaiNotification($produksi, 'admin'));
+
+        // Kirim notifikasi email jika diaktifkan
+        if ($isEmailAktif == '1') {
+            \Mail::to($admin)->send(new \App\Mail\SystemAlertMail(
+                '✅ Produksi Selesai: ' . $produksi->product->nama_produk,
+                'Batch Produksi Selesai — ' . $produksi->product->nama_produk,
+                'Operator ' . $produksi->operator->name . ' menyelesaikan kloter produksi.',
+                [
+                    'Produk'        => $produksi->product->nama_produk,
+                    'Jumlah Kloter' => $totalQtyDiselesaikan . ' Unit (' . count($idsToFinish) . ' SPK)',
+                    'Foto Bukti'    => count($fotoPaths) . ' foto',
+                    'Operator'      => $produksi->operator->name,
+                    'Selesai Pada'  => now()->format('d/m/Y H:i'),
+                ],
+                'Lihat Produksi',
+                route('admin.produksi.index'),
+                'success'
+            ));
+        }
+    }
+}
 
             DB::commit();
 
