@@ -274,7 +274,7 @@ class ProduksiController extends Controller
         $produksis = Produksi::with(['product', 'operator', 'produk_jadi'])
             ->where('operator_id', $operatorId)
             ->latest()
-            ->get();
+            ->get(['id', 'produk_jadi_id', 'operator_id', 'jumlah_produksi', 'jumlah_selesai', 'status', 'created_at', 'tanggal_target', 'catatan', 'kode_spk', 'tanggal_mulai']);
 
         // Group by produk_jadi_id + status agar gabungan per produk tampil rapi
         $grouped = $produksis->groupBy(fn($item) => $item->produk_jadi_id . '-' . $item->status);
@@ -292,8 +292,8 @@ class ProduksiController extends Controller
                 'jumlah_selesai'  => $items->sum('jumlah_selesai'),
                 'status'          => $first->status,
                 'created_at'      => $items->max('created_at'),
-                'tanggal_mulai'   => $items->min('tanggal_mulai'),
                 'tanggal_target'  => $items->min('tanggal_target'),
+                'tanggal_mulai'   => $items->min('tanggal_mulai'),
                 'catatan_list'    => $items->pluck('catatan')->filter()->unique()->values(),
                 'kode_spk_list'   => $items->pluck('kode_spk')->unique()->values(),
                 'total_spk'       => $items->count(),
@@ -426,10 +426,6 @@ class ProduksiController extends Controller
             // Tidak ada pemotongan stok — stok sudah dipotong saat SPK dibuat.
             // ════════════════════════════════════════════════════════════
             $jumlahSelesai = min((float) $qtyNow, (float) $produksi->jumlah_produksi);
-
-            if (is_null($produksi->tanggal_mulai)) {
-                $produksi->tanggal_mulai = now();
-            }
 
             $produksi->jumlah_selesai = $jumlahSelesai;
             $produksi->save();
@@ -572,38 +568,32 @@ class ProduksiController extends Controller
             // ✅ Tambah stok berdasarkan TOTAL qty yang benar-benar diselesaikan kloter ini
             $produkJadi->increment('stok', $totalQtyDiselesaikan);
 
-// ── 6. Kirim notifikasi ke admin ──────────────────────────────
-$isProdNotifAktif = Pengaturan::where('nama_pengaturan', 'notif_produksi_selesai')->value('nilai') ?? '1';
-$isEmailAktif     = Pengaturan::where('nama_pengaturan', 'notif_gmail_aktif')->value('nilai') ?? '1';
+            // ── 6. Kirim notifikasi ke admin ──────────────────────────────
+            $isProdNotifAktif = Pengaturan::where('nama_pengaturan', 'notif_produksi_selesai')->value('nilai') ?? '1';
+            $isEmailAktif     = Pengaturan::where('nama_pengaturan', 'notif_gmail_aktif')->value('nilai') ?? '1';
 
-if ($isProdNotifAktif == '1') {
-    $admins = User::where('role', 'admin')->whereNotNull('email')->get();
-    foreach ($admins as $admin) {
-        // Kirim notifikasi database
-        $admin->notify(new \App\Notifications\ProduksiSelesaiNotification($produksi, 'admin'));
+            if ($isProdNotifAktif == '1' && $isEmailAktif == '1') {
+                $admins = User::where('role', 'admin')->whereNotNull('email')->get();
+                foreach ($admins as $admin) {
+                    \Mail::to($admin)->send(new \App\Mail\SystemAlertMail(
+                        '✅ Produksi Selesai: ' . $produksi->product->nama_produk,
+                        'Batch Produksi Selesai — ' . $produksi->product->nama_produk,
+                        'Operator ' . $produksi->operator->name . ' menyelesaikan kloter produksi.',
+                        [
+                            'Produk'        => $produksi->product->nama_produk,
+                            'Jumlah Kloter' => $totalQtyDiselesaikan . ' Unit (' . count($idsToFinish) . ' SPK)',
+                            'Foto Bukti'    => count($fotoPaths) . ' foto',
+                            'Operator'      => $produksi->operator->name,
+                            'Selesai Pada'  => now()->format('d/m/Y H:i'),
+                        ],
+                        'Lihat Produksi',
+                        route('admin.produksi.index'),
+                        'success'
+                    ));
+                }
+            }
 
-        // Kirim notifikasi email jika diaktifkan
-        if ($isEmailAktif == '1') {
-            \Mail::to($admin)->send(new \App\Mail\SystemAlertMail(
-                '✅ Produksi Selesai: ' . $produksi->product->nama_produk,
-                'Batch Produksi Selesai — ' . $produksi->product->nama_produk,
-                'Operator ' . $produksi->operator->name . ' menyelesaikan kloter produksi.',
-                [
-                    'Produk'        => $produksi->product->nama_produk,
-                    'Jumlah Kloter' => $totalQtyDiselesaikan . ' Unit (' . count($idsToFinish) . ' SPK)',
-                    'Foto Bukti'    => count($fotoPaths) . ' foto',
-                    'Operator'      => $produksi->operator->name,
-                    'Selesai Pada'  => now()->format('d/m/Y H:i'),
-                ],
-                'Lihat Produksi',
-                route('admin.produksi.index'),
-                'success'
-            ));
-        }
-    }
-}
-
-DB::commit();
+            DB::commit();
 
             $sisaProses = (int) Produksi::where('produk_jadi_id', $produkJadiId)
                 ->where('operator_id', $operatorId)
@@ -626,21 +616,13 @@ DB::commit();
     /**
      * Detail produksi untuk Admin.
      */
-public function review($id)
-{
-    $produksi = Produksi::with(['product', 'operator', 'produk_jadi.boms.bahanBaku'])
-        ->findOrFail($id);
+    public function show($id)
+    {
+        $produksi = Produksi::with(['product', 'operator', 'produk_jadi.boms.bahanBaku'])
+            ->findOrFail($id);
 
-    return view('admin.produksi.show', compact('produksi'));
-}
-
-public function show($id)
-{
-    $produksi = Produksi::with(['product', 'operator', 'produk_jadi.boms.bahanBaku'])
-        ->findOrFail($id);
-
-    return view('admin.produksi.show', compact('produksi'));
-}
+        return view('admin.produksi.show', compact('produksi'));
+    }
 
     /**
      * Cancel SPK (hanya dalam 10 detik pertama, kembalikan stok).
@@ -729,9 +711,7 @@ public function show($id)
 
             $produksi->status = 'PROSES';
             $produksi->tanggal_mulai_proses = now();
-            if (is_null($produksi->tanggal_mulai)) {
-                $produksi->tanggal_mulai = now();
-            }
+            $produksi->tanggal_mulai = $produksi->tanggal_mulai ?: now();
             $produksi->save();
 
             DB::commit();
