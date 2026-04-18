@@ -626,13 +626,21 @@ if ($isProdNotifAktif == '1') {
     /**
      * Detail produksi untuk Admin.
      */
-    public function show($id)
-    {
-        $produksi = Produksi::with(['product', 'operator', 'produk_jadi.boms.bahanBaku'])
-            ->findOrFail($id);
+public function review($id)
+{
+    $produksi = Produksi::with(['product', 'operator', 'produk_jadi.boms.bahanBaku'])
+        ->findOrFail($id);
 
-        return view('admin.produksi.show', compact('produksi'));
-    }
+    return view('admin.produksi.show', compact('produksi'));
+}
+
+public function show($id)
+{
+    $produksi = Produksi::with(['product', 'operator', 'produk_jadi.boms.bahanBaku'])
+        ->findOrFail($id);
+
+    return view('admin.produksi.show', compact('produksi'));
+}
 
     /**
      * Cancel SPK (hanya dalam 10 detik pertama, kembalikan stok).
