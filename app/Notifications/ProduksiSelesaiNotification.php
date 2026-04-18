@@ -19,11 +19,11 @@ class ProduksiSelesaiNotification extends Notification
         $this->produksi->loadMissing(['product', 'operator']);
     }
 
-    public function via(object $notifiable): array
-    {
-        // Simpan ke database (untuk lonceng notifikasi) + kirim email jika mail diset
-        return ['database', 'mail'];
-    }
+public function via(object $notifiable): array
+{
+    // Simpan ke database (untuk lonceng notifikasi)
+    return ['database'];
+}
 
     public function toDatabase(object $notifiable): array
     {
@@ -53,31 +53,4 @@ class ProduksiSelesaiNotification extends Notification
         ];
     }
 
-    public function toMail(object $notifiable): MailMessage
-    {
-        $kodeSpk = $this->produksi->kode_spk ?? '-';
-
-        // URL untuk tombol aksi di email, mengarah ke detail SPK untuk admin
-        $url = $this->audience === 'operator'
-            ? route('operator.tugas.index')
-            : route('admin.produksi.show', $this->produksi->id);
-
-        $subject = $this->audience === 'operator'
-            ? ('Tugas Selesai - ' . $kodeSpk)
-            : ('Produksi Selesai - ' . $kodeSpk);
-
-        $actionText = $this->audience === 'operator'
-            ? 'Lihat Daftar Tugas'
-            : 'Lihat Detail Produksi';
-
-        return (new MailMessage)
-            ->subject($subject)
-            ->markdown('emails.produksi.selesai', [
-                'produksi' => $this->produksi,
-                'notifiable' => $notifiable,
-                'audience' => $this->audience,
-                'url' => $url,
-                'actionText' => $actionText,
-            ]);
-    }
 }
