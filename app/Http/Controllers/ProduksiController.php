@@ -572,7 +572,7 @@ class ProduksiController extends Controller
             // ✅ Tambah stok berdasarkan TOTAL qty yang benar-benar diselesaikan kloter ini
             $produkJadi->increment('stok', $totalQtyDiselesaikan);
 
-            // ── 6. Kirim notifikasi ke admin ──────────────────────────────
+// ── 6. Kirim notifikasi ke admin ──────────────────────────────
 $isProdNotifAktif = Pengaturan::where('nama_pengaturan', 'notif_produksi_selesai')->value('nilai') ?? '1';
 $isEmailAktif     = Pengaturan::where('nama_pengaturan', 'notif_gmail_aktif')->value('nilai') ?? '1';
 
@@ -603,7 +603,7 @@ if ($isProdNotifAktif == '1') {
     }
 }
 
-            DB::commit();
+DB::commit();
 
             $sisaProses = (int) Produksi::where('produk_jadi_id', $produkJadiId)
                 ->where('operator_id', $operatorId)
