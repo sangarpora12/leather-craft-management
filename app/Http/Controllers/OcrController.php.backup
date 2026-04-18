@@ -1,0 +1,515 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use App\Models\BahanBaku;
+
+class OcrController extends Controller
+{
+    public function processScan(Request $request)
+    {
+        try {
+            $image = $request->file('nota') ?: $request->file('image');
+            if (!$image) return response()->json(['success' => false, 'message' => 'Gambar tidak ditemukan'], 400);
+
+            // === FITUR BARU: AUTO-COMPRESS ===
+            // Kita kecilkan gambar biar muat di paket Gratis (Max 1MB)
+            $compressedPath = $this->compressImage($image);
+
+            // Cek lagi ukurannya (buat mastiin aja)
+            $fileSize = filesize($compressedPath) / 1024; // KB
+            if ($fileSize > 1500) {
+                return response()->json(['success' => false, 'message' => "Gagal kompres! Masih kegedean: " . round($fileSize) . "KB."], 400);
+            }
+
+            // === TEMBAK API ===
+            // GANTI INI DENGAN API KEY DARI EMAIL KAMU
+            $apiKey = 'K87888591388957';
+
+            $response = Http::asMultipart()->post('https://api.ocr.space/parse/image', [
+                'apikey'   => $apiKey,
+                'language' => 'eng',
+                'isTable'  => 'true',
+                'file'     => fopen($compressedPath, 'r'),
+            ]);
+
+            // Hapus file temp biar hemat storage
+            @unlink($compressedPath);
+
+            $result = $response->json();
+
+            // Cek Error API
+            if (isset($result['IsErroredOnProcessing']) && $result['IsErroredOnProcessing'] == true) {
+                $pesan = $result['ErrorMessage'][0] ?? 'Server Error';
+                return response()->json(['success' => false, 'message' => "API Error: " . $pesan], 400);
+            }
+
+            // Sukses
+            if (isset($result['ParsedResults'][0]['ParsedText'])) {
+                $text = $result['ParsedResults'][0]['ParsedText'];
+                $lines = explode("\n", $text);
+
+                // LOGIKA CARI NAMA TOKO
+                // Cari baris yang mengandung "TOKO" atau "STORE" atau ambil baris ke-1/ke-2
+                $supplierName = "Supplier Tidak Terdeteksi"; // Default
+
+                // Cek 3 baris pertama
+                for ($i = 0; $i < 3; $i++) {
+                    if (isset($lines[$i])) {
+                        $baris = trim($lines[$i]);
+                        // Kalau baris ini mengandung kata kunci toko, atau huruf kapital semua
+                        if (stripos($baris, 'TOKO') !== false || stripos($baris, 'STORE') !== false || ctype_upper(str_replace(' ', '', $baris))) {
+                            $supplierName = $baris;
+                            break;
+                        }
+                    }
+                }
+
+                $parsed = $this->simpleParser($text);
+
+                // Hitung total bayar
+                $totalBayar = 0;
+                foreach ($parsed['items'] as $item) {
+                    $totalBayar += $item['harga'] * $item['qty'];
+                }
+
+                // === LANGSUNG SIMPAN KE DATABASE ===
+                // Buat request data untuk storeStok
+                $storeData = [
+                    'supplier' => $supplierName,
+                    'items' => $parsed['items']
+                ];
+
+                // Panggil storeStok langsung
+                return $this->storeStokDirect($storeData);
+                    'supplier' => $supplierName,
+                    'metadata' => array_merge($parsed['metadata'], ['total_bayar' => $totalBayar]),
+                    'items' => $parsed['items'],
+                    'image_url' => Storage::url($image->store('temp', 'public'))
+                ]]);
+
+                return response()->json(['success' => true, 'redirect' => route('operator.scan.result')]);
+            }
+
+            return response()->json(['success' => false, 'message' => "Scan gagal baca teks."], 400);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => "Error: " . $e->getMessage()], 500);
+        }
+    }
+
+    // Fungsi Pembantu: Mengecilkan ukuran gambar
+    private function compressImage($file)
+    {
+        // Cek apakah GD extension tersedia
+        if (!function_exists('imagecreatefromstring')) {
+            throw new \Exception('GD extension tidak tersedia. Aktifkan GD di php.ini untuk fitur kompresi gambar.');
+        }
+
+        // 1. Ambil info gambar asli
+        list($width, $height) = getimagesize($file);
+        $ratio = $width / $height;
+
+        // 2. Tentukan ukuran baru (Max lebar 1200px untuk akurasi lebih baik)
+        $newWidth = 1200;
+        $newHeight = $newWidth / $ratio;
+
+        // 3. Buat kanvas kosong
+        $src = imagecreatefromstring(file_get_contents($file));
+        $dst = imagecreatetruecolor($newWidth, $newHeight);
+
+        // 4. Resize gambar
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+
+        // 5. Simpan ke folder temp dengan kualitas 80% (Lebih baik untuk foto)
+        $tempPath = sys_get_temp_dir() . '/temp_ocr_' . time() . '.jpg';
+        imagejpeg($dst, $tempPath, 80); // 80 adalah kualitas (0-100)
+
+        // Bersihkan memori
+        imagedestroy($src);
+        imagedestroy($dst);
+
+        return $tempPath;
+    }
+
+    private function simpleParser($text) {
+        $lines = explode("\n", $text);
+        $data = [];
+
+        $noNota = null;
+        $tanggal = date('Y-m-d'); // Default Hari Ini
+        $supplier = null;
+
+        // Daftar Sampah
+        $sampah = ['Subtotal', 'Diskon', 'TOTAL', 'BAYAR', 'Kembali', 'Terima Kasih', 'Hormat', 'BCA', 'Mandiri', 'Bayar', 'Tunai', 'Transfer'];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            // Debug: Log setiap baris yang diproses
+            \Log::info("OCR Processing line: " . $line);
+
+            // 1. METADATA (Header)
+            if (preg_match('/No\.?\s*Nota\s*[:]\s*(.*)/i', $line, $m)) $noNota = trim($m[1]);
+            if (preg_match('/Tanggal\s*[:]\s*(.*)/i', $line, $m)) $tanggal = trim($m[1]);
+            if (preg_match('/TOKO|STORE/i', $line)) $supplier = $line;
+
+            if (strlen($line) < 5) continue;
+
+            $isSampah = false;
+            foreach ($sampah as $word) {
+                if (stripos($line, $word) !== false) { $isSampah = true; break; }
+            }
+            if ($isSampah) continue;
+
+            $nama = "";
+            $qty = 1;
+            $harga = 0;
+            $satuan = 'Pcs';
+
+            // === LOGIKA BARU: DETEKSI FORMAT KOLOM (Lebih Sensitif) ===
+            // Cukup ada huruf "x" (kali) ATAU ada nama satuan
+            $isFormatKolom = preg_match('/(\d)\s*x\s*|feet|meter|lusin|cone|klg|pcs|roll|lembar|buah|kg|gram|liter|ml/i', $line);
+
+            if ($isFormatKolom) {
+                // Pecah berdasarkan "x" (huruf x, bukan kali matematika)
+                // Contoh: "22.5 feet x Rp 32.000" -> Kiri: "22.5 feet", Kanan: "Rp 32.000"
+                $parts = preg_split('/x/i', $line);
+                $kiri = $parts[0];
+                $kanan = $parts[1] ?? '';
+
+                // AMBIL HARGA (Dari Kanan)
+                if (preg_match('/([\d\.]+)/', $kanan, $hMatch)) {
+                    $harga = (int) str_replace(['.', ','], '', $hMatch[1]);
+                }
+
+                // AMBIL QTY & SATUAN (Dari Kiri) - Support Desimal!
+                // Cari angka di ujung kiri (bisa desimal: 22.5 atau 22,5)
+                if (preg_match('/(\d+[\.,]?\d*)\s*([a-zA-Z]*)\s*$/', $kiri, $qMatch)) {
+                    $angkaMentah = $qMatch[1];
+                    $satuanMentah = $qMatch[2];
+
+                    // Perbaikan Desimal: Ubah koma jadi titik
+                    $qty = (float) str_replace(',', '.', $angkaMentah);
+
+                    // Kalau satuan terbaca, simpan
+                    if (!empty($satuanMentah)) $satuan = $satuanMentah;
+
+                    // Hapus bagian Qty dari nama barang
+                    $kiri = preg_replace('/' . preg_quote($qMatch[0], '/') . '$/', '', $kiri);
+                }
+
+                // Bersihkan Nama
+                $nama = preg_replace('/^\d+\.\s*/', '', $kiri); // Hapus "1. "
+                $nama = trim($nama, " -");
+            }
+
+            // === LOGIKA FORMAT BIASA (Cadangan) ===
+            else {
+                // Coba ekstrak harga dulu
+                if (preg_match('/Rp\s*([\d\.]+)/i', $line, $matches)) {
+                    $harga = (int) str_replace(['.', ','], '', $matches[1]);
+                    $nama = preg_replace('/Rp\s*[\d\.]+.*/i', '', $line);
+                } elseif (preg_match('/(\d{4,})\s*$/', $line, $matches)) {
+                    // Harga di akhir tanpa Rp
+                    $harga = (int) str_replace(['.', ','], '', $matches[1]);
+                    $nama = preg_replace('/\d{4,}\s*$/', '', $line);
+                }
+
+                // Ekstrak qty jika ada
+                if (preg_match('/\s(\d{1,3})\s/', $nama, $qMatch)) {
+                    $qty = (int) $qMatch[1];
+                    $nama = str_replace($qMatch[0], ' ', $nama);
+                }
+
+                // Bersihkan nama
+                $nama = trim($nama, " -");
+            }
+
+            // === VALIDASI DAN PERBAIKAN NAMA BAHAN ===
+            // Pastikan nama bahan tidak kosong dan valid
+            if (empty($nama) || strlen($nama) < 2) {
+                // Jika nama kosong tapi ada harga, coba ekstrak dari line asli
+                if ($harga > 0) {
+                    // Hapus harga dan ambil sisa sebagai nama
+                    $nama = preg_replace('/Rp?\s*[\d\.,]+/', '', $line);
+                    $nama = preg_replace('/\d+\s*x\s*/', '', $nama);
+                    $nama = trim($nama, " -");
+                }
+            }
+
+            // Filter nama bahan yang masuk akal untuk leather business
+            $leather_keywords = ['kulit', 'leather', 'skin', 'hide', 'suede', 'nubuck', 'patent', 'vinyl', 'fabric', 'cloth', 'thread', 'zipper', 'button', 'rivet', 'glue', 'adhesive', 'paint', 'dye', 'chemical', 'solvent', 'feet', 'meter', 'roll', 'cone', 'spool', 'yarn', 'wire', 'chain', 'buckle', 'snap', 'hook', 'eyelet', 'stud', 'concho', 'lace', 'ribbon', 'tape', 'elastic', 'foam', 'padding', 'lining', 'interfacing', 'stabilizer', 'fusible', 'web', 'batting', 'wadding', 'fiberfill', 'polyfill', 'hollofil', 'down', 'feather', 'silk', 'wool', 'cotton', 'linen', 'rayon', 'nylon', 'polyester', 'spandex', 'lycra', 'microfiber', 'fleece', 'velvet', 'satin', 'chiffon', 'organza', 'tulle', 'lace', 'embroidery', 'bead', 'sequin', 'rhinestone', 'crystal', 'pearl', 'metal', 'plastic', 'wood', 'bone', 'horn', 'shell', 'coconut', 'cork', 'rubber', 'latex', 'neoprene', 'pleather', 'vegan', 'faux', 'synthetic'];
+
+            $is_leather_related = false;
+            $nama_lower = strtolower($nama);
+            foreach ($leather_keywords as $keyword) {
+                if (strpos($nama_lower, $keyword) !== false) {
+                    $is_leather_related = true;
+                    break;
+                }
+            }
+
+            // Jika bukan leather related tapi panjang nama > 3 dan harga > 500, tetap ambil
+            if (!$is_leather_related && strlen($nama) > 3 && $harga > 500) {
+                $is_leather_related = true;
+            }
+
+            // Validasi Akhir
+            if (strlen($nama) > 2 && $harga > 100 && $is_leather_related) {
+                $data[] = [
+                    'nama' => $nama,
+                    'qty' => $qty,
+                    'satuan' => $satuan,
+                    'harga' => $harga
+                ];
+            }
+        }
+
+        return [
+            'metadata' => [
+                'no_nota' => $noNota,
+                'tanggal' => $tanggal,
+                'supplier' => $supplier,
+                'alamat_kontak' => $supplier // Default alamat sama dengan supplier
+            ],
+            'items' => $data
+        ];
+    }
+
+    public function storeStok(Request $request)
+    {
+        // Debug: Log request data
+        \Log::info('storeStok called with data', ['data' => $request->all()]);
+
+        // Validasi
+        try {
+            $request->validate([
+                'supplier' => 'nullable|string|max:255',
+                'items' => 'required|array',
+                'items.*.nama' => 'required|string',
+                'items.*.qty' => 'required|integer|min:1',
+                'items.*.harga' => 'nullable|numeric'
+            ]);
+            \Log::info('Validation passed successfully');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed', ['errors' => $e->errors(), 'data' => $request->all()]);
+            throw $e;
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $updatedItems = []; // Daftar barang yang nambah stok
+            $newItems = [];     // Daftar barang baru
+
+            \Log::info('Processing items', ['items' => $request->input('items')]);
+            \Log::info('User authentication status', ['authenticated' => auth()->check(), 'user_id' => auth()->id()]);
+
+            foreach ($request->input('items') as $index => $item) {
+                $namaInput = trim($item['nama']);
+                $qtyMasuk  = (int) $item['qty'];
+                $hargaBeli = (int) ($item['harga'] ?? 0);
+
+                \Log::info('Processing item', ['index' => $index, 'nama' => $namaInput, 'qty' => $qtyMasuk, 'harga' => $hargaBeli]);
+
+                // CARI BARANG DI DATABASE (Case Insensitive dengan fuzzy matching)
+                // Kita cari yang namanya MIRIP, biar "Lem" dan "lem" dianggap sama
+                // Coba exact match dulu
+                $barang = BahanBaku::where('nama_material', 'LIKE', $namaInput)->first();
+
+                // Jika tidak ketemu, coba partial match (nama OCR mengandung nama di DB atau sebaliknya)
+                if (!$barang) {
+                    $barang = BahanBaku::where(function($query) use ($namaInput) {
+                        $query->where('nama_material', 'LIKE', '%' . $namaInput . '%')
+                              ->orWhere('nama_material', 'LIKE', $namaInput . '%')
+                              ->orWhere('nama_material', 'LIKE', '%' . $namaInput);
+                    })->first();
+                }
+
+                // Jika masih tidak ketemu, coba case-insensitive exact match
+                if (!$barang) {
+                    $barang = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$namaInput])->first();
+                }
+
+                if ($barang) {
+                    // === SKENARIO 1: BARANG SUDAH ADA (RESTOCK) ===
+                    // Cek dulu stok sebelumnya (buat laporan)
+                    $stokLama = $barang->stok;
+
+                    // Rumus Sakti: Stok Lama + Stok Baru
+                    $barang->stok = $stokLama + $qtyMasuk;
+
+                    // Update harga satuan jika ada perubahan harga di nota baru
+                    if ($hargaBeli > 0) {
+                        $barang->harga_satuan = $hargaBeli;
+                    }
+
+                    try {
+                        $barang->save();
+                        \Log::info('Updated existing item successfully', ['nama' => $namaInput, 'old_stok' => $stokLama, 'new_stok' => $barang->stok]);
+                        $updatedItems[] = "$namaInput (+ $qtyMasuk)";
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to update existing item', ['nama' => $namaInput, 'error' => $e->getMessage()]);
+                        throw $e;
+                    }
+                } else {
+                    // === SKENARIO 2: BARANG BARU ===
+                    try {
+                        // Generate kode_material
+                        $lastKode = BahanBaku::where('kode_material', 'LIKE', 'BB-%')
+                            ->orderByRaw('CAST(SUBSTRING(kode_material, 4) AS UNSIGNED) DESC')
+                            ->value('kode_material');
+
+                        if ($lastKode) {
+                            $lastNumber = (int) substr($lastKode, 3);
+                            $newNumber = $lastNumber + 1;
+                        } else {
+                            $newNumber = 1;
+                        }
+
+                        $kodeMaterial = 'BB-' . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+
+                        $newItem = BahanBaku::create([
+                            'kode_material' => $kodeMaterial,
+                            'nama_material' => $namaInput,
+                            'kategori' => 'Aksesoris', // Default kategori
+                            'stok' => $qtyMasuk,
+                            'satuan' => 'Pcs', // Default satuan
+                            'harga_satuan' => $hargaBeli,
+                            'stok_minimum' => 10, // Default
+                            'status' => 'Aman', // Default
+                            'supplier' => $request->supplier,
+                            'user_id' => auth()->id() ?? null,
+                        ]);
+
+                        \Log::info('Created new item successfully', ['nama' => $namaInput, 'id' => $newItem->id]);
+                        $newItems[] = $namaInput;
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to create new item', ['nama' => $namaInput, 'error' => $e->getMessage()]);
+                        throw $e;
+                    }
+                }
+            }
+
+            DB::commit();
+            session()->forget('ocr_result');
+
+            // Bikin Pesan Laporan yang Keren
+            $pesan = "Proses Selesai! ";
+            if (count($updatedItems) > 0) {
+                $pesan .= "♻️ Restock: " . implode(', ', $updatedItems) . ". ";
+            }
+            if (count($newItems) > 0) {
+                $pesan .= "✨ Barang Baru: " . implode(', ', $newItems) . ".";
+            }
+
+            return redirect()->route('scan.index')->with('success', $pesan);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+        }
+    }
+}
+    /**
+     * Store stok langsung tanpa konfirmasi (untuk auto-save setelah scan)
+     */
+    private function storeStokDirect($data)
+    {
+        try {
+            DB::beginTransaction();
+
+            $updatedItems = []; // Daftar barang yang nambah stok
+            $newItems = [];     // Daftar barang baru
+
+            \Log::info('Processing items direct', ['items' => $data['items']]);
+
+            foreach ($data['items'] as $index => $item) {
+                $namaInput = trim($item['nama']);
+                $qtyMasuk  = (int) $item['qty'];
+                $hargaBeli = (int) ($item['harga'] ?? 0);
+
+                \Log::info('Processing item direct', ['index' => $index, 'nama' => $namaInput, 'qty' => $qtyMasuk, 'harga' => $hargaBeli]);
+
+                // CARI BARANG DI DATABASE (Case Insensitive dengan fuzzy matching)
+                $barang = BahanBaku::where('nama_material', 'LIKE', $namaInput)->first();
+
+                if (!$barang) {
+                    $barang = BahanBaku::where(function($query) use ($namaInput) {
+                        $query->where('nama_material', 'LIKE', '%' . $namaInput . '%')
+                              ->orWhere('nama_material', 'LIKE', $namaInput . '%')
+                              ->orWhere('nama_material', 'LIKE', '%' . $namaInput);
+                    })->first();
+                }
+
+                if (!$barang) {
+                    $barang = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$namaInput])->first();
+                }
+
+                if ($barang) {
+                    // BARANG SUDAH ADA (RESTOCK)
+                    $stokLama = $barang->stok;
+                    $barang->stok = $stokLama + $qtyMasuk;
+
+                    if ($hargaBeli > 0) {
+                        $barang->harga_satuan = $hargaBeli;
+                    }
+
+                    $barang->save();
+                    $updatedItems[] = "$namaInput (+ $qtyMasuk)";
+                } else {
+                    // BARANG BARU
+                    $lastKode = BahanBaku::where('kode_material', 'LIKE', 'BB-%')
+                        ->orderByRaw('CAST(SUBSTRING(kode_material, 4) AS UNSIGNED) DESC')
+                        ->value('kode_material');
+
+                    if ($lastKode) {
+                        $lastNumber = (int) substr($lastKode, 3);
+                        $newNumber = $lastNumber + 1;
+                    } else {
+                        $newNumber = 1;
+                    }
+
+                    $kodeMaterial = 'BB-' . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+
+                    BahanBaku::create([
+                        'kode_material' => $kodeMaterial,
+                        'nama_material' => $namaInput,
+                        'kategori' => 'Aksesoris',
+                        'stok' => $qtyMasuk,
+                        'satuan' => $item['satuan'] ?? 'Pcs',
+                        'harga_satuan' => $hargaBeli,
+                        'stok_minimum' => 10,
+                        'status' => 'Aman',
+                        'supplier' => $data['supplier'],
+                        'user_id' => auth()->id() ?? null,
+                    ]);
+
+                    $newItems[] = $namaInput;
+                }
+            }
+
+            DB::commit();
+
+            // Bikin Pesan Laporan
+            $pesan = " Scan & Simpan Berhasil! ";
+            if (count($updatedItems) > 0) {
+                $pesan .= " Restock: " . implode(', ', $updatedItems) . ". ";
+            }
+            if (count($newItems) > 0) {
+                $pesan .= " Barang Baru: " . implode(', ', $newItems) . ".";
+            }
+
+            return response()->json(['success' => true, 'message' => $pesan, 'redirect' => route('scan.index')]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json(['success' => false, 'message' => 'Gagal menyimpan ke database: ' . $e->getMessage()], 500);
+        }
+    }
+}

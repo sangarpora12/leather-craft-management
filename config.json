@@ -1,0 +1,26 @@
+{
+    "models": [
+      {
+        "title": "Gemini 1.5 Flash",
+        "provider": "google",
+        "model": "gemini-1.5-flash",
+        "apiKey": "AIzaSyDswu4MHGuHDheauhrsQ8AuEaLyjrfQdY"
+      }
+    ],
+    "contextProviders": [
+      {
+        "name": "codebase",
+        "displayTitle": "Codebase"
+      },
+      {
+        "name": "files",
+        "displayTitle": "Files"
+      }
+    ],
+    "tabAutocompleteModel": {
+      "title": "Gemini 1.5 Flash",
+      "provider": "google",
+      "model": "gemini-1.5-flash",
+      "apiKey": "AIzaSyDswu4MHGuHDheauhrsQ8AuEaLyjrfQdY"
+    }
+  }

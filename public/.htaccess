@@ -1,0 +1,56 @@
+# ============================================================
+# Cache Header untuk Gambar & Asset Statis
+# Supaya browser tidak re-download gambar setiap refresh
+# ============================================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Gambar: cache 7 hari
+    ExpiresByType image/jpeg          "access plus 7 days"
+    ExpiresByType image/png           "access plus 7 days"
+    ExpiresByType image/gif           "access plus 7 days"
+    ExpiresByType image/webp          "access plus 7 days"
+    ExpiresByType image/svg+xml       "access plus 7 days"
+
+    # CSS & JS: cache 1 hari
+    ExpiresByType text/css            "access plus 1 day"
+    ExpiresByType application/javascript "access plus 1 day"
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Gambar storage: Cache-Control 7 hari
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg)$">
+        Header set Cache-Control "public, max-age=604800, stale-while-revalidate=86400"
+    </FilesMatch>
+
+    # Tambah header CORS agar Gmail/Google bisa fetch gambar
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Handle X-XSRF-Token Header
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>

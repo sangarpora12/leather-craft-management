@@ -1,0 +1,28 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Cek dulu biar nggak error kalau tabel sudah ada
+        if (!Schema::hasTable('log_stok')) {
+            Schema::create('log_stok', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('bahan_baku_id');
+                $table->string('jenis_transaksi'); 
+                $table->decimal('jumlah', 15, 2);
+                $table->string('keterangan')->nullable();
+                $table->timestamps();
+            });
+        }
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('log_stok');
+    }
+};
