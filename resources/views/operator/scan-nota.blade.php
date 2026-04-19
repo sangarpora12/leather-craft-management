@@ -219,6 +219,21 @@
                             </div>
                         </div>
 
+                        <!-- UPLOAD FOTO BUKTI -->
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Foto Bukti (Opsional)</label>
+                            <div class="relative">
+                                <input type="file" name="foto_bukti" id="fotoBuktiInput" accept="image/*" class="hidden">
+                                <div id="fotoBuktiPreview" class="hidden mb-3">
+                                    <img id="fotoBuktiThumbnail" class="w-full h-32 object-cover rounded-xl border border-gray-600">
+                                </div>
+                                <button type="button" id="btnFotoBukti" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white flex items-center justify-center gap-2 hover:bg-gray-700/50 transition">
+                                    <i class="fa-solid fa-camera text-gray-400"></i>
+                                    <span id="textFotoBukti">Tambah Foto Bukti Fisik</span>
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="mt-4">
                             <label class="flex items-center gap-3 cursor-pointer">
                                 <input type="checkbox" name="is_inventory" value="1" class="w-5 h-5 rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" checked>
@@ -534,6 +549,34 @@ cancelPelengkapBtn.addEventListener('click', () => {
     tabScan.click(); // Switch back to scan tab
 });
 
+// ==========================================
+// FOTO BUKTI HANDLER
+// ==========================================
+const fotoBuktiInput = document.getElementById('fotoBuktiInput');
+const btnFotoBukti = document.getElementById('btnFotoBukti');
+const fotoBuktiPreview = document.getElementById('fotoBuktiPreview');
+const fotoBuktiThumbnail = document.getElementById('fotoBuktiThumbnail');
+const textFotoBukti = document.getElementById('textFotoBukti');
+
+btnFotoBukti.addEventListener('click', () => {
+    fotoBuktiInput.click();
+});
+
+fotoBuktiInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Preview foto
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        fotoBuktiThumbnail.src = event.target.result;
+        fotoBuktiPreview.classList.remove('hidden');
+        textFotoBukti.textContent = 'Ganti Foto Bukti';
+        btnFotoBukti.classList.add('bg-blue-500/20', 'border-blue-500/50');
+    };
+    reader.readAsDataURL(file);
+});
+
 // Form will submit normally to operator.bahan.store
 // No need for AJAX - just let the form submit naturally
 
@@ -569,23 +612,89 @@ console.log('Autocomplete script loaded');
 function selectMaterial(itemElement) {
     document.getElementById('nama_material').value = itemElement.dataset.nama;
     document.querySelector('input[name="kode_material"]').value = itemElement.dataset.kode;
-    document.querySelector('select[name="kategori"]').value = itemElement.dataset.kategori;
-    document.querySelector('select[name="satuan"]').value = itemElement.dataset.satuan;
+    
+    // ✅ LOGIC TOMBOL FOTO: BAHAN SUDAH ADA = DISABLE
+    const btnFotoBukti = document.getElementById('btnFotoBukti');
+    const textFotoBukti = document.getElementById('textFotoBukti');
+    
+    btnFotoBukti.disabled = true;
+    btnFotoBukti.classList.add('opacity-50', 'cursor-not-allowed');
+    btnFotoBukti.classList.remove('hover:bg-gray-700/50');
+    textFotoBukti.textContent = 'Master Foto Sudah Ada';
+    fotoBuktiInput.disabled = true;
+    
+    // AUTO FILL KATEGORI & SATUAN
+    const kategoriSelect = document.querySelector('select[name="kategori"]');
+    const satuanSelect = document.querySelector('select[name="satuan"]');
+    
+    if(itemElement.dataset.kategori && itemElement.dataset.kategori !== '') {
+        kategoriSelect.value = itemElement.dataset.kategori;
+        kategoriSelect.disabled = true;
+        kategoriSelect.classList.add('bg-gray-900', 'text-gray-400');
+        
+        // Highlight effect
+        kategoriSelect.style.boxShadow = '0 0 0 2px rgba(16, 185, 129, 0.3)';
+        setTimeout(() => kategoriSelect.style.boxShadow = '', 800);
+    }
+    
+    if(itemElement.dataset.satuan && itemElement.dataset.satuan !== '') {
+        satuanSelect.value = itemElement.dataset.satuan;
+        satuanSelect.disabled = true;
+        satuanSelect.classList.add('bg-gray-900', 'text-gray-400');
+        
+        // Highlight effect
+        satuanSelect.style.boxShadow = '0 0 0 2px rgba(16, 185, 129, 0.3)';
+        setTimeout(() => satuanSelect.style.boxShadow = '', 800);
+    }
+    
     document.querySelector('input[name="supplier"]').value = itemElement.dataset.supplier;
     document.querySelector('input[name="ref_no"]').value = itemElement.dataset.refNo;
     
-    const lastPriceInfo = document.getElementById('lastPriceInfo');
+    // TAMPILKAN HARGA TERAKHIR SEBAGAI INFORMASI SAJA (TIDAK DIISI OTOMATIS)
+    const hargaInput = document.getElementById('hargaSatuan');
     const lastPrice = parseFloat(itemElement.dataset.harga);
     if (lastPrice > 0) {
-        lastPriceInfo.innerHTML = `Harga terakhir: <strong>Rp ${new Intl.NumberFormat('id-ID').format(lastPrice)}</strong>`;
-        lastPriceInfo.classList.remove('hidden');
+        const lastPriceInfo = document.getElementById('lastPriceInfo');
+        lastPriceInfo.innerHTML = `ℹ️ Harga terakhir: <strong>Rp ${new Intl.NumberFormat('id-ID').format(lastPrice)}</strong>`;
+        lastPriceInfo.classList.remove('hidden', 'text-red-400', 'text-green-400');
+        lastPriceInfo.classList.add('text-amber-400');
     } else {
+        const lastPriceInfo = document.getElementById('lastPriceInfo');
         lastPriceInfo.classList.add('hidden');
     }
 
     document.getElementById('suggestions').classList.add('hidden');
     document.getElementById('suggestions').innerHTML = '';
 }
+
+// SET DEFAULT VALUES JIKA BAHAN BARU
+document.getElementById('nama_material').addEventListener('input', function() {
+    // Reset disabled fields
+    const kategoriSelect = document.querySelector('select[name="kategori"]');
+    const satuanSelect = document.querySelector('select[name="satuan"]');
+    const btnFotoBukti = document.getElementById('btnFotoBukti');
+    const textFotoBukti = document.getElementById('textFotoBukti');
+    
+    kategoriSelect.disabled = false;
+    satuanSelect.disabled = false;
+    kategoriSelect.classList.remove('bg-gray-900', 'text-gray-400');
+    satuanSelect.classList.remove('bg-gray-900', 'text-gray-400');
+    
+    // ✅ LOGIC TOMBOL FOTO: BAHAN BARU = ENABLE
+    btnFotoBukti.disabled = false;
+    btnFotoBukti.classList.remove('opacity-50', 'cursor-not-allowed');
+    btnFotoBukti.classList.add('hover:bg-gray-700/50');
+    textFotoBukti.textContent = 'Tambah Master Foto Baru';
+    fotoBuktiInput.disabled = false;
+    
+    // Set default values untuk bahan baru
+    if(kategoriSelect.value === '') {
+        kategoriSelect.value = 'Bahan Utama';
+    }
+    if(satuanSelect.value === '') {
+        satuanSelect.value = 'Pcs';
+    }
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded');
@@ -629,9 +738,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 suggestions.innerHTML = '';
                 if (data.length > 0) {
                     data.forEach(function(item) {
+                        console.log('DATA DARI SERVER:', item);
+                        
                         var itemDiv = document.createElement('div');
-                        itemDiv.className = 'px-4 py-2 hover:bg-gray-700 cursor-pointer text-sm text-white';
-                        itemDiv.innerHTML = item.nama_material + ' (' + item.kode_material + ') - Stok: ' + item.stok + ' ' + item.satuan;
+                        itemDiv.className = 'px-3 py-2 hover:bg-gray-700 cursor-pointer text-sm text-white flex items-center gap-3';
+                        
+                        // ✅ STABIL TIDAK BERKEDIP - 100% KONSISTEN
+                        const pathFoto = item.foto || item.foto_url;
+                        let htmlFoto = '';
+
+                        if (pathFoto && !pathFoto.includes('placeholder')) {
+                            // Jika ada data foto asli
+                            const finalSrc = pathFoto.startsWith('http') ? pathFoto : ('/storage/' + pathFoto.replace('storage/', ''));
+                            htmlFoto = `<img src="${finalSrc}" class="w-full h-full object-cover">`;
+                        } else {
+                            // Jika TIDAK ADA foto - Default Logo Abu-abu LANGSUNG
+                            htmlFoto = `<div class="w-full h-full bg-gray-700 flex items-center justify-center"><i class="fa-solid fa-box text-gray-500"></i></div>`;
+                        }
+                        
+                        const namaTampil = item.nama_bahan || item.nama_material || 'Tanpa Nama';
+                        const kodeTampil = item.kode_bahan || item.kode_material || '-';
+                        
+                        itemDiv.innerHTML = `
+                            <div class="w-14 h-14 flex-shrink-0 rounded-xl overflow-hidden border border-gray-600 shadow-inner flex items-center justify-center bg-gray-700">
+                                ${htmlFoto}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-white text-base truncate">${namaTampil}</div>
+                                <div class="text-xs text-yellow-400 font-mono">${kodeTampil}</div>
+                                <div class="text-xs text-gray-400">Stok: ${item.stok} ${item.satuan}</div>
+                            </div>
+                        `;
                         itemDiv.dataset.nama = item.nama_material;
                         itemDiv.dataset.kode = item.kode_material;
                         itemDiv.dataset.kategori = item.kategori || '';

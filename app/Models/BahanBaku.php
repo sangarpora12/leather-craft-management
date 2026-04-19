@@ -12,7 +12,7 @@ class BahanBaku extends Model
 {
     use HasFactory, Notifiable, CatatLogAktivitas;
     protected $table = 'bahan_bakus'; // Pastikan nama tabel sesuai
-    protected $fillable = ['kode_material', 'nama_material', 'kategori', 'stok', 'reserved', 'satuan', 'harga_satuan', 'stok_minimum', 'status', 'supplier', 'ref_no', 'user_id', 'is_inventory'];
+    protected $fillable = ['kode_material', 'nama_material', 'kategori', 'stok', 'reserved', 'satuan', 'harga_satuan', 'stok_minimum', 'status', 'supplier', 'ref_no', 'user_id', 'is_inventory', 'foto'];
 
     protected $casts = [
         'is_inventory' => 'boolean',

@@ -27,9 +27,20 @@ class BahanController extends Controller
             }
             
             $bahans = BahanBaku::where('nama_bahan', 'like', '%' . $query . '%')
-                    ->select('id', 'kode_bahan', 'nama_bahan', 'stok', 'satuan', 'harga_satuan')
+                    ->select('id', 'kode_bahan', 'nama_bahan', 'stok', 'satuan', 'harga_satuan', 'foto')
                     ->limit(10)
                     ->get();
+            
+            // Tambahkan full URL foto - 100% BENAR
+            $bahans->transform(function ($bahan) {
+                // ✅ PINDAH KE FOLDER PUBLIC UPLOADS (TANPA STORAGE SYMLINK)
+                $bahan->foto_url = $bahan->foto ? asset('uploads/bahan_baku/' . $bahan->foto) : '';
+                $bahan->nama_material = $bahan->nama_bahan;
+                $bahan->nama_bahan = $bahan->nama_bahan;
+                $bahan->kode_material = $bahan->kode_bahan;
+                $bahan->kode_bahan = $bahan->kode_bahan;
+                return $bahan;
+            });
             
             return response()->json([
                 'success' => true,
@@ -200,6 +211,7 @@ class BahanController extends Controller
     
     /**
      * Generate kode bahan otomatis berdasarkan pengaturan gudang
+     * ✅ UNIVERSAL INCREMENT COUNTER - SEMUA BAHAN MENGGUNAKAN NOMOR URUT YANG SAMA
      */
     private function generateKodeBahanOtomatis($namaBahan)
     {
@@ -215,25 +227,32 @@ class BahanController extends Controller
                 // Generate kode sesuai format
                 $kode = str_replace('{counter}', str_pad($counter, 4, '0', STR_PAD_LEFT), $format);
                 
-                // Update counter
+                // ✅ UPDATE COUNTER GLOBAL - SETIAP KALI DI GENERATE SELALU INCREMENT 1
                 $pengaturan->kode_bahan_counter = $counter + 1;
                 $pengaturan->save();
+                
+                // ✅ CEK UNIK JIKA SUDAH ADA, LEWATKAN NOMOR
+                while(BahanBaku::where('kode_bahan', $kode)->exists()) {
+                    $counter++;
+                    $kode = str_replace('{counter}', str_pad($counter, 4, '0', STR_PAD_LEFT), $format);
+                    $pengaturan->kode_bahan_counter = $counter + 1;
+                    $pengaturan->save();
+                }
                 
                 return $kode;
             }
             
-            // Fallback: generate kode manual
-            $timestamp = time();
-            $random = rand(100, 999);
-            $initials = $this->getInitials($namaBahan);
+            // ✅ GUNAKAN COUNTER GLOBAL SEBAGAI FALLBACK
+            $lastBahan = BahanBaku::orderBy('id', 'desc')->first();
+            $nextNumber = $lastBahan ? $lastBahan->id + 1 : 1;
             
-            return strtoupper($initials) . '-' . $timestamp . '-' . $random;
+            return 'BAH-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
             
         } catch (\Exception $e) {
             // Fallback ekstrem
-            $timestamp = time();
-            $random = rand(1000, 9999);
-            return 'BB-' . $timestamp . '-' . $random;
+            $lastBahan = BahanBaku::orderBy('id', 'desc')->first();
+            $nextNumber = $lastBahan ? $lastBahan->id + 1 : 1;
+            return 'BAH-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
         }
     }
     

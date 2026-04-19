@@ -131,8 +131,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.length > 0) {
                     data.forEach(function(item) {
                         var itemDiv = document.createElement('div');
-                        itemDiv.className = 'px-4 py-2 hover:bg-gray-700 cursor-pointer text-sm text-white';
-                        itemDiv.innerHTML = item.nama_material + ' (' + item.kode_material + ') - Stok: ' + item.stok + ' ' + item.satuan;
+                        itemDiv.className = 'px-3 py-2 hover:bg-gray-700 cursor-pointer text-sm text-white flex items-center gap-3';
+                        
+                        // Template dengan Foto
+                        var fotoHtml = '';
+                        if(item.foto_url) {
+                            fotoHtml = `<img src="${item.foto_url}" class="w-9 h-9 rounded-lg object-cover border border-gray-600 flex-shrink-0">`;
+                        } else {
+                            fotoHtml = `<div class="w-9 h-9 rounded-lg bg-gray-700 flex items-center justify-center border border-gray-600 flex-shrink-0">
+                                <i class="fa-solid fa-box text-gray-500 text-xs"></i>
+                            </div>`;
+                        }
+                        
+                        itemDiv.innerHTML = `
+                            ${fotoHtml}
+                            <div class="flex-1 min-w-0">
+                                <div class="font-medium text-white">${item.nama_material}</div>
+                                <div class="text-xs text-gray-400">${item.kode_material} • Stok: ${item.stok} ${item.satuan}</div>
+                            </div>
+                        `;
                         itemDiv.dataset.nama = item.nama_material;
                         itemDiv.dataset.kode = item.kode_material;
                         itemDiv.dataset.kategori = item.kategori || '';

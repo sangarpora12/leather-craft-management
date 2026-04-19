@@ -36,16 +36,40 @@ class PengadaanController extends Controller
     
         return view('admin.pengadaan.index', compact('bahanBakus', 'lowStockMaterials', 'operators'));
     }
-    public function indexOperator()
+    public function indexOperator(Request $request)
     {
         $user = Auth::user();
 
         // Ambil SEMUA pengadaan dengan status PENDING (bukan hanya yang ditugaskan ke operator ini)
         // Operator menerima semua pesanan yang datang dari Admin
-        $pendingPengadaan = Pengadaan::where('status', 'PENDING')
-            ->with('bahan')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+        $query = Pengadaan::where('status', 'PENDING')
+            ->with('bahan');
+
+        // Filter Deadline
+        if ($request->filled('deadline_filter')) {
+            switch ($request->deadline_filter) {
+                case 'hari_ini':
+                    $query->whereDate('tanggal_dibutuhkan', today());
+                    break;
+                case 'minggu_ini':
+                    $query->whereBetween('tanggal_dibutuhkan', [now()->startOfWeek(), now()->endOfWeek()]);
+                    break;
+                case 'terlewat':
+                    $query->whereDate('tanggal_dibutuhkan', '<', today());
+                    break;
+            }
+        }
+
+        // Bersihkan angka desimal .00
+        $pendingPengadaan = $query
+            ->orderBy('tanggal_dibutuhkan', 'asc')
+            ->paginate(10)
+            ->withQueryString()
+            ->through(function($item) {
+                $item->jumlah = intval($item->jumlah);
+                $item->received = intval($item->received);
+                return $item;
+            });
 
         // Notifikasi untuk operator (gunakan NotificationService jika ada, fallback ke method lama)
         try {

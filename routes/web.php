@@ -313,6 +313,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/bahan/tambah', function() { return view('operator.tambah-bahan'); })->name('bahan.tambah');
         Route::post('/bahan/simpan', [BahanBakuController::class, 'storeOperator'])->name('bahan.store');
         Route::get('/bahan', [BahanBakuController::class, 'indexOperator'])->name('bahan.index');
+        Route::get('/bahan/{id}', [BahanBakuController::class, 'showOperator'])->name('bahan.show');
         Route::get('/bahan/{id}/edit', [BahanBakuController::class, 'editOperator'])->name('bahan.edit');
         Route::put('/bahan/{id}', [BahanBakuController::class, 'updateOperator'])->name('bahan.update');
         

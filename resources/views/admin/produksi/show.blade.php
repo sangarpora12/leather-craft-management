@@ -4,6 +4,23 @@
 @section('title_header', 'Detail Produksi')
 
 @section('content')
+
+@if(session('notif_success'))
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        icon: 'success',
+        title: '{{ session('notif_success') }}',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+    });
+});
+</script>
+@endif
+
 <div class="container-fluid">
     <div class="mb-8 flex items-center justify-between">
         <div>
@@ -13,7 +30,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                     </svg>
                 </a>
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">Detail Produksi</h1>
+                <h4 class="text-xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">Detail Produksi</h4>
             </div>
             <p class="text-sm text-gray-400">
                 Kode SPK: <strong class="text-amber-400 font-mono">{{ $produksi->kode_spk }}</strong>
@@ -63,7 +80,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {{-- KIRI 8 KOLOM --}}
-        <div class="lg:col-span-8 space-y-6">
+        <div class="lg:col-span-6 space-y-6">
 
             {{-- INFORMASI PRODUK --}}
             <div class="bg-gradient-to-b from-[#1A1A1A] to-[#0F0F0F] border border-white/10 rounded-3xl p-6 shadow-2xl shadow-black/50">
@@ -75,7 +92,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Nama Produk</div>
-                        <div class="font-bold text-xl text-white">{{ $produksi->product?->nama_produk ?? '-' }}</div>
+                        <div class="font-bold text-lg text-white">{{ $produksi->product?->nama_produk ?? '-' }}</div>
                     </div>
                     <div>
                         <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Kode Produk</div>
@@ -109,7 +126,7 @@
                         @if($produksi->product?->panjang)
                         <div class="bg-cyan-500/10 border border-cyan-500/30 rounded-xl px-4 py-3">
                             <div class="text-xs text-cyan-400 mb-1">PANJANG</div>
-                            <div class="font-bold text-white text-lg">{{ fmod($produksi->product->panjang, 1) !== 0.0 ? number_format($produksi->product->panjang, 2) : (int)$produksi->product->panjang }} cm</div>
+                            <div class="font-bold text-white">{{ $formatQty($produksi->product->panjang) }} cm</div>
                         </div>
                         @endif
                         @if($produksi->product?->lebar)
@@ -141,6 +158,7 @@
                     <table class="w-full">
                         <thead>
                             <tr class="text-left text-gray-400 text-xs uppercase tracking-wider">
+                                <th class="pb-4">Foto</th>
                                 <th class="pb-4">Nama Bahan</th>
                                 <th class="pb-4 text-center">Kebutuhan / Unit</th>
                                 <th class="pb-4 text-center">Total Kebutuhan</th>
@@ -150,9 +168,18 @@
                         <tbody class="divide-y divide-white/10">
                             @foreach($produksi->produk_jadi->boms as $bom)
                             <tr>
+                                <td class="py-4">
+                                    @if($bom->bahanBaku && $bom->bahanBaku->foto)
+                                        <img src="{{ asset('storage/' . $bom->bahanBaku->foto) }}" class="w-10 h-10 rounded-lg object-cover border border-white/10 no-print">
+                                    @else
+                                        <div class="w-10 h-10 rounded-lg bg-[#2D3139] flex items-center justify-center border border-white/10 no-print">
+                                            <i class="fa-solid fa-image text-gray-500 text-xs"></i>
+                                        </div>
+                                    @endif
+                                </td>
                                 <td class="py-4 text-white font-medium">{{ $bom->bahanBaku?->nama_material ?? '-' }}</td>
-                                <td class="py-4 text-center text-gray-300">{{ $bom->jumlah_kebutuhan }}</td>
-                                <td class="py-4 text-center text-white font-bold">{{ number_format($bom->jumlah_kebutuhan * $produksi->jumlah_produksi, 2) }}</td>
+                                <td class="py-4 text-center text-gray-300">{{ fmod($bom->jumlah_kebutuhan, 1) !== 0.0 ? number_format($bom->jumlah_kebutuhan, 2) : (int)$bom->jumlah_kebutuhan }}</td>
+                                <td class="py-4 text-center text-white font-bold">{{ fmod(($bom->jumlah_kebutuhan * $produksi->jumlah_produksi), 1) !== 0.0 ? number_format(($bom->jumlah_kebutuhan * $produksi->jumlah_produksi), 2) : (int)($bom->jumlah_kebutuhan * $produksi->jumlah_produksi) }}</td>
                                 <td class="py-4 text-center text-gray-300">{{ $bom->bahanBaku?->satuan ?? '-' }}</td>
                             </tr>
                             @endforeach
@@ -177,8 +204,8 @@
 
         </div>
 
-        {{-- KANAN 4 KOLOM --}}
-        <div class="lg:col-span-4 space-y-6">
+        {{-- KANAN 6 KOLOM --}}
+        <div class="lg:col-span-6 space-y-6">
             
             {{-- INFORMASI SPK --}}
             <div class="bg-gradient-to-b from-[#1A1A1A] to-[#0F0F0F] border border-white/10 rounded-3xl p-6 shadow-2xl shadow-black/50">
@@ -190,11 +217,11 @@
                 <div class="space-y-4">
                     <div class="flex justify-between">
                         <div class="text-gray-400">Jumlah Produksi</div>
-                        <div class="font-bold text-white text-lg">{{ number_format($produksi->jumlah_produksi, 0) }} Pcs</div>
+                        <div class="font-bold text-white">{{ $formatQty($produksi->jumlah_produksi) }} Pcs</div>
                     </div>
                     <div class="flex justify-between">
                         <div class="text-gray-400">Jumlah Selesai</div>
-                        <div class="font-bold text-emerald-400">{{ number_format($produksi->jumlah_selesai, 0) }} Pcs</div>
+                        <div class="font-bold text-emerald-400">{{ $formatQty($produksi->jumlah_selesai) }} Pcs</div>
                     </div>
                     <div class="flex justify-between">
                         <div class="text-gray-400">Operator</div>
@@ -228,11 +255,55 @@
             @endif
 
             {{-- FOTO BUKTI --}}
-            @if($produksi->foto_bukti)
             <div class="bg-gradient-to-b from-[#1A1A1A] to-[#0F0F0F] border border-white/10 rounded-3xl p-6 shadow-2xl shadow-black/50">
-                <h3 class="text-xl font-bold text-white mb-4">📸 Foto Bukti Pengerjaan</h3>
-                <div class="rounded-2xl overflow-hidden border border-emerald-500/30">
-                    <img src="{{ asset('storage/' . $produksi->foto_bukti) }}" alt="Foto Bukti" class="w-full h-auto">
+                <h5 class="font-bold text-white mb-4">📸 Foto Bukti Pengerjaan</h5>
+                @if($produksi->foto_bukti)
+                <div class="grid grid-cols-3 gap-2">
+                    @foreach(json_decode($produksi->foto_bukti) as $foto)
+                    <div class="rounded-lg overflow-hidden border border-emerald-500/20">
+                        <img src="{{ asset('storage/' . $foto) }}" alt="Foto Bukti" class="w-full h-28 object-cover">
+                    </div>
+                    @endforeach
+                </div>
+                @else
+                <div class="text-center py-5 text-gray-500">
+                    <i class="fa-solid fa-camera-slash text-3xl mb-2 opacity-50"></i>
+                    <p class="text-sm">Belum ada bukti foto yang diupload</p>
+                </div>
+                @endif
+            </div>
+
+            {{-- TOTAL BAHAN BAKU YANG DIHABISKAN --}}
+            @if($produksi->produk_jadi && $produksi->produk_jadi->boms->isNotEmpty())
+            <div class="bg-gradient-to-b from-[#1A1A1A] to-[#0F0F0F] border border-white/10 rounded-3xl p-6 shadow-2xl shadow-black/50">
+                <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-amber-400 rounded-full"></div>
+                    Total Bahan Baku yang Dihabiskan
+                </h3>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-left text-gray-400 text-xs uppercase tracking-wider">
+                                <th class="pb-4">Nama Bahan</th>
+                                <th class="pb-4 text-center">Kebutuhan / Unit</th>
+                                <th class="pb-4 text-center">Total Kebutuhan</th>
+                                <th class="pb-4 text-center">Satuan</th>
+                                <th class="pb-4 text-center">Total Dihabiskan</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/10">
+                            @foreach($produksi->produk_jadi->boms as $bom)
+                            <tr>
+                                <td class="py-4 text-white font-medium">{{ $bom->bahanBaku?->nama_material ?? '-' }}</td>
+                                <td class="py-4 text-center text-gray-300">{{ $bom->jumlah_kebutuhan }}</td>
+                                <td class="py-4 text-center text-white font-bold">{{ number_format($bom->jumlah_kebutuhan * $produksi->jumlah_produksi, 2) }}</td>
+                                <td class="py-4 text-center text-gray-300">{{ $bom->bahanBaku?->satuan ?? '-' }}</td>
+                                <td class="py-4 text-center text-white font-bold">{{ number_format($bom->jumlah_kebutuhan * $produksi->jumlah_selesai, 2) }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
             </div>
             @endif

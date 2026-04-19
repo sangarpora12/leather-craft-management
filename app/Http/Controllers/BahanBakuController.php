@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class BahanBakuController extends Controller
 {
@@ -108,7 +109,7 @@ class BahanBakuController extends Controller
             })
             ->orderBy('nama_material')
             ->limit(20)
-            ->get(['id', 'kode_material', 'nama_material', 'stok', 'satuan', 'harga_satuan', 'stok_minimum', 'supplier', 'kategori', 'ref_no']);
+            ->get(['id', 'kode_material', 'nama_material', 'stok', 'satuan', 'harga_satuan', 'stok_minimum', 'supplier', 'kategori', 'ref_no', 'foto']);
 
         return response()->json($items);
     }
@@ -148,6 +149,7 @@ class BahanBakuController extends Controller
             'stok' => 'required|numeric', // Ini adalah Jumlah Masuk
             'harga_satuan' => 'required|numeric',
             'is_inventory' => 'nullable|boolean',
+            'foto' => 'nullable|image|max:20480',
         ]);
 
         // Default is_inventory = true (bahan inventory)
@@ -155,6 +157,12 @@ class BahanBakuController extends Controller
 
         // Default stok_minimum jika tidak diisi (IKUTI Pengaturan Gudang: stok_minimum_global)
         $stokMinimum = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5);
+
+        // Upload Foto jika ada
+        $fotoPath = null;
+        if ($request->hasFile('foto')) {
+            $fotoPath = $request->file('foto')->store('bahan_baku', 'public');
+        }
 
         // CEK KETERSEDIAAN BAHAN - Apakah material sudah ada?
         $bahan = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$request->nama_material])->first();
@@ -265,9 +273,23 @@ class BahanBakuController extends Controller
             'nama_material' => 'required|string|max:255',
             'kategori' => 'required|string',
             'satuan' => 'required|string',
+            'foto' => 'nullable|image|max:20480',
             // supplier dan ref_no tidak wajib divalidasi karena nullable
             // stok dan harga_satuan readonly - tidak perlu divalidasi
         ]);
+
+        // Upload Foto jika ada
+        if ($request->hasFile('foto')) {
+            // Hapus foto lama jika ada
+            if ($bahan->foto && Storage::disk('public')->exists($bahan->foto)) {
+                Storage::disk('public')->delete($bahan->foto);
+            }
+            
+            // Upload foto baru
+            $fotoPath = $request->file('foto')->store('bahan_baku', 'public');
+        } else {
+            $fotoPath = $bahan->foto;
+        }
 
         // Update hanya field yang diizinkan - JANGAN ubah stok dan harga_satuan
         $bahan->update([
@@ -276,6 +298,7 @@ class BahanBakuController extends Controller
             'satuan' => $request->satuan,
             'supplier' => $request->supplier ?? $bahan->supplier,
             'ref_no' => $request->ref_no ?? $bahan->ref_no,
+            'foto' => $fotoPath,
             // CATATAN: stok dan harga_satuan TIDAK diupdate untuk melindungi integritas FIFO
         ]);
 
@@ -324,12 +347,35 @@ class BahanBakuController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
-            $query->where('nama_material', 'LIKE', "%{$search}%")
-                ->orWhere('kode_material', 'LIKE', "%{$search}%")
-                ->orWhere('kategori', 'LIKE', "%{$search}%");
+            $query->where(function($q) use ($search) {
+                $q->where('nama_material', 'LIKE', "%{$search}%")
+                  ->orWhere('kode_material', 'LIKE', "%{$search}%")
+                  ->orWhere('kategori', 'LIKE', "%{$search}%");
+            });
         }
 
-        $bahanBakus = $query->orderBy('nama_material')->paginate(12)->withQueryString();
+        if ($request->filled('kategori')) {
+            $query->where('kategori', $request->kategori);
+        }
+
+        if ($request->filled('satuan')) {
+            $query->where('satuan', $request->satuan);
+        }
+
+        // SORTING
+        if ($request->filled('sort')) {
+            if ($request->sort == 'stok_terendah') {
+                $query->orderBy('stok', 'ASC');
+            } elseif ($request->sort == 'nama_asc') {
+                $query->orderBy('nama_material', 'ASC');
+            } else {
+                $query->latest('id');
+            }
+        } else {
+            $query->orderBy('nama_material');
+        }
+
+        $bahanBakus = $query->paginate(12)->withQueryString();
 
         $totalSKU = (clone $query)->count();
         // Stok kritis bahan baku (IKUTI Pengaturan Gudang: stok_minimum_global)
@@ -339,8 +385,11 @@ class BahanBakuController extends Controller
         $unreadCount = Auth::user()->unreadNotifications()->where(function($q) {
             $q->where('data->target', 'operator')->orWhere('data->target', 'all');
         })->count();
+        
+        $kategories = \App\Models\Kategori::all();
+        $satuans = \App\Models\Satuan::all();
 
-        return view('operator.bahan-baku.index', compact('bahanBakus', 'totalSKU', 'totalKritis', 'unreadCount'));
+        return view('operator.bahan-baku.index', compact('bahanBakus', 'totalSKU', 'totalKritis', 'unreadCount', 'kategories', 'satuans'));
     }
 
     /**
@@ -349,8 +398,9 @@ class BahanBakuController extends Controller
     public function editOperator($id)
     {
         $bahan = BahanBaku::findOrFail($id);
+        $kategories = \App\Models\Kategori::all();
         $satuans = \App\Models\Satuan::all();
-        return view('operator.bahan-baku.edit', compact('bahan', 'satuans'));
+        return view('operator.bahan-baku.edit', compact('bahan', 'kategories', 'satuans'));
     }
 
     /**
@@ -667,5 +717,22 @@ class BahanBakuController extends Controller
         ]);
 
         return back()->with('success', 'Stok berhasil diperbarui.');
+    }
+    
+    /**
+     * Halaman Detail Bahan untuk Operator
+     */
+    public function showOperator($id)
+    {
+        $bahan = BahanBaku::findOrFail($id);
+        
+        // Ambil riwayat stok terbaru
+        $riwayatStok = DB::table('log_stok')
+            ->where('bahan_baku_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+            
+        return view('operator.bahan-baku.show', compact('bahan', 'riwayatStok'));
     }
 }

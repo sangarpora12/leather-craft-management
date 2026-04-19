@@ -5,18 +5,16 @@
     <!-- Header -->
     @include('components.operator-header', ['title' => 'PENERIMAAN BAHAN'])
 
-    <!-- Alert Info -->
+    <!-- Filter Deadline -->
     <div class="px-5 py-3">
-        <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
-            <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <div>
-                    <p class="text-sm text-blue-400 font-normal">
-                        <strong>Catatan:</strong> Halaman ini hanya menampilkan daftar bahan baku yang harus dibeli sesuai instruksi Admin. Tugas akan otomatis hilang/selesai ketika Anda menginputkan barang tersebut melalui menu <strong>Input Barang</strong> atau <strong>Scan Nota</strong>.
-                    </p>
-                </div>
-            </div>
-        </div>
+        <form method="GET" action="{{ route('operator.belanja.index') }}">
+            <select name="deadline_filter" onchange="this.form.submit()" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white focus:border-emerald-500 focus:outline-none">
+                <option value="" {{ !request('deadline_filter') ? 'selected' : '' }}>📅 Semua Deadline</option>
+                <option value="hari_ini" {{ request('deadline_filter') == 'hari_ini' ? 'selected' : '' }}>📍 Hari Ini</option>
+                <option value="minggu_ini" {{ request('deadline_filter') == 'minggu_ini' ? 'selected' : '' }}>📆 Minggu Ini</option>
+                <option value="terlewat" {{ request('deadline_filter') == 'terlewat' ? 'selected' : '' }}>⚠️ Terlewat (Overdue)</option>
+            </select>
+        </form>
     </div>
 
     <!-- Stats -->
@@ -43,11 +41,24 @@
         @php
             $sisa = $pengadaan->jumlah - ($pengadaan->received ?? 0);
             $sudahDiterima = $pengadaan->received ?? 0;
+            $deadline = \Carbon\Carbon::parse($pengadaan->tanggal_dibutuhkan);
+            $isOverdue = $deadline->isPast() && $sisa > 0;
         @endphp
-        <div class="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-4">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <div class="flex items-center gap-2 mb-2">
+        <div class="rounded-xl p-5 mb-4 {{ $isOverdue ? 'bg-red-500/10 border border-red-500/40' : 'bg-gray-800 border border-gray-700' }}">
+            <div class="flex gap-4 items-start mb-4">
+                <!-- FOTO BAHAN -->
+                <div class="flex-shrink-0">
+                    @if($pengadaan->bahan && $pengadaan->bahan->foto)
+                        <img src="{{ asset('storage/' . $pengadaan->bahan->foto) }}" class="w-14 h-14 rounded-xl object-cover border border-gray-700">
+                    @else
+                        <div class="w-14 h-14 rounded-xl bg-gray-700 flex items-center justify-center border border-gray-700">
+                            <i class="fa-solid fa-box text-gray-500 text-xl"></i>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-2 flex-wrap">
                         @if($pengadaan->prioritas === 'URGENT')
                         <div class="bg-red-500/20 border border-red-500/20 rounded px-2 py-1 inline-flex items-center">
                             <div class="w-2 h-2 bg-red-500 rounded mr-2 animate-pulse"></div>
@@ -60,10 +71,10 @@
                         </div>
                         @endif
                     </div>
-                    <div class="text-base font-normal text-white">{{ $pengadaan->bahan->nama_material ?? 'Material Tidak Ditemukan' }}</div>
+                    <div class="text-base font-normal text-white truncate">{{ $pengadaan->bahan->nama_material ?? 'Material Tidak Ditemukan' }}</div>
                     <div class="text-sm text-gray-500 font-normal">No Ref: {{ $pengadaan->no_referensi }}</div>
                 </div>
-                <div class="text-right">
+                <div class="text-right flex-shrink-0">
                     <span class="text-xs text-gray-500 font-normal">Dipesan</span>
                     <div class="text-lg font-normal text-blue-400">{{ $pengadaan->jumlah }} <span class="text-xs">{{ $pengadaan->bahan->satuan ?? 'pcs' }}</span></div>
                 </div>
@@ -87,8 +98,8 @@
             
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center">
-                    <svg class="w-4 h-4 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    <span class="text-xs text-gray-400 font-normal">Deadline: {{ \Carbon\Carbon::parse($pengadaan->tanggal_dibutuhkan)->format('d M Y') }}</span>
+                    <svg class="w-4 h-4 mr-2 {{ $isOverdue ? 'text-red-400' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span class="text-xs font-normal {{ $isOverdue ? 'text-red-400 font-bold' : 'text-gray-400' }}">Deadline: {{ \Carbon\Carbon::parse($pengadaan->tanggal_dibutuhkan)->format('d M Y') }}</span>
                 </div>
                 <span class="text-xs bg-gray-700 text-gray-300 border border-gray-600 px-3 py-1 rounded font-normal">{{ $pengadaan->bahan->satuan ?? 'Unit' }}</span>
             </div>
@@ -100,10 +111,14 @@
             @endif
             
             @if($sisa > 0)
-            <!-- Info: Input via menu Input Barang/Scan Nota -->
-            <div class="w-full bg-blue-500/10 border border-blue-500/20 text-blue-400 py-3 rounded-lg text-sm font-normal flex items-center justify-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-                Input via menu <strong>Input Barang</strong> atau <strong>Scan Nota</strong>
+            <div class="w-full py-2 rounded-lg text-sm font-normal flex items-center justify-center gap-2 {{ $isOverdue ? 'bg-red-500/10 border border-red-500 text-red-400' : 'bg-gray-700/50 text-gray-400' }}">
+                @if($isOverdue)
+                <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <span>⚠️ DEADLINE TERLEWAT - SEGERA BELI</span>
+                @else
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Menunggu Penerimaan</span>
+                @endif
             </div>
             @else
             <!-- Sudah lengkap -->

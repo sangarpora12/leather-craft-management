@@ -12,11 +12,14 @@ class ProduksiSelesaiNotification extends Notification
     use Queueable;
 
     /**
+     * @param Produksi $produksi Object Produksi yang sudah selesai
      * @param  'admin'|'operator'  $audience
      */
     public function __construct(public Produksi $produksi, public string $audience = 'admin')
     {
-        $this->produksi->loadMissing(['product', 'operator']);
+        // Pastikan relasi terload sebelum disimpan ke notifikasi
+        $produksi->loadMissing(['product', 'operator']);
+        $this->produksi = $produksi;
     }
 
 public function via(object $notifiable): array
@@ -47,7 +50,7 @@ public function via(object $notifiable): array
             // URL diputuskan dari audience, bukan dari role notifiable
             'url' => $this->audience === 'operator'
                 ? route('operator.tugas.index')
-                : route('admin.produksi.review', $this->produksi->id),
+                : route('admin.produksi.review', $this->produksi->id) . '?from=notification',
             'produksi_id' => $this->produksi->id,
             'foto_bukti' => $fotoBukti,
         ];

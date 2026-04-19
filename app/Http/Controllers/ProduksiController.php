@@ -541,7 +541,12 @@ class ProduksiController extends Controller
             if ($request->hasFile('foto_bukti')) {
                 $request->validate([
                     'foto_bukti'   => 'array|max:10',
-                    'foto_bukti.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+                    'foto_bukti.*' => 'image|mimes:jpeg,png,jpg,webp|max:20480',
+                ], [
+                    'foto_bukti.*.max' => 'Ukuran file terlalu besar, maksimal adalah 20 MB.',
+                    'foto_bukti.*.image' => 'Hanya file gambar (JPG, PNG, WEBP) yang diperbolehkan.',
+                    'foto_bukti.*.mimes' => 'Format foto tidak didukung. Gunakan JPG, PNG atau WEBP.',
+                    'foto_bukti.max' => 'Maksimal 10 foto yang bisa diupload sekaligus.',
                 ]);
                 foreach ($request->file('foto_bukti') as $file) {
                     $fotoPaths[] = $file->store('produksi/bukti', 'public');
@@ -590,8 +595,22 @@ class ProduksiController extends Controller
                         route('admin.produksi.index'),
                         'success'
                     ));
+
+                    // Tambahkan Database Notification - ambil 1 instance Produksi untuk notifikasi
+                    $produksiItem = Produksi::find($idsToFinish[0]);
+                    $admin->notify(new \App\Notifications\ProduksiSelesaiNotification($produksiItem));
                 }
             }
+
+            // Tambahkan logging untuk validasi stok
+            Log::info('Produksi Selesai - Stok Update', [
+                'produk_jadi_id' => $produkJadiId,
+                'stok_sebelum' => $produkJadi->stok,
+                'jumlah_ditambahkan' => $totalQtyDiselesaikan,
+                'stok_setelah' => $produkJadi->stok + $totalQtyDiselesaikan,
+                'total_qty_diselesaikan' => $totalQtyDiselesaikan,
+                'ids_spk_selesai' => $idsToFinish,
+            ]);
 
             DB::commit();
 
@@ -621,7 +640,23 @@ class ProduksiController extends Controller
         $produksi = Produksi::with(['product', 'operator', 'produk_jadi.boms.bahanBaku'])
             ->findOrFail($id);
 
-        return view('admin.produksi.show', compact('produksi'));
+        // Flash jika datang dari notifikasi
+        if (request()->get('from') === 'notification') {
+            session()->flash('notif_success', '✅ Berhasil membuka detail produksi dari notifikasi');
+        }
+
+        // Helper function format angka tanpa trailing .00
+        $formatQty = function($num) {
+            $num = (float)$num;
+            return fmod($num, 1) === 0.0 ? (int)$num : number_format($num, 2);
+        };
+
+        // Gunakan tampilan khusus jika status SELESAI
+        if ($produksi->status === 'SELESAI') {
+            return view('admin.produksi.review_selesai', compact('produksi', 'formatQty'));
+        }
+
+        return view('admin.produksi.show', compact('produksi', 'formatQty'));
     }
 
     /**
@@ -664,6 +699,14 @@ class ProduksiController extends Controller
         $user = User::where('role', 'operator')->findOrFail((int) $request->query('user'));
         auth()->login($user);
         return redirect()->route('operator.dashboard');
+    }
+
+    /**
+     * Halaman review produksi untuk Admin (mengarah ke show).
+     */
+    public function review($id)
+    {
+        return $this->show($id);
     }
 
     public function ambilTugas(Request $request, $id)

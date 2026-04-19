@@ -119,6 +119,7 @@
             <table class="w-full text-left whitespace-nowrap">
                 <thead>
                     <tr class="text-[10px] text-gray-500 uppercase tracking-widest border-b border-[#2D3139] bg-[#0D1117]">
+                        <th class="px-6 py-4 font-bold">Foto</th>
                         <th class="px-6 py-4 font-bold">Kode Bahan</th>
                         <th class="px-6 py-4 font-bold">Nama Material</th>
                         <th class="px-6 py-4 font-bold text-center">Stok Saat Ini</th>
@@ -138,6 +139,16 @@
                         $isKritis = ((float) $b->stok) <= $batasStokItem;
                     @endphp
                     <tr class="hover:bg-[#20232A]/80 transition-colors {{ $isKritis ? 'bg-[#FF5252]/5' : '' }}">
+                        
+                        <td class="px-6 py-4">
+                            @if($b->foto)
+                                <img src="{{ asset('storage/' . $b->foto) }}" alt="Foto {{ $b->nama_material }}" class="w-12 h-12 rounded-lg object-cover border border-[#2D3139]">
+                            @else
+                                <div class="w-12 h-12 rounded-lg bg-[#2D3139] flex items-center justify-center border border-gray-700/50">
+                                    <i class="fa-solid fa-image text-gray-500 text-sm"></i>
+                                </div>
+                            @endif
+                        </td>
                         
                         <td class="px-6 py-4">
                             <span class="text-[#FD730D] font-extrabold text-xs tracking-wide">{{ $b->kode_material }}</span>
@@ -177,7 +188,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center py-16 text-gray-500 text-xs italic border-dashed border-t border-[#2D3139]">
+                        <td colspan="8" class="text-center py-16 text-gray-500 text-xs italic border-dashed border-t border-[#2D3139]">
                             Data material belum tersedia.
                         </td>
                     </tr>
@@ -207,7 +218,7 @@
             </button>
         </div>
         
-        <form action="{{ route('admin.bahan.store') }}" method="POST" style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <form action="{{ route('admin.bahan.store') }}" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 1.25rem;">
             @csrf
             
             <div>
@@ -268,6 +279,12 @@
                 </div>
             </div>
 
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Foto Bahan <span class="text-gray-500">(Opsional)</span></label>
+                <input type="file" name="foto" accept="image/*" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
+                <p style="font-size: 0.625rem; color: #6b7280; margin-top: 0.35rem;">Max 20 MB</p>
+            </div>
+
             <button type="submit" style="width: 100%; background: #FD730D; color: white; font-weight: bold; padding: 1rem; border-radius: 1rem; font-size: 0.875rem; margin-top: 0.5rem; border:none; cursor:pointer;">
                 Simpan Data
             </button>
@@ -277,7 +294,7 @@
 
 <div id="modalEdit" style="display: none; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center;">
     <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.8);" onclick="closeModal('modalEdit')"></div>
-    <div style="position: relative; background: #1A1C24; width: 100%; max-width: 32rem; border-radius: 1.5rem; border: 1px solid #2D3139; padding: 1.5rem; margin: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+    <div style="position: relative; background: #1A1C24; width: 100%; max-width: 30rem; border-radius: 1.5rem; border: 1px solid #2D3139; padding: 1rem; margin: 1rem; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <div>
                 <h2 style="font-size: 1.25rem; font-weight: bold; color: white;">Edit Material</h2>
@@ -288,7 +305,7 @@
             </button>
         </div>
         
-        <form id="formEdit" method="POST" style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <form id="formEdit" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 1.25rem;">
             @csrf @method('PUT')
             
             <div>
@@ -341,6 +358,14 @@
                 </div>
             </div>
 
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Foto Bahan Saat Ini</label>
+                <div id="edit_foto_preview" class="mb-3"></div>
+                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Upload Foto Baru <span class="text-gray-500">(Opsional)</span></label>
+                <input type="file" name="foto" accept="image/*" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
+                <p style="font-size: 0.625rem; color: #6b7280; margin-top: 0.35rem;">Biarkan kosong jika tidak ingin mengubah foto. Max 20 MB</p>
+            </div>
+
             <button type="submit" style="width: 100%; background: #FD730D; color: white; font-weight: bold; padding: 1rem; border-radius: 1rem; font-size: 0.875rem; margin-top: 0.5rem; border:none; cursor:pointer;">
                 Update Data
             </button>
@@ -366,6 +391,14 @@ function openEditModal(data) {
     document.getElementById('edit_satuan').value = data.satuan || 'Pcs';
     document.getElementById('edit_stok').value = data.stok;
     document.getElementById('edit_harga_satuan').value = data.harga_satuan;
+
+    // Tampilkan preview foto lama
+    const fotoPreview = document.getElementById('edit_foto_preview');
+    if(data.foto) {
+        fotoPreview.innerHTML = '<img src="/storage/' + data.foto + '" class="w-20 h-20 rounded-lg object-cover border border-[#2D3139]">';
+    } else {
+        fotoPreview.innerHTML = '<div class="w-20 h-20 rounded-lg bg-[#2D3139] flex items-center justify-center border border-gray-700/50"><i class="fa-solid fa-image text-gray-500"></i></div>';
+    }
 }
 
 // AUTOCOMPLETE FUNCTIONALITY (TIDAK DISENTUH SAMA SEKALI)
@@ -403,7 +436,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         itemDiv.style.fontSize = '0.875rem';
                         itemDiv.style.borderBottom = '1px solid #374151';
                         itemDiv.style.textAlign = 'left';
-                        itemDiv.innerHTML = item.nama_material + ' <span style="color: #9ca3af; font-size: 0.75rem;">(' + item.kode_material + ')</span>';
+                        // Tambahkan foto thumbnail pada autocomplete
+                        let fotoHTML = '';
+                        if(item.foto) {
+                            fotoHTML = '<img src="/storage/' + item.foto + '" class="w-8 h-8 rounded-lg object-cover mr-3 flex-shrink-0">';
+                        } else {
+                            fotoHTML = '<div class="w-8 h-8 rounded-lg bg-[#2D3139] flex items-center justify-center mr-3 flex-shrink-0"><i class="fa-solid fa-image text-gray-500 text-xs"></i></div>';
+                        }
+                        itemDiv.style.display = 'flex';
+                        itemDiv.style.alignItems = 'center';
+                        itemDiv.innerHTML = fotoHTML + '<div class="flex-1">' + item.nama_material + ' <span style="color: #9ca3af; font-size: 0.75rem;">(' + item.kode_material + ')</span></div>';
                         
                         // Simpan data dalam dataset
                         itemDiv.dataset.kode = item.kode_material;
