@@ -19,22 +19,52 @@ use Illuminate\Support\Facades\Notification;
 
 class PengadaanController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // 1. Ambil semua bahan baku untuk Katalog
+        // 1. Query Pengadaan dengan filter
+        $query = Pengadaan::with('bahan')->orderBy('tanggal_dibutuhkan', 'asc');
+
+        // Filter Pencarian
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('bahan', function($q) use ($search) {
+                $q->where('nama_material', 'like', "%{$search}%")
+                  ->orWhere('kode_material', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter Status
+        if ($request->filled('status') && $request->status != 'semua') {
+            $query->where('status', $request->status);
+        }
+
+        // Filter Kategori (dinonaktifkan sementara sampai kolom tersedia)
+        // if ($request->filled('kategori_id') && $request->kategori_id != 'semua') {
+        //     $kategoriId = $request->kategori_id;
+        //     $query->whereHas('bahan', function($q) use ($kategoriId) {
+        //         $q->where('kategori_id', $kategoriId);
+        //     });
+        // }
+
+        $pengadaans = $query->paginate(15)->withQueryString();
+
+        // 2. Ambil semua Kategori untuk filter
+        $kategories = \App\Models\Kategori::all();
+
+        // 3. Ambil semua bahan baku untuk Katalog
         $bahanBakus = BahanBaku::all();
     
-        // 2. Ambil bahan baku kritis (Stok <= Stok Minimum ATAU Stok <= 5)
+        // 4. Ambil bahan baku kritis (Stok <= Stok Minimum ATAU Stok <= 5)
         // Ini menjamin "Plat Besi" stok 0 kamu pasti muncul di atas
         $lowStockMaterials = BahanBaku::where(function($query) {
             $query->whereRaw('stok <= stok_minimum')
                   ->orWhere('stok', '<=', 5);
         })->get();
     
-        // 3. Ambil daftar operator untuk dropdown
+        // 5. Ambil daftar operator untuk dropdown
         $operators = User::where('role', 'operator')->get();
     
-        return view('admin.pengadaan.index', compact('bahanBakus', 'lowStockMaterials', 'operators'));
+        return view('admin.pengadaan.index', compact('pengadaans', 'kategories', 'bahanBakus', 'lowStockMaterials', 'operators'));
     }
     public function indexOperator(Request $request)
     {
@@ -288,7 +318,7 @@ class PengadaanController extends Controller
                             
                             if ($createdPengadaans->isNotEmpty()) {
                                 // Kirim notifikasi ke objek operator yang valid
-                                Notification::send($operator, new PengadaanMaterialNotification($createdPengadaans, $admin));
+                                Notification::send($operator, new PengadaanMaterialNotification($createdPengadaans->first(), $admin));
                             }
                         } else {
                             // Jika $operator bukan objek User, catat sebagai peringatan
