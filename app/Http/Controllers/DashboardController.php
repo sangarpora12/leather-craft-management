@@ -311,17 +311,42 @@ class DashboardController extends Controller
     /**
      * Laporan sederhana untuk operator (ringkasan + riwayat produksi).
      */
-    public function operatorLaporan()
+    public function operatorLaporan(Request $request)
     {
         $user = auth()->user();
 
+        // ✅ AMBIL PARAMETER FILTER
+        $fromDate = $request->query('from', '');
+        $toDate = $request->query('to', '');
+        $kategori = $request->query('kategori', 'semua');
+
+        // Default jika tidak ada filter tanggal
+        if (empty($fromDate)) $fromDate = now()->startOfMonth()->format('Y-m-d');
+        if (empty($toDate)) $toDate = now()->format('Y-m-d');
+
+        $from = Carbon::parse($fromDate)->startOfDay();
+        $to = Carbon::parse($toDate)->endOfDay();
+
+        // ✅ QUERY UTAMA DENGAN FILTER TANGGAL
+        $produksiQuery = Produksi::where('operator_id', $user->id)
+            ->where('status', 'SELESAI')
+            ->whereBetween('updated_at', [$from, $to]);
+
+        $pengadaanQuery = DB::table('pengadaans')
+            ->join('bahan_bakus', 'pengadaans.bahan_baku_id', '=', 'bahan_bakus.id')
+            ->where('pengadaans.operator_id', $user->id)
+            ->whereIn('pengadaans.status', ['SELESAI', 'DONE', 'DITERIMA'])
+            ->whereBetween('pengadaans.updated_at', [$from, $to]);
+
+        // ✅ STATS COUNTER
         $pendingCount = Produksi::where('operator_id', $user->id)->where('status', 'PENDING')->count();
         $prosesCount = Produksi::where('operator_id', $user->id)->where('status', 'PROSES')->count();
-        $selesaiCount = Produksi::where('operator_id', $user->id)->where('status', 'SELESAI')->count();
+        $selesaiCount = (clone $produksiQuery)->count();
 
+        // ✅ RINGKASAN PRODUKSI
         $hariIniSelesaiQty = Produksi::where('operator_id', $user->id)
             ->where('status', 'SELESAI')
-            ->whereDate('updated_at', now()->toDateString())
+            ->whereDate('updated_at', today())
             ->sum('jumlah_produksi') ?? 0;
 
         $mingguIniSelesaiQty = Produksi::where('operator_id', $user->id)
@@ -329,11 +354,69 @@ class DashboardController extends Controller
             ->whereBetween('updated_at', [now()->startOfWeek(), now()->endOfWeek()])
             ->sum('jumlah_produksi') ?? 0;
 
-        $riwayat = Produksi::with('product')
+        // ✅ RINGKASAN BAHAN DITERIMA
+        $bahanHariIni = DB::table('pengadaans')
             ->where('operator_id', $user->id)
-            ->where('status', 'SELESAI')
-            ->latest('updated_at')
-            ->paginate(10);
+            ->whereIn('status', ['SELESAI', 'DONE', 'DITERIMA'])
+            ->whereDate('updated_at', today())
+            ->sum('received') ?? 0;
+
+        $bahanMingguIni = DB::table('pengadaans')
+            ->where('operator_id', $user->id)
+            ->whereIn('status', ['SELESAI', 'DONE', 'DITERIMA'])
+            ->whereBetween('updated_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->sum('received') ?? 0;
+
+        // ✅ DATA RIWAYAT (GROUPING)
+        $riwayatProduksi = collect();
+        $riwayatBahan = collect();
+
+        if ($kategori == 'semua' || $kategori == 'produk') {
+            $riwayatProduksi = (clone $produksiQuery)
+                ->with('product')
+                ->selectRaw('produk_jadi_id, SUM(jumlah_selesai) as total_qty, COUNT(*) as jumlah_transaksi, MAX(updated_at) as tanggal_terakhir')
+                ->groupBy('produk_jadi_id')
+                ->orderByDesc('tanggal_terakhir')
+                ->get()
+                ->map(function($item) {
+                    $item->jenis = 'produk';
+                    return $item;
+                });
+        }
+
+        if ($kategori == 'semua' || $kategori == 'bahan') {
+            $riwayatBahan = (clone $pengadaanQuery)
+                ->select(
+                    'bahan_bakus.id',
+                    'bahan_bakus.nama_material as nama',
+                    'bahan_bakus.satuan',
+                    DB::raw('SUM(pengadaans.received) as total_qty'),
+                    DB::raw('COUNT(pengadaans.id) as jumlah_transaksi'),
+                    DB::raw('MAX(pengadaans.updated_at) as tanggal_terakhir')
+                )
+                ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
+                ->orderByDesc('tanggal_terakhir')
+                ->get()
+                ->map(function($item) {
+                    $item->jenis = 'bahan';
+                    return $item;
+                });
+        }
+
+        // Gabungkan dan urutkan semua riwayat
+        // Convert ke array biasa untuk menghindari conflict Eloquent Collection
+        $riwayat = $riwayatProduksi->toBase()->merge($riwayatBahan)->sortByDesc('tanggal_terakhir')->values();
+        
+        // Manual pagination untuk collection campuran
+        $page = request()->get('page', 1);
+        $perPage = 15;
+        $riwayat = new \Illuminate\Pagination\LengthAwarePaginator(
+            $riwayat->forPage($page, $perPage)->all(),
+            $riwayat->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
 
         return view('operator.laporan.index', compact(
             'pendingCount',
@@ -341,8 +424,101 @@ class DashboardController extends Controller
             'selesaiCount',
             'hariIniSelesaiQty',
             'mingguIniSelesaiQty',
-            'riwayat'
+            'bahanHariIni',
+            'bahanMingguIni',
+            'riwayat',
+            'fromDate',
+            'toDate',
+            'kategori'
         ));
+    }
+
+    /**
+     * Export Laporan Operator ke PDF
+     */
+    public function exportPdf(Request $request)
+    {
+        $user = auth()->user();
+
+        // ✅ AMBIL PARAMETER FILTER
+        $fromDate = $request->query('from', '');
+        $toDate = $request->query('to', '');
+        $kategori = $request->query('kategori', 'semua');
+
+        // Default jika tidak ada filter tanggal
+        if (empty($fromDate)) $fromDate = now()->startOfMonth()->format('Y-m-d');
+        if (empty($toDate)) $toDate = now()->format('Y-m-d');
+
+        $from = Carbon::parse($fromDate)->startOfDay();
+        $to = Carbon::parse($toDate)->endOfDay();
+
+        // ✅ QUERY UTAMA DENGAN FILTER TANGGAL
+        $produksiQuery = Produksi::where('operator_id', $user->id)
+            ->where('status', 'SELESAI')
+            ->whereBetween('updated_at', [$from, $to]);
+
+        $pengadaanQuery = DB::table('pengadaans')
+            ->join('bahan_bakus', 'pengadaans.bahan_baku_id', '=', 'bahan_bakus.id')
+            ->where('pengadaans.operator_id', $user->id)
+            ->whereIn('pengadaans.status', ['SELESAI', 'DONE', 'DITERIMA'])
+            ->whereBetween('pengadaans.updated_at', [$from, $to]);
+
+        // ✅ DATA RIWAYAT (GROUPING)
+        $riwayatProduksi = collect();
+        $riwayatBahan = collect();
+
+        if ($kategori == 'semua' || $kategori == 'produk') {
+            $riwayatProduksi = (clone $produksiQuery)
+                ->with('product')
+                ->selectRaw('produk_jadi_id, SUM(jumlah_selesai) as total_qty, COUNT(*) as jumlah_transaksi, MAX(updated_at) as tanggal_terakhir')
+                ->groupBy('produk_jadi_id')
+                ->orderByDesc('tanggal_terakhir')
+                ->get()
+                ->map(function($item) {
+                    $item->jenis = 'produk';
+                    return $item;
+                });
+        }
+
+        if ($kategori == 'semua' || $kategori == 'bahan') {
+            $riwayatBahan = (clone $pengadaanQuery)
+                ->select(
+                    'bahan_bakus.nama_material as nama',
+                    'bahan_bakus.satuan',
+                    DB::raw('SUM(pengadaans.received) as total_qty'),
+                    DB::raw('COUNT(pengadaans.id) as jumlah_transaksi'),
+                    DB::raw('MAX(pengadaans.updated_at) as tanggal_terakhir')
+                )
+                ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
+                ->orderByDesc('tanggal_terakhir')
+                ->get()
+                ->map(function($item) {
+                    $item->jenis = 'bahan';
+                    return $item;
+                });
+        }
+
+        // Gabungkan semua data
+        $riwayat = $riwayatProduksi->toBase()->merge($riwayatBahan)->sortByDesc('tanggal_terakhir')->values();
+
+        // Hitung total
+        $totalProduk = $riwayatProduksi->sum('total_qty');
+        $totalBahan = $riwayatBahan->sum('total_qty');
+        $pengaturan = Pengaturan::first();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('operator.laporan.pdf', compact(
+            'riwayat',
+            'fromDate',
+            'toDate',
+            'kategori',
+            'totalProduk',
+            'totalBahan',
+            'pengaturan',
+            'user'
+        ))->setPaper('a4', 'portrait');
+
+        $filename = 'laporan_operator_'.$fromDate.'_'.$toDate.'.pdf';
+        return $pdf->download($filename);
     }
 
     /**

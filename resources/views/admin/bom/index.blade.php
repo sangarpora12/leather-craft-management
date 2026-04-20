@@ -28,8 +28,8 @@
     {{-- Grid Produk --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         @forelse($products as $product)
-        <div class="bg-[#1A1A1A] rounded-xl border border-white/5 overflow-hidden group hover:border-white/20 transition-all flex flex-col">
-            <div class="h-40 bg-[#222] relative overflow-hidden flex items-center justify-center">
+        <div class="bg-[#1C222D] rounded-xl border border-[#2A3140]/30 overflow-hidden group hover:border-[#FF6B00]/50 transition-all flex flex-col shadow-lg">
+            <div class="h-40 bg-[#161B26] relative overflow-hidden flex items-center justify-center">
                 @if($product->foto)
                     <img src="{{ asset('storage/' . $product->foto) }}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-500">
                 @else
@@ -56,10 +56,14 @@
             </div>
             
             <div class="p-5 flex-1 flex flex-col">
-                <h3 class="font-bold text-white text-lg leading-tight mb-1 truncate">{{ $product->nama_produk }}</h3>
-                <p class="text-xs text-gray-500 mb-4">{{ $product->warna ?? 'Default Color' }}</p>
+                 <h3 class="font-bold text-white text-lg leading-tight mb-1 truncate">
+                     {{ ucwords(str_replace(['tali pingang', 'Tali pingang'], 'Tali Pinggang', $product->nama_produk)) }}
+                 </h3>
+                 <p class="text-xs text-[#94A3B8] mb-4 leading-relaxed">
+                     {{ $product->deskripsi ? Str::limit($product->deskripsi, 50) : 'Tidak ada deskripsi' }}
+                 </p>
 
-                <div class="flex justify-between items-center bg-[#111] p-3 rounded-lg border border-white/5 mb-4 mt-auto">
+                <div class="flex justify-between items-center bg-[#161B26] p-3 rounded-lg border border-[#2A3140]/20 mb-4 mt-auto">
                     <div>
                         <p class="text-[10px] text-gray-500 uppercase font-bold">Komponen</p>
                         <p class="text-sm font-bold {{ $validBomsCount > 0 ? 'text-blue-400' : 'text-gray-600' }}">
@@ -68,7 +72,7 @@
                     </div>
                     <div class="text-right">
                         <p class="text-[10px] text-gray-500 uppercase font-bold">HPP Material</p>
-                        <p class="text-sm font-bold text-green-400">
+                    <p class="text-sm font-bold text-[#22C55E]">
                             Rp {{ number_format($product->boms->sum(function($b) {
                                 return $b->jumlah_kebutuhan * ($b->bahanBaku->harga_satuan ?? 0);
                             }), 0, ',', '.') }}
@@ -80,7 +84,7 @@
                     @php
                         $route = $validBomsCount > 0 ? route('admin.bom.edit', $product->id) : route('admin.bom.create', $product->id);
                     @endphp
-                    <a href="{{ $route }}" class="w-full py-2.5 border border-white/10 hover:bg-white/5 rounded-lg text-xs font-bold text-gray-300 hover:text-white flex items-center justify-center gap-2 transition">
+                    <a href="{{ $route }}" class="w-full py-2.5 bg-[#FF6B00] hover:bg-[#FF8A33] rounded-lg text-xs font-bold text-white flex items-center justify-center gap-2 transition shadow-md">
                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         {{ $validBomsCount == 0 ? 'Buat Resep' : 'Edit Resep' }}
                     </a>

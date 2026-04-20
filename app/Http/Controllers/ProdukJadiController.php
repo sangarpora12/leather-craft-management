@@ -188,7 +188,7 @@ $motifs = Motif::all(['id', 'nama_motif']);
             'warna.*'      => ['string', 'max:100'],
             'jenis_motif'  => ['nullable', 'array'],
             'jenis_motif.*'=> ['string', 'max:100'],
-            'harga_jual'   => ['nullable', 'string'],
+            'harga_jual'   => ['required', 'string', 'min:1'],
             'deskripsi'    => ['nullable', 'string'],
             'keterangan'   => ['nullable', 'string'],
             'stok_minimum' => ['nullable', 'integer', 'min:0'],
@@ -200,12 +200,24 @@ $motifs = Motif::all(['id', 'nama_motif']);
             'sketsa'       => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ]);
 
-        // Clean harga (hapus titik pemisah ribuan)
-        if (!empty($validated['harga_jual'])) {
-            $validated['harga_jual'] = (float) str_replace(['.', ','], '', $validated['harga_jual']);
+        // ✅ FIX FINAL - PARSING HARGA JUAL
+        $hargaJual = 0;
+        $hargaInput = $request->input('harga_jual');
+        
+        if (!empty($hargaInput) && $hargaInput !== '0' && $hargaInput !== 'Rp 0') {
+            // Bersihkan SEMUA karakter non numerik
+            $hargaJual = preg_replace('/[^0-9]/', '', $hargaInput);
+            $hargaJual = (int) $hargaJual;
+        }
+        
+        // Validasi harga tidak boleh 0
+        if ($hargaJual < 1) {
+            throw ValidationException::withMessages([
+                'harga_jual' => 'Harga jual wajib diisi dan tidak boleh Rp 0!'
+            ]);
         }
 
-        return DB::transaction(function () use ($validated, $request) {
+        return DB::transaction(function () use ($validated, $request, $hargaJual) {
             $kode = $this->generateKodeProduk();
 
             $pathFoto = null;
@@ -217,8 +229,6 @@ $motifs = Motif::all(['id', 'nama_motif']);
             if ($request->hasFile('sketsa')) {
                 $pathSketsa = $request->file('sketsa')->store('produk/sketsa', 'public');
             }
-            
-            $hargaJual = !empty($validated['harga_jual']) ? (float) str_replace(['.', ','], '', $validated['harga_jual']) : 0;
 
             $product = ProdukJadi::create([
                 'kode_produk'  => $kode,
@@ -292,7 +302,7 @@ $motifs = Motif::all(['id', 'nama_motif']);
             'warna.*'      => ['string', 'max:100'],
             'jenis_motif'  => ['nullable', 'array'],
             'jenis_motif.*'=> ['string', 'max:100'],
-            'harga_jual'   => ['nullable', 'string'],
+            'harga_jual'   => ['required', 'string', 'min:1'],
             'deskripsi'    => ['nullable', 'string'],
             'keterangan'   => ['nullable', 'string'],
             'stok_minimum' => ['nullable', 'integer', 'min:0'],
@@ -304,10 +314,30 @@ $motifs = Motif::all(['id', 'nama_motif']);
             'sketsa'       => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ]);
 
-        // Clean harga
-        $hargaJual = !empty($validated['harga_jual']) 
-            ? (float) str_replace(['.', ','], '', $validated['harga_jual']) 
-            : 0;
+        // ✅ FIX: Jika mode harga otomatis, hitung ulang HPP dari BOM
+        $hargaJual = 0;
+        
+        if ($request->filled('tipe_harga') && $request->tipe_harga === 'otomatis') {
+            // Hitung ulang HPP secara realtime dari BOM
+            $product->load('boms.material');
+            $totalHpp = 0;
+            foreach ($product->boms as $bom) {
+                if ($bom->material) {
+                    // ✅ FIX: Paksa cast ke float agar perkalian desimal akurat
+                    $hargaSatuan = (float) str_replace(',', '.', $bom->material->harga_satuan);
+                    $jumlahKebutuhan = (float) str_replace(',', '.', $bom->jumlah_kebutuhan);
+                    
+                    $totalHpp += $hargaSatuan * $jumlahKebutuhan;
+                }
+            }
+            $margin = 0.30;
+            $hargaJual = ceil($totalHpp + ($totalHpp * $margin));
+        } else {
+            // Mode manual: pakai input user
+            if (!empty($request->harga_jual)) {
+                $hargaJual = (int) str_replace(['.', ',', 'Rp', ' '], '', $request->harga_jual);
+            }
+        }
 
         if ($request->hasFile('foto')) {
             if ($product->foto) Storage::disk('public')->delete($product->foto);
@@ -432,6 +462,37 @@ $motifs = Motif::all(['id', 'nama_motif']);
         }
 
         return back()->with('success', 'Stok diupdate.');
+    }
+
+    /**
+     * AJAX: Get Total HPP Produk dari BOM
+     */
+    public function getHpp($id)
+    {
+        $product = ProdukJadi::with('boms.material')->findOrFail($id);
+        
+        $totalHpp = 0;
+        
+        foreach ($product->boms as $bom) {
+            if ($bom->material) {
+                // ✅ FIX: Paksa cast ke float agar perkalian desimal akurat
+                $hargaSatuan = (float) str_replace(',', '.', $bom->material->harga_satuan);
+                $jumlahKebutuhan = (float) str_replace(',', '.', $bom->jumlah_kebutuhan);
+                
+                // Hitung HPP per bahan: harga satuan * jumlah kebutuhan
+                $totalHpp += $hargaSatuan * $jumlahKebutuhan;
+            }
+        }
+        
+        // Margin 30% (0.3)
+        $margin = 0.30;
+        $hargaJual = $totalHpp + ($totalHpp * $margin);
+        
+        return response()->json([
+            'hpp' => $totalHpp,
+            'margin' => $margin * 100,
+            'harga_jual' => ceil($hargaJual) // Pembulatan ke atas
+        ]);
     }
 
     /**

@@ -416,17 +416,49 @@ function toggleHargaField() {
     const container = document.getElementById('harga-manual-container');
     
     if (tipeOtomatis) {
-        hargaInput.disabled = true;
-        hargaInput.removeAttribute('required');
+        // ✅ JANGAN pakai disabled, pakai readonly saja agar nilai tetap terkirim
+        hargaInput.readOnly = true;
         hargaInput.classList.add('bg-gray-800', 'cursor-not-allowed', 'opacity-50');
         container.classList.add('opacity-50');
         bantuanText.classList.remove('hidden');
+        
+        // ✅ FETCH HPP OTOMATIS
+        fetch(`/admin/get-hpp-produk/{{ $product->id }}`)
+            .then(response => response.json())
+            .then(data => {
+                // Format angka ke Rupiah menggunakan fungsi Alpine yang sudah ada
+                if (window.Alpine && Alpine.$data) {
+                    Alpine.$data(document.querySelector('[x-data]')).price = Alpine.$data(document.querySelector('[x-data]')).formatRupiah(data.harga_jual.toString());
+                } else {
+                    // Fallback manual formatting jika Alpine belum ready
+                    let number_string = data.harga_jual.toString();
+                    let split = number_string.split(',');
+                    let sisa = split[0].length % 3;
+                    let rupiah = split[0].substr(0, sisa);
+                    let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+                    
+                    if (ribuan) {
+                        separator = sisa ? '.' : '';
+                        rupiah += separator + ribuan.join('.');
+                    }
+                    
+                    hargaInput.value = rupiah;
+                }
+                
+                // Update text bantuan dengan detail perhitungan
+                bantuanText.innerHTML = `✅ Harga otomatis: HPP <strong>Rp ${new Intl.NumberFormat('id-ID').format(data.hpp)}</strong> + Margin ${data.margin}% = <strong class="text-amber-400">Rp ${new Intl.NumberFormat('id-ID').format(data.harga_jual)}</strong>`;
+            })
+            .catch(error => {
+                console.error('Error fetching HPP:', error);
+                bantuanText.innerHTML = '⚠️ Gagal mengambil data HPP. Periksa apakah BOM produk ini sudah diisi.';
+            });
+            
     } else {
-        hargaInput.disabled = false;
-        hargaInput.setAttribute('required', 'required');
+        hargaInput.readOnly = false;
         hargaInput.classList.remove('bg-gray-800', 'cursor-not-allowed', 'opacity-50');
         container.classList.remove('opacity-50');
         bantuanText.classList.add('hidden');
+        bantuanText.innerHTML = 'Harga akan dihitung otomatis berdasarkan modal bahan baku + Margin + PPN saat produk disimpan.';
     }
 }
 

@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        body { background-color: #0D1117; color: #fff; font-family: 'Inter', sans-serif; }
+        body { background-color: #0F111A; color: #fff; font-family: 'Inter', sans-serif; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #2D3139; border-radius: 10px; }
@@ -78,7 +78,7 @@
         }
     </style>
 </head>
-<body class="bg-[#0D1117] antialiased">
+<body class="bg-[#0F111A] antialiased">
 
     <!-- Global Loading Overlay -->
     <div id="global-loading-overlay">
@@ -91,9 +91,9 @@
 
         {{-- ================= SIDEBAR (FULL MENU) ================= --}}
         <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'" 
-               class="fixed inset-y-0 left-0 z-50 w-64 bg-[#1A1C24] border-r border-[#2D3139] flex flex-col transition-transform duration-300 md:translate-x-0 md:static md:z-auto shadow-xl">
+               class="fixed inset-y-0 left-0 z-50 w-64 bg-[#161B26] border-r border-[#2A3140] flex flex-col transition-transform duration-300 md:translate-x-0 md:static md:z-auto shadow-xl">
             
-            <div class="h-[72px] flex flex-col justify-center px-6 border-b border-[#2D3139] bg-[#1A1C24]">
+            <div class="h-[72px] flex flex-col justify-center px-6 border-b border-[#2A3140] bg-[#161B26]">
                 @php
                     $namaPerusahaan = \App\Models\Pengaturan::where('nama_pengaturan', 'nama_perusahaan')->first()?->nilai ?? 'Berliano Leather';
                     $logoPerusahaan = \App\Models\Pengaturan::where('nama_pengaturan', 'logo_perusahaan')->first()?->nilai;
@@ -117,7 +117,7 @@
                 {{-- 1. DASHBOARD --}}
                 <div class="mb-6">
                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Utama</p>
-                    <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.dashboard') ? 'bg-[#2D3139] text-white' : 'text-gray-400 hover:bg-[#20232A] hover:text-white' }}">
+                    <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.dashboard') ? 'bg-[#242B3B] text-orange-500 border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-chart-line w-5"></i> Dashboard
                     </a>
                 </div>
@@ -173,7 +173,7 @@
                 </div>
             </nav>
 
-            <div class="p-4 border-t border-[#2D3139] bg-[#1A1C24]">
+            <div class="p-4 border-t border-[#2A3140] bg-[#161B26]">
                 <form action="{{ route('logout') }}" method="POST">
                     @csrf
                     <button type="submit" class="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-[#FF5252] hover:bg-[#FF5252]/10 rounded-xl transition">
@@ -187,9 +187,9 @@
         <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"></div>
 
         {{-- ================= AREA KANAN (TOPBAR) ================= --}}
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#0D1117] relative">
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#0F111A] relative">
             
-            <header class="h-[72px] bg-[#0D1117] border-b border-[#2D3139] flex items-center justify-between px-6 sticky top-0 z-30">
+            <header class="h-[72px] bg-[#0F111A] border-b border-[#2A3140] flex items-center justify-between px-6 sticky top-0 z-30">
                 <div class="flex items-center gap-4">
                     {{-- Tombol Menu Mobile --}}
                     <button @click="sidebarOpen = !sidebarOpen" class="md:hidden p-2 rounded-lg bg-[#20232A] text-gray-300 border border-[#2D3139]">

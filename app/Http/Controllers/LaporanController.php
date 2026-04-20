@@ -496,6 +496,72 @@ class LaporanController extends Controller
     }
 
     /**
+     * Laporan untuk Operator - Menampilkan Produksi dan Penerimaan Bahan Baku
+     */
+    public function indexOperator(Request $request)
+    {
+        $user = auth()->user();
+        
+        // Stats Counter
+        $pendingCount = \App\Models\Produksi::where('operator_id', $user->id)
+            ->where('status', 'PENDING')
+            ->count();
+            
+        $prosesCount = \App\Models\Produksi::where('operator_id', $user->id)
+            ->where('status', 'PROSES')
+            ->count();
+            
+        $selesaiCount = \App\Models\Produksi::where('operator_id', $user->id)
+            ->where('status', 'SELESAI')
+            ->count();
+
+        // Hari ini & Minggu ini stats
+        $hariIniSelesaiQty = \App\Models\Produksi::where('operator_id', $user->id)
+            ->where('status', 'SELESAI')
+            ->whereDate('updated_at', today())
+            ->sum('jumlah_selesai');
+
+        $mingguIniSelesaiQty = \App\Models\Produksi::where('operator_id', $user->id)
+            ->where('status', 'SELESAI')
+            ->whereBetween('updated_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->sum('jumlah_selesai');
+
+        // Riwayat SPK Selesai
+        $riwayat = \App\Models\Produksi::where('operator_id', $user->id)
+            ->where('status', 'SELESAI')
+            ->with('product')
+            ->orderBy('updated_at', 'desc')
+            ->paginate(10);
+
+        // ✅ DATA BAHAN BAKU YANG DITERIMA (DIBELI) OLEH OPERATOR INI
+        // Grouping berdasarkan bahan_baku_id, jumlahkan total
+        $bahanDiterima = DB::table('pengadaans')
+            ->join('bahan_bakus', 'pengadaans.bahan_baku_id', '=', 'bahan_bakus.id')
+            ->where('pengadaans.operator_id', $user->id)
+            ->whereIn('pengadaans.status', ['SELESAI', 'DONE', 'DITERIMA'])
+            ->select(
+                'bahan_bakus.nama_material',
+                'bahan_bakus.satuan',
+                DB::raw('SUM(pengadaans.received) as total_diterima'),
+                DB::raw('COUNT(pengadaans.id) as jumlah_transaksi'),
+                DB::raw('MAX(pengadaans.updated_at) as tanggal_terakhir')
+            )
+            ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
+            ->orderByDesc('tanggal_terakhir')
+            ->get();
+
+        return view('operator.laporan.index', compact(
+            'pendingCount',
+            'prosesCount',
+            'selesaiCount',
+            'hariIniSelesaiQty',
+            'mingguIniSelesaiQty',
+            'riwayat',
+            'bahanDiterima'
+        ));
+    }
+
+    /**
      * Fast complete
      */
     public function fastComplete(Request $request)

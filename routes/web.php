@@ -250,6 +250,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Laporan operator (ringkasan + riwayat)
         Route::get('/laporan', [DashboardController::class, 'operatorLaporan'])->name('laporan.index');
+        Route::get('/laporan/export-pdf', [DashboardController::class, 'exportPdf'])->name('laporan.export-pdf');
         Route::get('/laporan/cetak', [DashboardController::class, 'operatorLaporanCetak'])->name('laporan.cetak');
         
         // Tugas Produksi
@@ -355,6 +356,7 @@ Route::get('/operator/auto-login', [ProduksiController::class, 'autoLogin'])->na
 Route::get('/api/bahan/search', [BahanBakuController::class, 'searchApi'])->name('api.bahan.search')->middleware('auth');
 Route::get('/api/bahan/suggestions', [BahanBakuController::class, 'searchSuggestions'])->name('api.bahan.suggestions')->middleware('auth');
 Route::get('/api/produk-jadi/suggestions', [ProdukJadiController::class, 'searchSuggestions'])->name('api.produk-jadi.suggestions')->middleware('auth');
+Route::get('/admin/get-hpp-produk/{id}', [ProdukJadiController::class, 'getHpp'])->name('admin.get-hpp-produk')->middleware('auth');
 
 // --- ROUTE DARURAT ---
 Route::get('/fix-notifications', function() {
