@@ -130,8 +130,9 @@ class DashboardController extends Controller
         // 4. Pengadaan Bahan yang Pending (belum selesai)
         $pengadaanBahan = DB::table('pengadaans')
             ->join('bahan_bakus', 'pengadaans.bahan_baku_id', '=', 'bahan_bakus.id')
+            ->leftJoin('users', 'pengadaans.operator_id', '=', 'users.id')
             ->where('pengadaans.status', 'PENDING')
-            ->select('pengadaans.*', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
+            ->select('pengadaans.*', 'bahan_bakus.nama_material', 'bahan_bakus.satuan', 'users.name as operator_name')
             ->orderByDesc('pengadaans.created_at')
             ->limit(5)
             ->get();

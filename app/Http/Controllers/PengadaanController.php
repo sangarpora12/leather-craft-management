@@ -70,36 +70,70 @@ class PengadaanController extends Controller
     {
         $user = Auth::user();
 
-        // Ambil SEMUA pengadaan dengan status PENDING (bukan hanya yang ditugaskan ke operator ini)
-        // Operator menerima semua pesanan yang datang dari Admin
-        $query = Pengadaan::where('status', 'PENDING')
-            ->with('bahan');
+        // ✅ GROUPING BAHAN YANG SAMA (FITUR BARU)
+        // Gabungkan semua order PENDING berdasarkan bahan_baku_id
+        $groupedPengadaan = Pengadaan::where('status', 'PENDING')
+            ->with('bahan')
+            ->select('id', 'bahan_baku_id', 'jumlah', 'received', 'prioritas', 'tanggal_dibutuhkan', 'catatan')
+            ->orderBy('tanggal_dibutuhkan', 'asc')
+            ->get()
+            ->groupBy('bahan_baku_id')
+            ->map(function($items, $bahanId) {
+                $firstItem = $items->first();
+                $urgentItems = $items->where('prioritas', 'URGENT');
+                $biasaItems = $items->where('prioritas', 'BIASA');
+                
+                return (object) [
+                    'id' => $firstItem->id,
+                    'bahan_baku_id' => $bahanId,
+                    'bahan' => $firstItem->bahan,
+                    'total_jumlah' => intval($items->sum('jumlah')),
+                    'total_received' => intval($items->sum('received')),
+                    'jumlah_order' => $items->count(),
+                    'prioritas' => $items->contains(fn($i) => $i->prioritas == 'URGENT') ? 'URGENT' : 'BIASA',
+                    'deadline_terdekat' => $items->min('tanggal_dibutuhkan'),
+                    'semua_pengadaan_id' => $items->pluck('id'),
+                    'catatan_admin' => $items->pluck('catatan')->filter()->unique()->values(),
+                    'total_urgent' => intval($urgentItems->sum('jumlah')),
+                    'total_biasa' => intval($biasaItems->sum('jumlah')),
+                    'count_urgent' => $urgentItems->count(),
+                    'count_biasa' => $biasaItems->count()
+                ];
+            })
+            ->values();
 
         // Filter Deadline
         if ($request->filled('deadline_filter')) {
             switch ($request->deadline_filter) {
                 case 'hari_ini':
-                    $query->whereDate('tanggal_dibutuhkan', today());
+                    $groupedPengadaan = $groupedPengadaan->where('deadline_terdekat', today());
                     break;
                 case 'minggu_ini':
-                    $query->whereBetween('tanggal_dibutuhkan', [now()->startOfWeek(), now()->endOfWeek()]);
+                    $groupedPengadaan = $groupedPengadaan->whereBetween('deadline_terdekat', [now()->startOfWeek(), now()->endOfWeek()]);
                     break;
                 case 'terlewat':
-                    $query->whereDate('tanggal_dibutuhkan', '<', today());
+                    $groupedPengadaan = $groupedPengadaan->where('deadline_terdekat', '<', today());
                     break;
             }
         }
 
-        // Bersihkan angka desimal .00
-        $pendingPengadaan = $query
-            ->orderBy('tanggal_dibutuhkan', 'asc')
-            ->paginate(10)
-            ->withQueryString()
-            ->through(function($item) {
-                $item->jumlah = intval($item->jumlah);
-                $item->received = intval($item->received);
-                return $item;
-            });
+        // Sort berdasarkan prioritas dan deadline
+        $groupedPengadaan = $groupedPengadaan
+            ->sortBy(fn($item) => $item->prioritas == 'URGENT' ? 0 : 1)
+            ->sortBy('deadline_terdekat')
+            ->values();
+
+        // Paginasi manual
+        $perPage = 10;
+        $currentPage = request()->query('page', 1);
+        $total = $groupedPengadaan->count();
+        $pendingPengadaan = new \Illuminate\Pagination\LengthAwarePaginator(
+            $groupedPengadaan->forPage($currentPage, $perPage),
+            $total,
+            $perPage,
+            $currentPage,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
 
         // Notifikasi untuk operator (gunakan NotificationService jika ada, fallback ke method lama)
         try {
@@ -148,26 +182,46 @@ class PengadaanController extends Controller
         ]);
 
         $jumlahDiterima = (float) $request->jumlah_diterima;
+        $jumlahAwal = $jumlahDiterima;
         $hargaManual = $request->filled('harga_satuan') ? (float) $request->harga_satuan : null;
 
         try {
-            DB::transaction(function () use ($id, $jumlahDiterima, $hargaManual, $request) {
-                // 1. Ambil data pengadaan
-                $pengadaan = Pengadaan::findOrFail($id);
+            DB::transaction(function () use ($id, $jumlahDiterima, $jumlahAwal, $hargaManual, $request) {
+                // 1. Ambil salah satu pengadaan sebagai referensi bahan
+                $pengadaanSample = Pengadaan::findOrFail($id);
+                $bahanId = $pengadaanSample->bahan_baku_id;
+
+                // ✅ LOGIKA FIFO: KURANGI DARI PESANAN TERTUA DAHULU
+                // Ambil SEMUA pengadaan PENDING untuk bahan ini, urut dari paling tua
+                $antrianPengadaan = Pengadaan::where('bahan_baku_id', $bahanId)
+                    ->where('status', 'PENDING')
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+
+                $sisaUntukDistribusi = $jumlahDiterima;
                 
-                // Validasi: jumlah diterima tidak boleh melebihi sisa
-                $sisa = $pengadaan->jumlah - ($pengadaan->received ?? 0);
-                if ($jumlahDiterima > $sisa) {
-                    throw new \Exception('Jumlah yang diterima tidak boleh melebihi sisa pesanan (' . $sisa . ')');
+                foreach($antrianPengadaan as $pengadaan) {
+                    if ($sisaUntukDistribusi <= 0) break;
+                    
+                    $sisaPesanan = $pengadaan->jumlah - ($pengadaan->received ?? 0);
+                    $yangDiambil = min($sisaUntukDistribusi, $sisaPesanan);
+                    
+                    // Kurangi antrian ini
+                    $pengadaan->received = ($pengadaan->received ?? 0) + $yangDiambil;
+                    $pengadaan->save();
+                    
+                    // Cek jika pesanan ini sudah selesai
+                    if ($pengadaan->received >= $pengadaan->jumlah) {
+                        $pengadaan->status = 'SELESAI';
+                        $pengadaan->save();
+                    }
+                    
+                    $sisaUntukDistribusi -= $yangDiambil;
                 }
 
-                // 2. UPDATE PENGADAAN: Tingkatkan received
-                $pengadaan->received = ($pengadaan->received ?? 0) + $jumlahDiterima;
-                $pengadaan->save();
-
                 // 3. UPDATE STOK GUDANG: Tambahkan ke stok bahan baku
-                $bahan = BahanBaku::findOrFail($pengadaan->bahan_baku_id);
-                $bahan->stok = ($bahan->stok ?? 0) + $jumlahDiterima;
+                $bahan = BahanBaku::findOrFail($bahanId);
+                $bahan->stok = ($bahan->stok ?? 0) + $jumlahAwal;
                 $bahan->save();
 
                 // 4. TENTUKAN HARGA DENGAN PRIORITAS:
@@ -297,7 +351,7 @@ class PengadaanController extends Controller
                         'prioritas'         => $request->prioritas,
                         'tanggal_dibutuhkan'=> $request->tanggal_dibutuhkan,
                         'operator_id'       => $request->operator_id, // Bisa null jika tidak dipilih
-                        'catatan'           => $request->catatan,
+                        'catatan'           => $item['catatan'] ?? null,
                         'status'            => 'PENDING',
                         'admin_id'          => $admin->id,
                     ]);
@@ -314,11 +368,12 @@ class PengadaanController extends Controller
 
                         // Ini adalah pemeriksaan paling penting: pastikan $operator adalah objek User
                         if ($operator instanceof User) {
-                            $createdPengadaans = Pengadaan::where('no_referensi', $refGroup)->with('bahan')->get();
+                            // KIRIM SATU EMAIL PER NOMOR TRANSAKSI
+                            $groupedPengadaan = Pengadaan::where('no_referensi', $refGroup)->with('bahan')->get();
                             
-                            if ($createdPengadaans->isNotEmpty()) {
-                                // Kirim notifikasi ke objek operator yang valid
-                                Notification::send($operator, new PengadaanMaterialNotification($createdPengadaans->first(), $admin));
+                            if ($groupedPengadaan->isNotEmpty()) {
+                                // Kirim SATU email saja yang berisi SEMUA item dalam transaksi ini
+                                Notification::send($operator, new PengadaanMaterialNotification($groupedPengadaan, $admin));
                             }
                         } else {
                             // Jika $operator bukan objek User, catat sebagai peringatan

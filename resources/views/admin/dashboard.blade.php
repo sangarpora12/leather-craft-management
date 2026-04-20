@@ -143,7 +143,7 @@
                     <tr>
                         <th class="text-left py-2">Bahan</th>
                         <th class="text-center">Qty</th>
-                        <th class="text-center">Supplier</th>
+                        <th class="text-center">OPERATOR</th>
                         <th class="text-center">Tanggal</th>
                     </tr>
                 </thead>
@@ -152,7 +152,7 @@
                     <tr>
                         <td class="py-3 text-white font-medium">{{ $pengadaan->nama_material }}</td>
                         <td class="py-3 text-center text-[#00BFA5] font-bold">{{ number_format($pengadaan->jumlah) }} {{ $pengadaan->satuan }}</td>
-                        <td class="py-3 text-center text-gray-400 text-xs">{{ $pengadaan->supplier ?? '-' }}</td>
+                        <td class="py-3 text-center text-white font-bold">{{ $pengadaan->operator_name ?? '-' }}</td>
                         <td class="py-3 text-center text-gray-500 text-xs">{{ \Carbon\Carbon::parse($pengadaan->created_at)->format('d M Y') }}</td>
                     </tr>
                     @endforeach

@@ -39,9 +39,9 @@
     <div class="px-5 pb-4">
         @forelse($pendingPengadaan as $pengadaan)
         @php
-            $sisa = $pengadaan->jumlah - ($pengadaan->received ?? 0);
-            $sudahDiterima = $pengadaan->received ?? 0;
-            $deadline = \Carbon\Carbon::parse($pengadaan->tanggal_dibutuhkan);
+            $sisa = $pengadaan->total_jumlah - $pengadaan->total_received;
+            $sudahDiterima = $pengadaan->total_received;
+            $deadline = \Carbon\Carbon::parse($pengadaan->deadline_terdekat);
             $isOverdue = $deadline->isPast() && $sisa > 0;
         @endphp
         <div class="rounded-xl p-5 mb-4 {{ $isOverdue ? 'bg-red-500/10 border border-red-500/40' : 'bg-gray-800 border border-gray-700' }}">
@@ -71,12 +71,13 @@
                         </div>
                         @endif
                     </div>
-                    <div class="text-base font-normal text-white truncate">{{ $pengadaan->bahan->nama_material ?? 'Material Tidak Ditemukan' }}</div>
-                    <div class="text-sm text-gray-500 font-normal">No Ref: {{ $pengadaan->no_referensi }}</div>
+                    <div class="text-base font-normal text-white">{{ $pengadaan->bahan->nama_material ?? 'Material Tidak Ditemukan' }}</div>
+                    <div class="text-sm text-gray-500 font-normal">Gabungan dari {{ $pengadaan->jumlah_order }} pesanan</div>
                 </div>
                 <div class="text-right flex-shrink-0">
                     <span class="text-xs text-gray-500 font-normal">Dipesan</span>
-                    <div class="text-lg font-normal text-blue-400">{{ $pengadaan->jumlah }} <span class="text-xs">{{ $pengadaan->bahan->satuan ?? 'pcs' }}</span></div>
+                    <div class="text-lg font-normal text-blue-400">{{ $pengadaan->total_jumlah }} <span class="text-xs">{{ $pengadaan->bahan->satuan ?? 'pcs' }}</span></div>
+                    <div class="text-xs text-gray-500">Total dari {{ $pengadaan->jumlah_order }} order</div>
                 </div>
             </div>
             
@@ -87,7 +88,7 @@
                     <span class="text-sm font-normal text-green-400">{{ $sudahDiterima }} {{ $pengadaan->bahan->satuan ?? 'pcs' }}</span>
                 </div>
                 <div class="w-full bg-gray-700 rounded-full h-2 mb-2">
-                    @php $progress = $pengadaan->jumlah > 0 ? ($sudahDiterima / $pengadaan->jumlah) * 100 : 0; @endphp
+                    @php $progress = $pengadaan->total_jumlah > 0 ? ($sudahDiterima / $pengadaan->total_jumlah) * 100 : 0; @endphp
                     <div class="bg-green-500 h-2 rounded-full" style="width: {{ $progress }}%"></div>
                 </div>
                 <div class="flex items-center justify-between">
@@ -99,16 +100,16 @@
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center">
                     <svg class="w-4 h-4 mr-2 {{ $isOverdue ? 'text-red-400' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    <span class="text-xs font-normal {{ $isOverdue ? 'text-red-400 font-bold' : 'text-gray-400' }}">Deadline: {{ \Carbon\Carbon::parse($pengadaan->tanggal_dibutuhkan)->format('d M Y') }}</span>
+                    <span class="text-xs font-normal {{ $isOverdue ? 'text-red-400 font-bold' : 'text-gray-400' }}">Deadline: {{ \Carbon\Carbon::parse($pengadaan->deadline_terdekat)->format('d M Y') }}</span>
                 </div>
-                <span class="text-xs bg-gray-700 text-gray-300 border border-gray-600 px-3 py-1 rounded font-normal">{{ $pengadaan->bahan->satuan ?? 'Unit' }}</span>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs bg-gray-700 text-gray-300 border border-gray-600 px-3 py-1 rounded font-normal">{{ $pengadaan->bahan->satuan ?? 'Unit' }}</span>
+                    <button onclick="openNotesModal({{ $pengadaan->bahan_baku_id }})" class="text-xs px-3 py-1 rounded font-normal bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">
+                        🔍 Lihat Detail
+                    </button>
+                </div>
             </div>
             
-            @if($pengadaan->catatan)
-            <div class="mb-4">
-                <span class="text-xs text-gray-400 font-normal">Catatan: {{ $pengadaan->catatan }}</span>
-            </div>
-            @endif
             
             @if($sisa > 0)
             <div class="w-full py-2 rounded-lg text-sm font-normal flex items-center justify-center gap-2 {{ $isOverdue ? 'bg-red-500/10 border border-red-500 text-red-400' : 'bg-gray-700/50 text-gray-400' }}">
@@ -195,7 +196,102 @@
     </div>
 </div>
 
+<!-- Modal Catatan Admin -->
+<div id="notesModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-sm">
+        <div class="p-5 border-b border-gray-700">
+            <h3 class="text-lg font-bold text-white" id="notesModalTitle">Catatan Admin</h3>
+            <p class="text-sm text-gray-400" id="notesModalSubtitle">Nama Bahan</p>
+        </div>
+        <div class="p-5" id="notesContent">
+        </div>
+        <div class="p-5 border-t border-gray-700">
+            <button onclick="closeNotesModal()" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg font-normal uppercase">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
+const allMaterials = {
+    @foreach($pendingPengadaan as $pengadaan)
+    {{ $pengadaan->bahan_baku_id }}: {
+        name: @json($pengadaan->bahan->nama_material),
+        total_urgent: {{ $pengadaan->total_urgent }},
+        total_biasa: {{ $pengadaan->total_biasa }},
+        count_urgent: {{ $pengadaan->count_urgent }},
+        count_biasa: {{ $pengadaan->count_biasa }},
+        notes: @json($pengadaan->catatan_admin)
+    },
+    @endforeach
+};
+
+function openNotesModal(bahanId) {
+    const data = allMaterials[bahanId];
+    document.getElementById('notesModalSubtitle').textContent = data.name;
+    const container = document.getElementById('notesContent');
+    
+    let html = `
+        <div class="space-y-4">
+            <!-- Rincian Prioritas -->
+            <div>
+                <h4 class="text-xs text-gray-400 uppercase mb-2">Rincian Prioritas</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center">
+                        <div class="text-xl font-bold text-red-400">${data.total_urgent}</div>
+                        <div class="text-xs text-red-400">URGENT</div>
+                    </div>
+                    <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
+                        <div class="text-xl font-bold text-blue-400">${data.total_biasa}</div>
+                        <div class="text-xs text-blue-400">BIASA</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Daftar Catatan Admin -->
+            <div>
+                <h4 class="text-xs text-gray-400 uppercase mb-2">Catatan Admin</h4>
+    `;
+    
+    if (!data.notes || data.notes.length === 0) {
+        html += `
+            <div class="text-center text-sm text-gray-500 py-4 bg-gray-900/50 rounded-lg">
+                Tidak ada catatan khusus dari Admin.
+            </div>
+        `;
+    } else {
+        html += `<ul class="space-y-2">`;
+        data.notes.forEach(note => {
+            html += `
+                <li class="pl-3 border-l-2 border-orange-500/50 text-sm text-gray-300 py-2 bg-gray-900/30 rounded pr-3">
+                    ${note}
+                </li>
+            `;
+        });
+        html += `</ul>`;
+    }
+    
+    html += `
+        </div>
+    </div>
+    `;
+    
+    container.innerHTML = html;
+    document.getElementById('notesModal').classList.remove('hidden');
+}
+
+function closeNotesModal() {
+    document.getElementById('notesModal').classList.add('hidden');
+}
+
+// Close notes modal when clicking outside
+document.getElementById('notesModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeNotesModal();
+    }
+});
+
 function openReceiveModal(id, nama, jumlah, sudahTerima, sisa, satuan) {
     document.getElementById('pengadaanId').value = id;
     document.getElementById('modalMaterialName').textContent = nama;

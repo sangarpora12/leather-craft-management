@@ -7,23 +7,24 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\HtmlString;
 
 class PengadaanMaterialNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public $pengadaan;
+    public $pengadaanGroup;
     public $admin;
 
     /**
      * Create a new notification instance.
      *
-     * @param \App\Models\Pengadaan $pengadaan
+     * @param \Illuminate\Database\Eloquent\Collection $pengadaanGroup
      * @param \App\Models\User $admin
      */
-    public function __construct(Pengadaan $pengadaan, User $admin)
+    public function __construct($pengadaanGroup, User $admin)
     {
-        $this->pengadaan = $pengadaan;
+        $this->pengadaanGroup = $pengadaanGroup;
         $this->admin = $admin;
     }
 
@@ -41,16 +42,25 @@ class PengadaanMaterialNotification extends Notification implements ShouldQueue
     
     public function toMail($notifiable)
     {
+        // PREPARE DATA FOTO BAHAN (PERSIS SEPERTI NOTIFIKASI PRODUKSI)
+        $daftarFoto = [];
+        foreach($this->pengadaanGroup as $item) {
+            if ($item->bahan && $item->bahan->foto) {
+                $daftarFoto[$item->id] = \Illuminate\Support\Facades\Storage::disk('public')->url($item->bahan->foto);
+            }
+        }
+
         return (new \Illuminate\Notifications\Messages\MailMessage)
             ->subject('📦 PERINTAH PENGADAAN MATERIAL BARU')
-            ->greeting('Halo ' . $notifiable->name . ',')
-            ->line('Ada perintah pengadaan bahan baru dari Admin ' . $this->admin->name)
-            ->line('Nomor Order: ' . $this->pengadaan->no_referensi)
-            ->line('Prioritas: ' . $this->pengadaan->prioritas)
-            ->line('Deadline: ' . $this->pengadaan->tanggal_dibutuhkan)
-            ->action('LIHAT DETAIL PESANAN', route('operator.belanja.index'))
-            ->line('Silahkan segera proses pesanan ini.')
-            ->salutation('Salam, Sistem Inventory Berliano Leather');
+            ->markdown('emails.pengadaan.perintah_baru', [
+                'operatorName' => $notifiable->name,
+                'adminName' => $this->admin->name,
+                'prioritas' => $this->pengadaanGroup->first()->prioritas,
+                'deadline' => date('d F Y', strtotime($this->pengadaanGroup->first()->tanggal_dibutuhkan)),
+                'pengadaanGroup' => $this->pengadaanGroup,
+                'daftarFoto' => $daftarFoto,
+                'actionUrl' => route('operator.belanja.index')
+            ]);
     }
 
     /**
@@ -61,12 +71,18 @@ class PengadaanMaterialNotification extends Notification implements ShouldQueue
      */
     public function toDatabase($notifiable)
     {
+        $daftarBahan = $this->pengadaanGroup->map(function($item) {
+            return intval($item->jumlah) . ' ' . $item->bahan->satuan . ' - ' . $item->bahan->nama_material;
+        })->implode(', ');
+
         return [
-            'pengadaan_id' => $this->pengadaan->id,
-            'no_referensi' => $this->pengadaan->no_referensi,
-            'message' => 'Pengadaan bahan baru dari Admin ' . $this->admin->name,
+            'pengadaan_group' => $this->pengadaanGroup->pluck('id'),
+            'no_referensi' => $this->pengadaanGroup->first()->no_referensi,
+            'message' => $this->pengadaanGroup->count() . ' bahan baru dari Admin ' . $this->admin->name,
             'title' => '📦 Perintah Pengadaan Baru',
-            'prioritas' => $this->pengadaan->prioritas,
+            'prioritas' => $this->pengadaanGroup->first()->prioritas,
+            'daftar_bahan' => $daftarBahan,
+            'jumlah_item' => $this->pengadaanGroup->count(),
             'url' => route('operator.belanja.index'),
             'admin_name' => $this->admin->name,
         ];

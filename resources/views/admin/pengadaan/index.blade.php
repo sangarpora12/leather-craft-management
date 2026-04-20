@@ -81,9 +81,12 @@
                                         <p class="text-[9px] text-gray-600 font-mono mt-0.5" x-text="mat.kode_material"></p>
                                     </td>
                                     <td class="px-6 py-4 text-center">
-                                        <span :class="mat.stok <= 5 ? 'text-red-500 bg-red-500/10 border-red-500/20' : 'text-green-500 bg-green-500/10 border-green-500/20'" 
-                                               class="text-[9px] font-black px-2 py-0.5 rounded border" 
-                                               x-text="Math.round(mat.stok) + ' ' + mat.satuan"></span>
+                                        <div class="inline-flex items-center">
+                                            <span :class="mat.stok <= 5 ? 'text-red-500 bg-red-500/10 border-red-500/20' : 'text-green-500 bg-green-500/10 border-green-500/20'" 
+                                                   class="text-[9px] font-black px-3 py-1 rounded-l border border-r-0 font-mono" 
+                                                   x-text="Math.round(mat.stok)"></span>
+                                            <span class="text-[9px] font-bold px-2 py-1 rounded-r border text-gray-400 bg-white/5" x-text="mat.satuan"></span>
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <span class="text-xs font-mono text-gray-400" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(mat.harga_satuan || 0)"></span>
@@ -181,12 +184,49 @@
             
             <form action="{{ route('admin.pengadaan.store') }}" method="POST" class="p-6 space-y-4" x-ref="submitForm">
                 @csrf
-                <template x-for="(item, index) in cart" :key="index">
-                    <div>
-                        <input type="hidden" :name="`items[${index}][bahan_baku_id]`" :value="item.id">
-                        <input type="hidden" :name="`items[${index}][jumlah]`" :value="item.qty">
-                    </div>
-                </template>
+
+                <!-- TABEL DAFTAR BAHAN YANG AKAN DIPESAN -->
+                <div class="mb-4 bg-[#0D1117] rounded-lg overflow-hidden border border-white/5">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-black/30 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                <th class="py-3 px-4">Foto</th>
+                                <th class="py-3 px-4">Nama Bahan</th>
+                                <th class="py-3 px-4 text-center">Jumlah</th>
+                                <th class="py-3 px-4 text-center">Satuan</th>
+                                <th class="py-3 px-4">Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(item, index) in cart" :key="index">
+                                <tr class="border-t border-white/5">
+                                    <td class="py-3 px-4">
+                                        <template x-if="item.foto">
+                                        <img :src="'/storage/' + item.foto" 
+                                             :alt="item.nama_material"
+                                             class="w-16 h-16 rounded-lg object-cover border border-white/10" style="max-width: 64px; max-height: 64px;">
+                                        </template>
+                                        <template x-if="!item.foto">
+                                            <div class="w-16 h-16 rounded-lg bg-[#2D3139] flex items-center justify-center border border-gray-700/50">
+                                                <i class="fa-solid fa-image text-gray-500 text-lg"></i>
+                                            </div>
+                                        </template>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <p class="text-white text-[11px] font-bold" x-text="item.nama_material"></p>
+                                        <p class="text-[9px] text-gray-500 font-mono mt-0.5" x-text="item.kode_material"></p>
+                                        <input type="hidden" :name="`items[${index}][bahan_baku_id]`" :value="item.id">
+                                        <input type="hidden" :name="`items[${index}][jumlah]`" :value="item.qty">
+                                        <input type="hidden" :name="`items[${index}][catatan]`" :value="item.catatan">
+                                    </td>
+                                    <td class="py-3 px-4 text-center font-mono text-green-400 font-bold" x-text="Math.round(item.qty)"></td>
+                                    <td class="py-3 px-4 text-center text-gray-400 text-[10px]" x-text="item.satuan"></td>
+                                    <td class="py-3 px-4 text-gray-400 text-[10px]" style="max-width:180px; word-wrap:break-word;" x-text="item.catatan || '-'"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
 
                 <div class="space-y-4">
                     <div>
