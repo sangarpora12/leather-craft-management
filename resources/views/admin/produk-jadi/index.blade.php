@@ -3,58 +3,33 @@
 @section('page_title', 'Produk Jadi')
 
 @section('content')
-<div class="min-h-screen bg-[#0B0E14] px-6 py-8">
+<div class="min-h-screen bg-[#0B0E14] px-6 py-4">
 
-    {{-- HEADER --}}
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
-        <div>
-            <h1 class="text-2xl font-bold text-white mb-1">Master Data Produk Jadi</h1>
-            <p class="text-gray-400 text-sm">Katalog produk, manajemen stok, dan harga pokok produksi.</p>
-        </div>
-
-        <form method="GET" action="{{ route('admin.produk-jadi.index') }}" class="w-full md:w-auto">
+    {{-- SEARCH BAR MODERN --}}
+    <form method="GET" action="{{ route('admin.produk-jadi.index') }}" class="mb-6">
+        <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"></i>
             <input type="text"
                    name="search"
                    value="{{ request('search') }}"
-                   placeholder="Cari nama, SKU..."
-                   class="w-full md:w-72 bg-neutral-900 border border-neutral-800 rounded-full px-5 py-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-orange-500 transition-colors">
-        </form>
-    </div>
+                   placeholder="Cari nama produk, kode SKU, deskripsi..."
+                   class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 pl-12 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-orange-500 transition-all">
+        </div>
+    </form>
 
     {{-- FILTER BAR AREA --}}
-    <div class="bg-[#1C222D] rounded-xl p-4 mb-8">
+    <div class="bg-[#1C222D] rounded-xl p-4 mb-6">
         <div class="flex flex-wrap items-center gap-4">
             
-            {{-- FILTER KATEGORI --}}
-            <div class="flex items-center gap-2">
-                <span class="text-gray-400 text-sm">Kategori:</span>
-                <div class="flex gap-1">
-                    <a href="{{ route('admin.produk-jadi.index', array_filter(['search' => request('search'), 'stok' => request('stok'), 'sort' => request('sort')])) }}"
-                       class="px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap
-                       {{ !request('kategori') ? 'bg-[#2A3140] text-white' : 'bg-transparent text-gray-400 hover:text-white' }}">
-                        Semua
-                    </a>
-                    
-                    @foreach($kategoriList ?? [] as $kategori)
-                    <a href="{{ route('admin.produk-jadi.index', array_filter(['kategori' => $kategori, 'search' => request('search'), 'stok' => request('stok'), 'sort' => request('sort')])) }}"
-                       class="px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap
-                       {{ request('kategori') == $kategori ? 'bg-[#2A3140] text-white' : 'bg-transparent text-gray-400 hover:text-white' }}">
-                        {{ ucwords($kategori) }}
-                    </a>
-                    @endforeach
-                </div>
-            </div>
-
-            <div class="h-6 w-px bg-[#2A3140]"></div>
 
             {{-- FILTER STOK --}}
             <div class="flex items-center gap-2">
                 <span class="text-gray-400 text-sm">Stok:</span>
                 <select onchange="window.location.href = this.value" class="bg-[#2A3140] text-white px-3 py-1.5 rounded-lg border-0 outline-none cursor-pointer">
-                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'sort' => request('sort')])) }}" {{ !request('stok') ? 'selected' : '' }}>Semua</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'stok' => 'tersedia', 'sort' => request('sort')])) }}" {{ request('stok') == 'tersedia' ? 'selected' : '' }}>Stok Tersedia</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'stok' => 'menipis', 'sort' => request('sort')])) }}" {{ request('stok') == 'menipis' ? 'selected' : '' }}>Stok Menipis (< 10)</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'stok' => 'habis', 'sort' => request('sort')])) }}" {{ request('stok') == 'habis' ? 'selected' : '' }}>Stok Habis</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'sort_by' => request('sort_by')])) }}" {{ !request('status_stok') ? 'selected' : '' }}>Semua</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => 'tersedia', 'sort_by' => request('sort_by')])) }}" {{ request('status_stok') == 'tersedia' ? 'selected' : '' }}>Stok Tersedia</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => 'menipis', 'sort_by' => request('sort_by')])) }}" {{ request('status_stok') == 'menipis' ? 'selected' : '' }}>Stok Menipis (< 10)</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => 'habis', 'sort_by' => request('sort_by')])) }}" {{ request('status_stok') == 'habis' ? 'selected' : '' }}>Stok Habis</option>
                 </select>
             </div>
 
@@ -64,9 +39,9 @@
             <div class="flex items-center gap-2">
                 <span class="text-gray-400 text-sm">Urutkan:</span>
                 <select onchange="window.location.href = this.value" class="bg-[#2A3140] text-white px-3 py-1.5 rounded-lg border-0 outline-none cursor-pointer">
-                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'stok' => request('stok')])) }}" {{ !request('sort') ? 'selected' : '' }}>Default</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'stok' => request('stok'), 'sort' => 'termahal'])) }}" {{ request('sort') == 'termahal' ? 'selected' : '' }}>Termahal</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'stok' => request('stok'), 'sort' => 'termurah'])) }}" {{ request('sort') == 'termurah' ? 'selected' : '' }}>Termurah</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => request('status_stok')])) }}" {{ !request('sort_by') ? 'selected' : '' }}>Default</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => request('status_stok'), 'sort_by' => 'harga_termahal'])) }}" {{ request('sort_by') == 'harga_termahal' ? 'selected' : '' }}>Termahal</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => request('status_stok'), 'sort_by' => 'harga_termurah'])) }}" {{ request('sort_by') == 'harga_termurah' ? 'selected' : '' }}>Termurah</option>
                 </select>
             </div>
 
@@ -82,7 +57,7 @@
         <div class="bg-[#1C222D] rounded-2xl border-0 overflow-hidden flex flex-col hover:translate-y-[-2px] transition-all duration-300 shadow-xl">
 
             {{-- FOTO ATAS 192px --}}
-            <div class="aspect-square w-full overflow-hidden">
+            <div class="aspect-square w-full overflow-hidden relative">
                 @if($item->foto)
                 <img src="{{ asset('storage/'.$item->foto) }}" 
                      class="w-full h-full object-cover" 

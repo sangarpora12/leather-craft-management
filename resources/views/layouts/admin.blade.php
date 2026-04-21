@@ -117,7 +117,7 @@
                 {{-- 1. DASHBOARD --}}
                 <div class="mb-6">
                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Utama</p>
-                    <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.dashboard') ? 'bg-[#242B3B] text-orange-500 border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                    <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.dashboard') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-chart-line w-5"></i> Dashboard
                     </a>
                 </div>
@@ -125,27 +125,27 @@
                 {{-- 2. DATA MASTER --}}
                 <div class="mb-6">
                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Data Master</p>
-                    <a href="{{ route('admin.bahan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.bahan.*') ? 'bg-[#2D3139] text-white' : 'text-gray-400 hover:bg-[#20232A] hover:text-white' }}">
+                    <a href="{{ route('admin.bahan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.bahan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-box-open w-5"></i> Bahan Baku
                     </a>
-                    <a href="{{ route('admin.produk-jadi.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.produk-jadi.*') ? 'bg-[#2D3139] text-white' : 'text-gray-400 hover:bg-[#20232A] hover:text-white' }}">
+                    <a href="{{ route('admin.produk-jadi.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.produk-jadi.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-shirt w-5"></i> Produk Jadi
                     </a>
-                    <a href="{{ route('admin.pekerja-master.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.pekerja-master.*') ? 'bg-[#2D3139] text-white' : 'text-gray-400 hover:bg-[#20232A] hover:text-white' }}">
-                        <i class="fa-solid fa-users w-5"></i> Manajemen User
+                    <a href="{{ route('admin.pekerja-master.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.pekerja-master.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                        <i class="fa-solid fa-users w-5"></i> Manajemen Operator
                     </a>
                 </div>
 
                 {{-- 3. PRODUKSI --}}
                 <div class="mb-6">
                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Manajemen Produksi</p>
-                    <a href="{{ route('admin.bom.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.bom.*') ? 'bg-[#2D3139] text-white' : 'text-gray-400 hover:bg-[#20232A] hover:text-white' }}">
-                        <i class="fa-solid fa-scroll w-5"></i> Bill of Materials
+                    <a href="{{ route('admin.bom.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.bom.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                        <i class="fa-solid fa-scroll w-5"></i> Bill of Materials (BOM)
                     </a>
-                    <a href="{{ route('admin.produksi.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.produksi.*') ? 'bg-[#2D3139] text-white' : 'text-gray-400 hover:bg-[#20232A] hover:text-white' }}">
-                        <i class="fa-solid fa-clipboard-list w-5"></i> Perintah Produksi
+                    <a href="{{ route('admin.produksi.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.produksi.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                        <i class="fa-solid fa-clipboard-list w-5"></i> Perintah Produksi (SPK)
                     </a>
-                    <a href="{{ route('admin.pakai-produk.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.pakai-produk.*') ? 'bg-[#2D3139] text-white' : 'text-gray-400 hover:bg-[#20232A] hover:text-white' }}">
+                    <a href="{{ route('admin.pakai-produk.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.pakai-produk.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-dolly w-5"></i> Produk Keluar (Jual)
                     </a>
                 </div>
@@ -153,10 +153,10 @@
                 {{-- 4. LOGISTIK --}}
                 <div class="mb-6">
                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Logistik</p>
-                    <a href="{{ route('admin.pengadaan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.pengadaan.*') ? 'bg-[#2D3139] text-white' : 'text-gray-400 hover:bg-[#20232A] hover:text-white' }}">
+                    <a href="{{ route('admin.pengadaan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.pengadaan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-cart-shopping w-5"></i> Pengadaan Material
                     </a>
-                    <a href="{{ route('admin.laporan.supplier.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.laporan.supplier.*') ? 'bg-[#2D3139] text-white' : 'text-gray-400 hover:bg-[#20232A] hover:text-white' }}">
+                    <a href="{{ route('admin.laporan.supplier.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.laporan.supplier.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-truck-loading w-5"></i> Data Supplier
                     </a>
                 </div>
@@ -164,13 +164,19 @@
                 {{-- 5. LAPORAN --}}
                 <div class="mb-6">
                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Laporan</p>
-                    <a href="{{ route('admin.laporan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.laporan.index') || request()->routeIs('admin.laporan.cetak*') || request()->routeIs('admin.laporan.analisis*') || request()->routeIs('admin.laporan.harian*') || request()->routeIs('admin.laporan.hasil*') || request()->routeIs('admin.laporan.stok*') || request()->routeIs('admin.laporan.keuangan*') ? 'bg-[#2D3139] text-white' : 'text-gray-400 hover:bg-[#20232A] hover:text-white' }}">
+                    <a href="{{ route('admin.laporan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.laporan.*') && !request()->routeIs('admin.laporan.pengaturan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-file-pdf w-5"></i> Laporan & Mutasi
                     </a>
-                    <a href="{{ route('admin.laporan.pengaturan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {{ request()->routeIs('admin.laporan.pengaturan.*') ? 'bg-[#2D3139] text-white' : 'text-gray-400 hover:bg-[#20232A] hover:text-white' }}">
-                        <i class="fa-solid fa-gear w-5"></i> Pengaturan
+                </div>
+
+                {{-- 6. PENGATURAN SISTEM --}}
+                <div class="mb-4">
+                    <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Sistem</p>
+                    <a href="{{ route('admin.laporan.pengaturan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.laporan.pengaturan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                        <i class="fa-solid fa-gear w-5"></i> Pengaturan Sistem
                     </a>
                 </div>
+
             </nav>
 
             <div class="p-4 border-t border-[#2A3140] bg-[#161B26]">

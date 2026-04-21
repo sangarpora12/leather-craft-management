@@ -1,0 +1,550 @@
+<?php $__env->startSection('page_title', 'Laporan & Mutasi'); ?>
+
+<?php $__env->startSection('content'); ?>
+<?php 
+// Get Pengaturan for Kop Surat
+$namaPerusahaan = \App\Models\Pengaturan::where('nama_pengaturan', 'nama_perusahaan')->first()?->nilai ?? 'Berliano Leather';
+$alamat = \App\Models\Pengaturan::where('nama_pengaturan', 'alamat')->first()?->nilai ?? '';
+$noTelepon = \App\Models\Pengaturan::where('nama_pengaturan', 'no_telepon')->first()?->nilai ?? '';
+$email = \App\Models\Pengaturan::where('nama_pengaturan', 'email')->first()?->nilai ?? '';
+$logo = \App\Models\Pengaturan::where('nama_pengaturan', 'logo_perusahaan')->first()?->nilai ?? '';
+
+// Get mode from controller (passed as $mode) - default to 'lengkap'
+if (!isset($mode) || empty($mode)) {
+    $mode = 'lengkap';
+}
+?>
+
+<style>
+@media print {
+    /* AGGRESSIVE - Reset ALL overflow restrictions */
+    * {
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+    }
+    
+    /* Hide sidebar and nav elements */
+    .sidebar, nav, .no-print, .print\:hidden, .hidden {
+        display: none !important;
+    }
+    
+    /* Force print block for all elements */
+    .print\:flex { display: flex !important; }
+    .print\:block { display: block !important; }
+    .print\:grid { display: grid !important; }
+    .print\:table { display: table !important; }
+    
+    /* Body and container reset - FULLY VISIBLE */
+    html, body { 
+        background-color: white !important; 
+        color: black !important;
+        font-size: 10pt !important;
+        overflow: visible !important;
+        height: auto !important;
+    }
+    
+    .container, .bg-zinc-900, .bg-neutral-900, .main-content, .card { 
+        background-color: white !important; 
+        color: black !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        height: auto !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+    
+    /* Remove overflow restrictions from table containers */
+    .overflow-auto, .overflow-x-auto, .rounded-xl, .shadow-lg {
+        overflow: visible !important;
+        height: auto !important;
+    }
+    
+    /* Text colors - make readable */
+    .text-white, .text-gray-300, .text-gray-400 { 
+        color: black !important; 
+    }
+    
+    /* Print header styles */
+    .print-header-container {
+        display: flex !important;
+        visibility: visible !important;
+    }
+    
+    /* Table styles - ensure full width */
+    table { 
+        border: 1px solid #333 !important; 
+        width: 100% !important;
+        font-size: 9pt !important;
+        page-break-inside: auto;
+    }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    thead { display: table-header-group; }
+    tbody { display: table-row-group; }
+    
+    th, td { 
+        border: 1px solid #333 !important; 
+        color: black !important;
+        padding: 4px 8px !important;
+        font-size: 9pt !important;
+    }
+    th { 
+        background-color: #f5f5f5 !important; 
+        font-weight: bold !important;
+    }
+    
+    /* Card/Summary styles */
+    .summary-card { 
+        border: 1px solid #ddd !important; 
+        page-break-inside: avoid;
+    }
+    
+    /* Financial Cards Print Styles - Light backgrounds */
+    .bg-gradient-to-br { background: none !important; }
+    .from-red-900\/30, .from-red-800\/20 { background-color: #fef2f2 !important; border-color: #fecaca !important; }
+    .from-green-900\/30, .from-green-800\/20 { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
+    .from-blue-900\/30, .from-blue-800\/20 { background-color: #eff6ff !important; border-color: #bfdbfe !important; }
+    .text-red-300, .text-red-400 { color: #dc2626 !important; }
+    .text-green-300, .text-green-400 { color: #16a34a !important; }
+    .text-blue-300, .text-blue-400 { color: #2563eb !important; }
+    .text-red-300\/60 { color: #991b1b !important; }
+    .text-green-300\/60 { color: #166534 !important; }
+    .text-blue-300\/60 { color: #1e40af !important; }
+    .text-yellow-400 { color: #ca8a04 !important; }
+    
+    /* Grid for print */
+    .print-grid-cols-3 {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 10px !important;
+    }
+    
+    /* Avoid page breaks inside cards */
+    .mb-6, .summary-card {
+        page-break-inside: avoid !important;
+    }
+    
+    /* Print break before for second tables */
+    .print-break-before {
+        page-break-before: always;
+    }
+    
+    /* Make sure print header is visible */
+    .hidden.print\:block {
+        display: block !important;
+    }
+}
+</style>
+
+<div class="container mx-auto px-4 py-6 max-w-7xl">
+    <div class="bg-zinc-900 rounded-xl shadow-lg overflow-hidden">
+        <!-- Header -->
+        <div class="bg-zinc-900/50 border-b border-zinc-800 p-4">
+            <h1 class="text-xl font-bold text-white">Laporan Operasional</h1>
+            <p class="text-gray-400 text-xs mt-1">Ringkasan aktivitas produksi dan gudang.</p>
+        </div>
+
+        <!-- Filter Form -->
+        <div class="bg-zinc-900 p-3 border-b border-zinc-800 no-print">
+            <form method="GET" action="<?php echo e(route('admin.laporan.index')); ?>" class="flex flex-wrap gap-2 items-end">
+                <div>
+                    <label class="block text-gray-400 text-xs font-semibold mb-1">Mode Laporan</label>
+                    <select name="mode" class="bg-neutral-900 border border-zinc-700 rounded px-2 py-1.5 text-white text-xs" onchange="this.form.submit()">
+                        <option value="lengkap" <?php echo e($mode == 'lengkap' ? 'selected' : ''); ?>>Lengkap</option>
+                        <option value="produk" <?php echo e($mode == 'produk' ? 'selected' : ''); ?>>Produk</option>
+                        <option value="bahan" <?php echo e($mode == 'bahan' ? 'selected' : ''); ?>>Bahan</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <div>
+                        <label class="block text-gray-400 text-xs font-semibold mb-1">Dari</label>
+                        <input type="date" name="from" value="<?php echo e($fromDate ?? \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d')); ?>" class="bg-neutral-900 border border-zinc-700 rounded px-2 py-1.5 text-white text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 text-xs font-semibold mb-1">Sampai</label>
+                        <input type="date" name="to" value="<?php echo e($toDate ?? \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d')); ?>" class="bg-neutral-900 border border-zinc-700 rounded px-2 py-1.5 text-white text-xs">
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-xs font-bold">Terapkan</button>
+                    <button type="button" onclick="window.print()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-bold">Cetak</button>
+                    <a href="<?php echo e(route('admin.laporan.export-excel', request()->query())); ?>" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold">Excel</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Print Header (Kop Surat) - Hidden on screen, shown only when printing -->
+        <div class="hidden print:block" style="display: none;">
+            <div class="print-header-container" style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;"><?php echo e($namaPerusahaan); ?></div>
+                <div style="font-size: 12px;">
+                    <?php if($alamat): ?><?php echo e($alamat); ?><?php endif; ?>
+                    <?php if($noTelepon): ?> | Telp: <?php echo e($noTelepon); ?><?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-4">
+            <!-- RINGKASAN KEUANGAN (Financial Summary) - Visible in all modes - NOW AT TOP -->
+            <div class="mb-6">
+                <h3 class="text-white text-sm font-bold mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Ringkasan Keuangan
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 print-grid-cols-3">
+                    <!-- Total Pengeluaran -->
+                    <div class="summary-card bg-gradient-to-br from-red-900/30 to-red-800/20 rounded-lg p-4 border border-red-700/50">
+                        <p class="text-red-300 text-xs font-semibold">Total Pengeluaran (Produksi)</p>
+                        <p class="text-red-400 text-xl font-bold">Rp <?php echo e(number_format($totalPengeluaran ?? 0, 0, ',', '.')); ?></p>
+                        <p class="text-red-300/60 text-xs mt-1">Biaya bahan & upah SPK selesai</p>
+                    </div>
+                    <!-- Total Pemasukan -->
+                    <div class="summary-card bg-gradient-to-br from-green-900/30 to-green-800/20 rounded-lg p-4 border border-green-700/50">
+                        <p class="text-green-300 text-xs font-semibold">Total Pemasukan (Penjualan)</p>
+                        <p class="text-green-400 text-xl font-bold">Rp <?php echo e(number_format($totalPemasukan ?? 0, 0, ',', '.')); ?></p>
+                        <p class="text-green-300/60 text-xs mt-1">Nilai produk terjual keluar</p>
+                    </div>
+                    <!-- Estimasi Laba -->
+                    <div class="summary-card bg-gradient-to-br from-blue-900/30 to-blue-800/20 rounded-lg p-4 border border-blue-700/50">
+                        <p class="text-blue-300 text-xs font-semibold">Estimasi Laba Kotor</p>
+                        <p class="text-blue-400 text-xl font-bold <?php echo e(($estimasiLaba ?? 0) < 0 ? 'text-red-400' : 'text-blue-400'); ?>">Rp <?php echo e(number_format($estimasiLaba ?? 0, 0, ',', '.')); ?></p>
+                        <p class="text-blue-300/60 text-xs mt-1">Selisih pemasukan - pengeluaran</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards (Lengkap mode only) -->
+            <?php if($mode == 'lengkap'): ?>
+            <div class="mb-2">
+                <h3 class="text-white text-sm font-bold uppercase tracking-wider">📦 PRODUK</h3>
+            </div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
+                    <p class="text-gray-400 text-xs">Total Output</p>
+                    <p class="text-white text-xl font-bold"><?php echo e(number_format($totalOutput)); ?></p>
+                </div>
+                <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
+                    <p class="text-gray-400 text-xs">Produksi Pending</p>
+                    <p class="text-white text-xl font-bold"><?php echo e(number_format($produksiPending)); ?></p>
+                </div>
+                <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
+                    <p class="text-gray-400 text-xs">Barang Keluar</p>
+                    <p class="text-white text-xl font-bold"><?php echo e(number_format($barangKeluar)); ?></p>
+                </div>
+                <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
+                    <p class="text-gray-400 text-xs">Stok Kritis</p>
+                    <p class="text-white text-xl font-bold"><?php echo e($stokKritisCount); ?></p>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- RINGKASAN STATISTIK (untuk mode bahan) -->
+            <?php if($mode == 'bahan' || $mode == 'lengkap'): ?>
+            <div class="mb-2">
+                <h3 class="text-white text-sm font-bold uppercase tracking-wider">📦 BAHAN</h3>
+            </div>
+            <div class="grid grid-cols-3 gap-4 mb-6 print-grid-cols-3">
+                <!-- Card: Total Bahan Masuk -->
+                <div class="summary-card bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
+                    <p class="text-gray-400 text-xs">Total Bahan Masuk</p>
+                    <p class="text-green-400 text-xl font-bold">+<?php echo e(number_format($totalBahanMasuk ?? 0)); ?></p>
+                </div>
+                <!-- Card: Total Bahan Keluar -->
+                <div class="summary-card bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
+                    <p class="text-gray-400 text-xs">Total Bahan Keluar</p>
+                    <p class="text-red-400 text-xl font-bold">-<?php echo e(number_format($totalBahanKeluar ?? 0)); ?></p>
+                </div>
+                <!-- Card: Stok Tersedia -->
+                <div class="summary-card bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
+                    <p class="text-gray-400 text-xs">Total Stok Tersedia</p>
+                    <p class="text-white text-xl font-bold"><?php echo e(number_format($stokTersedia ?? 0)); ?></p>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- METRIK ERP TAMBAHAN (untuk mode lengkap) -->
+            <?php if($mode == 'lengkap'): ?>
+            <div class="mb-2">
+                <h3 class="text-white text-sm font-bold uppercase tracking-wider">💰 METRIK KEUANGAN (ERP)</h3>
+            </div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- Card: Estimasi Nilai Aset -->
+                <div class="summary-card bg-gradient-to-br from-purple-900/30 to-purple-800/20 rounded-lg p-4 border border-purple-700/50">
+                    <p class="text-purple-300 text-xs font-semibold">Estimasi Nilai Aset</p>
+                    <p class="text-purple-400 text-lg font-bold">Rp <?php echo e(number_format($estimasiNilaiAset ?? 0, 0, ',', '.')); ?></p>
+                    <p class="text-purple-300/60 text-xs mt-1">Stok gudang (Bahan + Produk)</p>
+                </div>
+                <!-- Card: Laba Bersih -->
+                <div class="summary-card bg-gradient-to-br from-emerald-900/30 to-emerald-800/20 rounded-lg p-4 border border-emerald-700/50">
+                    <p class="text-emerald-300 text-xs font-semibold">Laba Bersih</p>
+                    <p class="text-emerald-400 text-lg font-bold <?php echo e(($labaBersih ?? 0) < 0 ? 'text-red-400' : ''); ?>">Rp <?php echo e(number_format($labaBersih ?? 0, 0, ',', '.')); ?></p>
+                    <p class="text-emerald-300/60 text-xs mt-1">Setelah biaya operasional</p>
+                </div>
+            </div>
+
+            <!-- GRAFIK TREN 30 HARI -->
+            <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
+                <div class="px-4 py-3 border-b border-zinc-800">
+                    <h3 class="text-white text-sm font-bold">Tren Aktivitas 30 Hari Terakhir</h3>
+                </div>
+                <div class="p-4">
+                    <canvas id="trendChart" height="100"></canvas>
+                </div>
+            </div>
+
+            <!-- TOP PRODUK & BAHAN CEPAT HABIS -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Top 3 Produk Terlaris -->
+                <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800">
+                    <div class="px-4 py-3 border-b border-zinc-800">
+                        <h3 class="text-white text-sm font-bold">🏆 Top 3 Produk Terlaris</h3>
+                    </div>
+                    <div class="p-4">
+                        <?php $__empty_1 = true; $__currentLoopData = $topProdukTerlaris; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $produk): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                        <div class="flex items-center justify-between py-3 border-b border-zinc-800 last:border-0">
+                            <div>
+                                <p class="text-white text-sm font-bold"><?php echo e($produk->nama_produk); ?></p>
+                                <p class="text-gray-500 text-xs"><?php echo e($produk->kode_produk); ?></p>
+                            </div>
+                            <span class="text-green-400 text-sm font-bold"><?php echo e(number_format($produk->total_terjual)); ?> pcs</span>
+                        </div>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                        <p class="text-gray-500 text-sm text-center py-4">Belum ada data penjualan</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Bahan Paling Cepat Habis -->
+                <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800">
+                    <div class="px-4 py-3 border-b border-zinc-800">
+                        <h3 class="text-white text-sm font-bold">🔥 Bahan Paling Cepat Habis</h3>
+                    </div>
+                    <div class="p-4">
+                        <?php $__empty_1 = true; $__currentLoopData = $bahanCepatHabis; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $bahan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                        <div class="flex items-center justify-between py-3 border-b border-zinc-800 last:border-0">
+                            <div>
+                                <p class="text-white text-sm font-bold"><?php echo e($bahan->nama_material); ?></p>
+                                <p class="text-gray-500 text-xs"><?php echo e($bahan->kode_material); ?></p>
+                            </div>
+                            <span class="text-red-400 text-sm font-bold">-<?php echo e(number_format($bahan->total_dipakai)); ?> <?php echo e($bahan->satuan); ?></span>
+                        </div>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                        <p class="text-gray-500 text-sm text-center py-4">Belum ada data pemakaian</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- TABEL OUTPUT PRODUKSI (mode produk atau lengkap) -->
+            <?php if($mode == 'produk' || $mode == 'lengkap'): ?>
+            <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
+                <div class="px-4 py-3 border-b border-zinc-800">
+                    <h3 class="text-white text-sm font-bold">Ringkasan Output Produksi (Produk Selesai)</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full print:table">
+                        <thead class="bg-neutral-900">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Kode</th>
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Produk</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Total Selesai</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Jumlah SPK</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Harga Jual</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Nilai Total (Rp)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-800">
+                            <?php $__empty_1 = true; $__currentLoopData = $productions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $prod): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                            <tr>
+                                <td class="px-3 py-2 text-xs text-gray-400"><?php echo e($prod->kode_produk ?? '-'); ?></td>
+                                <td class="px-3 py-2 text-xs font-bold text-white"><?php echo e($prod->nama_produk); ?></td>
+                                <td class="px-3 py-2 text-xs text-green-400 text-right font-bold">+<?php echo e(number_format($prod->jumlah_selesai)); ?> pcs</td>
+                                <td class="px-3 py-2 text-xs text-gray-400 text-right"><?php echo e($prod->jumlah_spk); ?> SPK</td>
+                                <td class="px-3 py-2 text-xs text-gray-400 text-right">Rp <?php echo e(number_format($prod->harga_jual, 0, ',', '.')); ?></td>
+                                <td class="px-3 py-2 text-xs text-emerald-400 text-right font-bold">Rp <?php echo e(number_format($prod->jumlah_selesai * $prod->harga_jual, 0, ',', '.')); ?></td>
+                            </tr>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                            <tr><td colspan="6" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data produksi</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TABEL PRODUK KELUAR (mode produk atau lengkap) -->
+            <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
+                <div class="px-4 py-3 border-b border-zinc-800">
+                    <h3 class="text-white text-sm font-bold">Ringkasan Produk Keluar (Penjualan)</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full print:table">
+                        <thead class="bg-neutral-900">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Kode</th>
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Produk</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Total Keluar</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Jumlah Transaksi</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Harga Jual</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Nilai Total (Rp)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-800">
+                            <?php $__empty_1 = true; $__currentLoopData = $produkKeluars; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $keluar): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                            <tr>
+                                <td class="px-3 py-2 text-xs text-gray-400"><?php echo e($keluar->kode_produk ?? '-'); ?></td>
+                                <td class="px-3 py-2 text-xs font-bold text-white"><?php echo e($keluar->nama_produk); ?></td>
+                                <td class="px-3 py-2 text-xs text-red-400 text-right font-bold">-<?php echo e(number_format($keluar->jumlah)); ?> pcs</td>
+                                <td class="px-3 py-2 text-xs text-gray-400 text-right"><?php echo e($keluar->jumlah_transaksi); ?> transaksi</td>
+                                <td class="px-3 py-2 text-xs text-gray-400 text-right">Rp <?php echo e(number_format($keluar->harga_jual, 0, ',', '.')); ?></td>
+                                <td class="px-3 py-2 text-xs text-emerald-400 text-right font-bold">Rp <?php echo e(number_format($keluar->jumlah * $keluar->harga_jual, 0, ',', '.')); ?></td>
+                            </tr>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                            <tr><td colspan="6" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data produk keluar</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- TABEL BAHAN MASUK (mode bahan atau lengkap) -->
+            <?php if($mode == 'bahan' || $mode == 'lengkap'): ?>
+            <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
+                <div class="px-4 py-3 border-b border-zinc-800">
+                    <h3 class="text-white text-sm font-bold">Ringkasan Bahan Masuk (Restock/Bahan Baru)</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full print:table">
+                        <thead class="bg-neutral-900">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Kode</th>
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Bahan</th>
+                                <th class="px-3 py-2 text-center text-xs font-bold text-gray-500">Satuan</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Total Masuk</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Jumlah Transaksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-800">
+                            <?php $__empty_1 = true; $__currentLoopData = $pengadaans; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $bahan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                            <tr>
+                                <td class="px-3 py-2 text-xs text-gray-400"><?php echo e($bahan->kode_material ?? '-'); ?></td>
+                                <td class="px-3 py-2 text-xs font-bold text-white"><?php echo e($bahan->nama_material); ?></td>
+                                <td class="px-3 py-2 text-xs text-gray-300 text-center"><?php echo e($bahan->satuan ?? '-'); ?></td>
+                                <td class="px-3 py-2 text-xs text-green-400 text-right font-bold">+<?php echo e(number_format(floatval($bahan->jumlah))); ?></td>
+                                <td class="px-3 py-2 text-xs text-gray-400 text-right"><?php echo e($bahan->jumlah_transaksi); ?> transaksi</td>
+                            </tr>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                            <tr><td colspan="5" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data bahan masuk</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TABEL BAHAN KELUAR (mode bahan atau lengkap) -->
+            <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
+                <div class="px-4 py-3 border-b border-zinc-800">
+                    <h3 class="text-white text-sm font-bold">Ringkasan Bahan Keluar (Pemakaian untuk SPK)</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full print:table">
+                        <thead class="bg-neutral-900">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Kode</th>
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Bahan</th>
+                                <th class="px-3 py-2 text-center text-xs font-bold text-gray-500">Satuan</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Total Dipakai</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-800">
+                            <?php $__empty_1 = true; $__currentLoopData = $materialUsage; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $bahan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                            <tr>
+                                <td class="px-3 py-2 text-xs text-gray-400"><?php echo e($bahan->kode_material ?? '-'); ?></td>
+                                <td class="px-3 py-2 text-xs font-bold text-white"><?php echo e($bahan->nama_material); ?></td>
+                                <td class="px-3 py-2 text-xs text-gray-300 text-center"><?php echo e($bahan->satuan ?? '-'); ?></td>
+                                <td class="px-3 py-2 text-xs text-red-400 text-right font-bold">-<?php echo e(number_format(floatval($bahan->jumlah))); ?></td>
+                            </tr>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                            <tr><td colspan="4" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data bahan keluar</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+window.onbeforeprint = function() { 
+    var printHeader = document.querySelector('.print-header-container');
+    if (printHeader) {
+        printHeader.parentElement.style.display = 'block';
+    }
+};
+window.onafterprint = function() { 
+    var printHeader = document.querySelector('.print-header-container');
+    if (printHeader) {
+        printHeader.parentElement.style.display = 'none';
+    }
+};
+
+// Chart.js - Tren 30 Hari
+const ctx = document.getElementById('trendChart');
+if (ctx) {
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: <?php echo json_encode($chartLabels ?? [], 15, 512) ?>,
+            datasets: [
+                {
+                    label: 'Pemasukan (Penjualan)',
+                    data: <?php echo json_encode($chartPemasukan ?? [], 15, 512) ?>,
+                    borderColor: '#16a34a',
+                    backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                },
+                {
+                    label: 'Pengeluaran (Produksi)',
+                    data: <?php echo json_encode($chartPengeluaran ?? [], 15, 512) ?>,
+                    borderColor: '#dc2626',
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#9ca3af' }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#374151' },
+                    ticks: { color: '#9ca3af' }
+                },
+                x: {
+                    grid: { color: '#374151' },
+                    ticks: { color: '#9ca3af' }
+                }
+            }
+        }
+    });
+}
+</script>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\xampp\htdocs\berliano_leather\berliano-leather\resources\views/admin/laporan/index.blade.php ENDPATH**/ ?>

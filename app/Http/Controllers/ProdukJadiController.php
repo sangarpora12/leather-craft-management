@@ -47,16 +47,10 @@ class ProdukJadiController extends Controller
             ->pluck('produk_jadi_id')
             ->unique();
 
-        // Ambil daftar kategori unik untuk ditampilkan di UI (otomatis dari database)
-        $kategoriList = ProdukJadi::query()
-            ->select('kategori')
-            ->whereIn('id', $produkSelesaiIds)
-            ->has('boms')
-            ->whereNotNull('kategori')
-            ->where('kategori', '!=', '')
-            ->distinct()
-            ->orderBy('kategori')
-            ->pluck('kategori');
+        // Ambil SEMUA kategori produk dari master data Pengaturan
+        $kategoriList = Kategori::where('tipe', 'produk')
+            ->orderBy('nama_kategori')
+            ->get(['id', 'nama_kategori']);
 
         // Ambil daftar warna unik untuk filter (otomatis dari database)
         $warnaList = ProdukJadi::query()
@@ -69,9 +63,12 @@ class ProdukJadiController extends Controller
             ->orderBy('warna')
             ->pluck('warna');
 
-        // 2. Logika Filter Kategori
+        // 2. Logika Filter Kategori (JSON Search)
         $query->when($request->filled('kategori'), function ($q) use ($request) {
-            $q->where('kategori', $request->kategori);
+            $kategori = Kategori::find($request->kategori);
+            if ($kategori) {
+                $q->whereRaw('JSON_CONTAINS(kategori, ?)', ['"' . $kategori->nama_kategori . '"']);
+            }
         });
 
         // Filter warna
