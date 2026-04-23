@@ -26,17 +26,15 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-            <label class="block text-zinc-400 text-sm mb-2">Batas Stok Minimum Global</label>
-            <input type="number" name="stok_minimum" value="{{ $config->stok_minimum ?? 5 }}" 
+            <label class="block text-zinc-400 text-sm mb-2">✅ Stok Minimum Bahan Baku</label>
+            <input type="number" name="stok_minimum_bahan" value="{{ $config->stok_minimum_bahan ?? 5 }}" 
                    class="w-full bg-zinc-800 border-zinc-700 text-white rounded-lg focus:ring-green-500 border">
         </div>
 
         <div>
-            <label class="block text-zinc-400 text-sm mb-2">Metode Valuasi Aset</label>
-            <select name="metode_stok" class="w-full bg-zinc-800 border-zinc-700 text-white rounded-lg border">
-                <option value="fifo" {{ ($config->metode_stok ?? 'fifo') == 'fifo' ? 'selected' : '' }}>FIFO (First In First Out)</option>
-                <option value="average" {{ ($config->metode_stok ?? '') == 'average' ? 'selected' : '' }}>Harga Rata-rata (Average)</option>
-            </select>
+            <label class="block text-zinc-400 text-sm mb-2">✅ Stok Minimum Produk Jadi</label>
+            <input type="number" name="stok_minimum_produk" value="{{ $config->stok_minimum_produk ?? 2 }}" 
+                   class="w-full bg-zinc-800 border-zinc-700 text-white rounded-lg focus:ring-green-500 border">
         </div>
 
         <div>
@@ -47,9 +45,17 @@
 
         <div>
             <label class="block text-zinc-400 text-sm mb-2">Awalan Kode Produk (Prefix)</label>
-            <input type="text" name="prefix_produk" value="{{ $config->prefix_produk ?? 'PR-' }}" 
+            <input type="text" name="prefix_produk" value="{{ $config->prefix_produk ?? 'PROD-' }}" 
                    class="w-full bg-zinc-800 border-zinc-700 text-white rounded-lg uppercase border">
         </div>
+
+        <div>
+            <label class="block text-zinc-400 text-sm mb-2">💰 Margin Keuntungan Default (%)</label>
+            <input type="number" name="margin_keuntungan" value="{{ $pengaturanCollection['margin_keuntungan'] ?? '30' }}" step="0.1" 
+                   class="w-full bg-zinc-800 border-zinc-700 text-white rounded-lg focus:ring-[#FF6B00] border">
+            <p class="text-xs text-zinc-500 mt-1">Margin otomatis untuk perhitungan Harga Jual Produk Jadi.</p>
+        </div>
+
     </div>
 
     <div class="pt-4 border-t border-zinc-800 flex gap-3">

@@ -7,6 +7,7 @@ use App\Models\ProdukJadi;
 use App\Models\BahanBaku;
 use App\Models\Bom;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class BomController extends Controller
 {
@@ -104,6 +105,7 @@ public function store(Request $request, $produk_jadi_id)
 
 public function edit($id)
 {
+    \Illuminate\Support\Facades\Log::info('BOM Edit Page Request', ['product_id' => $id]);
     $product = ProdukJadi::with(['boms.bahanBaku'])->findOrFail($id);
     
     $existingBoms = [];
@@ -126,46 +128,107 @@ public function edit($id)
     return view('admin.bom.edit', compact('product', 'existingBoms', 'materials'));
 }
 
-public function update(Request $request, $id)
-{
-    // Validasi
-    $request->validate([
-        'material_id'   => 'required|array',
-        'material_id.*' => 'required',
-        'quantity.*'    => 'required|numeric',
-        'unit.*'        => 'required|string',
-    ]);
+    public function update(Request $request, $id)
+    {
+        // DEBUG LOGGING: Lacak upload sketsa
+        \Illuminate\Support\Facades\Log::error('BOM Update Request', [
+            'product_id' => $id,
+            'has_sketsa' => $request->hasFile('sketsa'),
+            'sketsa_count' => $request->hasFile('sketsa') ? count($request->file('sketsa')) : 0,
+            'all_files' => $request->allFiles(),
+            'delete_sketsa' => $request->delete_sketsa,
+        ]);
 
-    $product = ProdukJadi::findOrFail($id);
+        // Validasi BOM + Spesifikasi Teknis
+        $request->validate([
+            'material_id'   => 'required|array',
+            'material_id.*' => 'required',
+            'quantity.*'    => 'required|numeric',
+            'unit.*'        => 'required|string',
+            'panjang'       => ['nullable', 'numeric', 'min:0'],
+            'lebar'         => ['nullable', 'numeric', 'min:0'],
+            'tinggi'        => ['nullable', 'numeric', 'min:0'],
+            'detail_pola'   => ['nullable', 'string'],
+            'sketsa'        => ['nullable', 'array', 'max:4'],
+            'sketsa.*'      => ['image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
+        ]);
 
-    DB::beginTransaction();
-    try {
-        // Hapus resep lama
-        DB::table('bom')->where('id_produk', $product->id)->delete();
+        $product = ProdukJadi::findOrFail($id);
 
-        $bomsData = [];
-        foreach ($request->material_id as $index => $materialId) {
-            if (!empty($materialId) && $request->quantity[$index] > 0) {
-                $bomsData[] = [
-                    'id_produk'        => $product->id,
-                    'id_bahan'         => $materialId,
-                    'jumlah_kebutuhan' => $request->quantity[$index],
-                    'satuan'           => $request->unit[$index],
-                    'created_at'       => now(),
-                    'updated_at'       => now(),
-                ];
+        DB::beginTransaction();
+        try {
+            // === 1. UPDATE SPESIFIKASI TEKNIS PRODUK ===
+            $product = ProdukJadi::findOrFail($id);
+            $sketsaSekarang = $product->sketsa ?? [];
+
+            // Hapus sketsa yang dicentang
+            if ($request->has('delete_sketsa')) {
+                foreach ($request->delete_sketsa as $pathHapus) {
+                    Storage::disk('public')->delete($pathHapus);
+                    $sketsaSekarang = array_diff($sketsaSekarang, [$pathHapus]);
+                }
             }
-        }
 
-        if (count($bomsData) > 0) {
-            DB::table('bom')->insert($bomsData);
-        }
+            // Tambah sketsa baru (Multiple)
+            if ($request->hasFile('sketsa')) {
+                foreach ($request->file('sketsa') as $file) {
+                    if (count($sketsaSekarang) < 4) {
+                        $sketsaSekarang[] = $file->store('produk/sketsa', 'public');
+                    }
+                }
+            }
 
-        DB::commit();
-        return redirect()->route('admin.bom.index')->with('success', 'BOM untuk produk ' . $product->nama_produk . ' berhasil diperbarui.');
-    } catch (\Exception $e) {
-        DB::rollback();
-        return back()->withInput()->with('error', "Gagal memperbarui BOM: " . $e->getMessage());
+            $product->update([
+                'sketsa' => array_values($sketsaSekarang),
+                'panjang' => $request->panjang,
+                'lebar' => $request->lebar,
+                'tinggi' => $request->tinggi,
+                'detail_pola' => $request->detail_pola,
+            ]);
+
+            \Illuminate\Support\Facades\Log::info('BOM Update Success', [
+                'product_id' => $product->id,
+                'sketsa_stored' => $sketsaSekarang,
+                'sketsa_count' => count($sketsaSekarang),
+            ]);
+
+            // === 2. UPDATE RESEP BOM ===
+            DB::table('bom')->where('id_produk', $product->id)->delete();
+
+            $bomsData = [];
+            foreach ($request->material_id as $index => $materialId) {
+                if (!empty($materialId) && $request->quantity[$index] > 0) {
+                    $bomsData[] = [
+                        'id_produk'        => $product->id,
+                        'id_bahan'         => $materialId,
+                        'jumlah_kebutuhan' => $request->quantity[$index],
+                        'satuan'           => $request->unit[$index],
+                        'created_at'       => now(),
+                        'updated_at'       => now(),
+                    ];
+                }
+            }
+
+            if (count($bomsData) > 0) {
+                DB::table('bom')->insert($bomsData);
+            }
+
+            DB::commit();
+            return redirect()->route('admin.bom.index')->with('success', 'BOM & Spesifikasi untuk produk ' . $product->nama_produk . ' berhasil diperbarui.');
+        } catch (\Exception $e) {
+            DB::rollback();
+            if (str_contains($e->getMessage(), 'Maksimal 4 foto sketsa')) {
+                return back()->withInput()->with('error', $e->getMessage());
+            } elseif (str_contains($e->getMessage(), 'The sketsa may not be greater than 4')) {
+                return back()->withInput()->with('error', 'Maksimal 4 foto sketsa yang dapat diupload.');
+            } elseif (str_contains($e->getMessage(), 'The sketsa.*.mimes')) {
+                return back()->withInput()->with('error', 'Format file sketsa harus JPG, JPEG, PNG, atau WEBP.');
+            } elseif (str_contains($e->getMessage(), 'The sketsa.*.max')) {
+                return back()->withInput()->with('error', 'Ukuran file sketsa maksimal 10MB.');
+            } elseif (str_contains($e->getMessage(), 'The sketsa must be an image')) {
+                return back()->withInput()->with('error', 'File yang diupload harus berupa gambar.');
+            }
+            return back()->withInput()->with('error', "Gagal memperbarui BOM: " . $e->getMessage());
+        }
     }
-}
 }

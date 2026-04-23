@@ -1,12 +1,9 @@
 
 
+<?php $__env->startSection('page_title', 'Pakai / Kurangi Stok Produk'); ?>
+
 <?php $__env->startSection('content'); ?>
 <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-    <!-- Header -->
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold text-white text-center sm:text-left">Pakai / Kurangi Stok Produk</h2>
-    </div>
 
     <!-- Filter Panel -->
     <div class="bg-[#1A1C24] border border-[#343842] rounded-2xl p-4 mb-6">
@@ -25,8 +22,8 @@
                     <select name="kategori" id="kategori" class="w-full bg-[#2D3139] border border-[#343842] text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FD730D]">
                         <option value="">Semua Kategori</option>
                         <?php $__currentLoopData = $kategoris; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kategori): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                            <option value="<?php echo e($kategori->kategori); ?>" <?php echo e(request('kategori') == $kategori->kategori ? 'selected' : ''); ?>>
-                                <?php echo e($kategori->kategori); ?>
+                            <option value="<?php echo e($kategori); ?>" <?php echo e(request('kategori') == $kategori ? 'selected' : ''); ?>>
+                                <?php echo e(ucwords($kategori)); ?>
 
                             </option>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
@@ -125,13 +122,16 @@
                         
                         <div class="text-xs text-gray-400 mb-3 space-y-1 flex-grow">
                             <?php if($produk->kategori): ?>
-                                <p><strong class="text-gray-300">Kategori:</strong> <?php echo e($produk->kategori); ?></p>
+                                <?php $kategori = is_string($produk->kategori) ? json_decode($produk->kategori, true) : $produk->kategori; ?>
+                                <p><strong class="text-gray-300">Kategori:</strong> <?php echo e(is_array($kategori) ? implode(', ', $kategori) : $kategori); ?></p>
                             <?php endif; ?>
                             <?php if($produk->warna): ?>
-                                <p><strong class="text-gray-300">Warna:</strong> <?php echo e($produk->warna); ?></p>
+                                <?php $warna = is_string($produk->warna) ? json_decode($produk->warna, true) : $produk->warna; ?>
+                                <p><strong class="text-gray-300">Warna:</strong> <?php echo e(is_array($warna) ? implode(', ', $warna) : $warna); ?></p>
                             <?php endif; ?>
                             <?php if($produk->jenis_motif): ?>
-                                <p><strong class="text-gray-300">Motif:</strong> <?php echo e($produk->jenis_motif); ?></p>
+                                <?php $motif = is_string($produk->jenis_motif) ? json_decode($produk->jenis_motif, true) : $produk->jenis_motif; ?>
+                                <p><strong class="text-gray-300">Motif:</strong> <?php echo e(is_array($motif) ? implode(', ', $motif) : $motif); ?></p>
                             <?php endif; ?>
                         </div>
 

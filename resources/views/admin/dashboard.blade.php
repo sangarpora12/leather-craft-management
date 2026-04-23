@@ -33,18 +33,18 @@
     {{-- KPI CARDS GRID --}}
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         
-        {{-- Kartu 1: Total Aset --}}
+        {{-- Kartu 1: Total Bahan --}}
         <div class="bg-[#1A1C24] border border-[#2D3139] rounded-2xl p-6 shadow-xl hover:border-[#00BFA5]/50 transition-colors">
-            <p class="text-[10px] font-bold text-white uppercase tracking-widest">Total Aset Bahan</p>
-            <div class="mt-2 text-xl font-extrabold text-[#00BFA5]">{{ $kpiTotalAset }}</div>
-            <p class="mt-1 text-[11px] text-gray-400">Valuasi stok gudang</p>
+            <p class="text-[10px] font-bold text-white uppercase tracking-widest">Total Bahan</p>
+            <div class="mt-2 text-xl font-extrabold text-[#00BFA5]">{{ number_format($totalStokBahan, 0, ',', '.') }} Item</div>
+            <p class="mt-1 text-[11px] text-gray-400">Total Kode Bahan Aktif</p>
         </div>
 
         {{-- Kartu 2: Stok Produk Jadi --}}
         <div class="bg-[#1A1C24] border border-[#2D3139] rounded-2xl p-6 shadow-xl hover:border-[#B388FF]/50 transition-colors">
-            <p class="text-[10px] font-bold text-white uppercase tracking-widest">Stok Produk Jadi</p>
-            <div class="mt-2 text-xl font-extrabold text-[#B388FF]">{{ number_format($stokProduk ?? 0, 0, ',', '.') }} Pcs</div>
-            <p class="mt-1 text-[11px] text-gray-200">Siap didistribusikan</p>
+            <p class="text-[10px] font-bold text-white uppercase tracking-widest">Total Produk Jadi</p>
+            <div class="mt-2 text-xl font-extrabold text-[#B388FF]">{{ number_format($totalProduk ?? 0, 0, ',', '.') }} Model</div>
+            <p class="mt-1 text-[11px] text-gray-200">Total SKU yang aktif</p>
         </div>
 
         {{-- Kartu 3: BAHAN BAKU KRITIS --}}
@@ -72,11 +72,27 @@
         </div>
 
         {{-- Kartu 4: Produk Jadi Kritis --}}
-        <div class="bg-[#1A1C24] border border-[#2D3139] rounded-2xl p-6 shadow-xl">
-            <p class="text-[10px] font-bold text-[#FFD740] uppercase tracking-widest">Produk Jadi Kritis</p>
-            <div class="mt-2 text-xl font-extrabold text-[#FFD740]">{{ $jumlahProdukKritis ?? 0 }} Model</div>
-            <p class="mt-1 text-[11px] text-gray-400">Stok menipis</p>
+        @php
+            $stokMinProduk = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_produk')->value('nilai') ?? 2);
+            $produkKritisCount = (int) $jumlahProdukKritis ?? 0;
+            $isProdukKritis = $produkKritisCount > 0;
+        @endphp
+        <div class="bg-[#1A1C24] {{ $isProdukKritis ? 'border-red-500/50 border-l-4 border-l-red-500' : 'border-[#2D3139]' }} rounded-2xl p-6 shadow-xl transition-all">
+            <p class="text-[10px] font-bold {{ $isProdukKritis ? 'text-red-500' : 'text-[#FFD740]' }} uppercase tracking-widest">
+                Produk Jadi Kritis
+            </p>
+            <div class="mt-2 text-xl font-extrabold {{ $isProdukKritis ? 'text-red-500' : 'text-[#FFD740]' }}">
+                {{ $produkKritisCount }} Model
+            </div>
+            <p class="mt-2 text-[11px] font-medium">
+                @if($isProdukKritis)
+                    <span class="text-red-500">⚠️ Stok ≤ {{ $stokMinProduk }} pcs</span>
+                @else
+                    <span class="text-gray-500">Status Aman</span>
+                @endif
+            </p>
         </div>
+
     </div>
 
     {{-- BAR CHART & PRODUKSI BERJALAN --}}
@@ -107,13 +123,28 @@
 
         {{-- List Produksi Berjalan --}}
         <div class="bg-[#1A1C24] border border-[#2D3139] rounded-2xl p-6 shadow-xl">
-            <h3 class="text-white font-bold mb-4 flex items-center gap-2 text-sm">
-                <span class="w-2 h-2 bg-[#00BFA5] rounded-full animate-pulse"></span> Produksi Berjalan
+            <h3 class="text-white font-bold mb-4 flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-[#00BFA5] rounded-full animate-pulse"></span> Produksi Berjalan
+                </div>
+                <div class="flex gap-1">
+                    <span class="text-[10px] px-2 py-1 rounded bg-[#00BFA5]/20 text-[#00BFA5] border border-[#00BFA5]/30">
+                        {{ ($produksiAktif ?? collect())->sum('jumlah_spk') }} SPK
+                    </span>
+                    <span class="text-[10px] px-2 py-1 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                        {{ number_format(($produksiAktif ?? collect())->sum('total_qty')) }} Pcs
+                    </span>
+                </div>
             </h3>
             <div class="space-y-3">
                 @forelse(($produksiAktif ?? []) as $prod)
                     <div class="bg-white/5 border border-white/10 rounded-xl p-4">
-                        <div class="text-sm font-bold text-white">{{ $prod->product->nama_produk ?? 'Unknown' }}</div>
+                        <div class="text-sm">
+                            @if(isset($prod->product->kode_produk))
+                            <span class="text-xs text-[#FF6B00] font-mono mr-2">[{{ $prod->product->kode_produk }}]</span>
+                            @endif
+                            <span class="font-bold text-white">{{ $prod->product->nama_produk ?? 'Unknown' }}</span>
+                        </div>
                         <div class="flex justify-between items-center mt-2">
                             <span class="text-[10px] text-gray-400">{{ number_format($prod->total_qty) }} Pcs</span>
                             <span class="text-[10px] px-2 py-0.5 rounded bg-[#00BFA5]/20 text-[#00BFA5] font-bold border border-[#00BFA5]/30">{{ $prod->jumlah_spk }} SPK</span>
@@ -150,10 +181,13 @@
                 <tbody class="divide-y divide-[#2D3139]">
                     @foreach($pengadaanBahan as $pengadaan)
                     <tr>
-                        <td class="py-3 text-white font-medium">{{ $pengadaan->nama_material }}</td>
-                        <td class="py-3 text-center text-[#00BFA5] font-bold">{{ number_format($pengadaan->jumlah) }} {{ $pengadaan->satuan }}</td>
-                        <td class="py-3 text-center text-white font-bold">{{ $pengadaan->operator_name ?? '-' }}</td>
-                        <td class="py-3 text-center text-gray-500 text-xs">{{ \Carbon\Carbon::parse($pengadaan->created_at)->format('d M Y') }}</td>
+                        <td class="py-3">
+                            <span class="text-xs text-[#FF6B00] font-mono mr-2">[{{ $pengadaan->kode_material }}]</span>
+                            <span class="text-white font-medium">{{ $pengadaan->nama_material }}</span>
+                        </td>
+                        <td class="py-3 text-center text-[#00BFA5] font-bold">{{ number_format($pengadaan->total_jumlah) }} {{ $pengadaan->satuan }}</td>
+                        <td class="py-3 text-center text-white font-bold text-xs">{{ $pengadaan->operator_names ?? '-' }}</td>
+                        <td class="py-3 text-center text-gray-500 text-xs">{{ \Carbon\Carbon::parse($pengadaan->terakhir_dibuat)->format('d M Y') }}</td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -227,24 +261,14 @@
                     }
                 },
                 scales: {
-                    y: { 
-                        type: 'logarithmic',
-                        beginAtZero: true,
-                        grace: '15%',  // Add 15% padding at top so bars don't touch the edge
+                         y: { 
+                             type: 'linear',
+                             beginAtZero: true,
+                             grace: '35%',  // Add 35% padding at top for high values
                         ticks: { 
                             color: '#888888', 
                             font: { size: 10 },
-                            callback: function(value, index, values) {
-                                // Only show major tick marks (1, 10, 100, 1000, etc.)
-                                if (value === 0) return '0';
-                                if (value === 1) return '1';
-                                // Show powers of 10 and their multiples
-                                const logValue = Math.log10(value);
-                                if (logValue === Math.floor(logValue)) {
-                                    return value;
-                                }
-                                return null;
-                            }
+                            precision: 0
                         }, 
                         grid: { display: false } 
                     },

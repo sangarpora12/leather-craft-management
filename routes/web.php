@@ -159,6 +159,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/produk-keluar/history', [ProdukKeluarController::class, 'history'])->name('produk-keluar.history');
         Route::get('/pakai-produk', [\App\Http\Controllers\Admin\PenguranganStokController::class, 'index'])->name('pakai-produk.index');
         Route::get('/pakai-produk/history', [\App\Http\Controllers\ProdukKeluarController::class, 'index'])->name('pakai-produk.history');
+        Route::delete('/pakai-produk/{id}', [\App\Http\Controllers\ProdukKeluarController::class, 'destroy'])->name('pakai-produk.destroy');
         Route::get('/pakai-produk/create', [\App\Http\Controllers\Admin\PenguranganStokController::class, 'create'])->name('pakai-produk.create');
         Route::post('/pakai-produk', [\App\Http\Controllers\Admin\PenguranganStokController::class, 'store'])->name('pakai-produk.store');
         
@@ -320,6 +321,7 @@ Route::middleware(['auth'])->group(function () {
         
         // Pengadaan / Penerimaan Bahan
         Route::get('/pengadaan-bahan', [PengadaanController::class, 'indexOperator'])->name('pengadaan');
+        Route::get('/pengadaan', [PengadaanController::class, 'indexOperator'])->name('pengadaan.index');
         Route::get('/daftar-belanja', [PengadaanController::class, 'indexOperator'])->name('belanja.index');
         Route::get('/pengadaan/list', [PengadaanController::class, 'indexOperator'])->name('pengadaan.list');
         Route::post('/pengadaan/request/{materialId}', [PengadaanController::class, 'requestMaterial'])->name('pengadaan.request');
@@ -329,6 +331,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pengadaan/{id}/receive-form', [PengadaanController::class, 'showReceiveForm'])->name('pengadaan.receive_form');
         Route::post('/pengadaan/{id}/receive', [PengadaanController::class, 'receiveMaterial'])->name('pengadaan.receive');
         
+        // Search Global
+        Route::get('/search', [DashboardController::class, 'operatorSearch'])->name('search');
+
         // Profile
         Route::get('/profile', function () { return view('operator.profile', ['user' => Auth::user()]); })->name('profile');
         Route::post('/profile/update-foto', function (Request $request) {

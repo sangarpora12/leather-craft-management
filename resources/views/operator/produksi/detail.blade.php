@@ -257,9 +257,14 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
                 </div>
                 <div class="rounded-2xl overflow-hidden bg-white/5 border border-white/10 shadow-lg flex flex-col">
                     <div class="text-[10px] text-gray-500 uppercase font-bold text-center py-2 border-b border-white/10">📏 SKETSA POLA</div>
-                    <div class="flex-1 flex items-center justify-center min-h-[140px]">
-                        @if(!empty($produksi->produk_jadi->sketsa))
-                            <img src="{{ asset('storage/'.$produksi->produk_jadi->sketsa) }}" class="w-full h-full object-cover" alt="Sketsa Pola">
+                    @php $opSketsas = $produksi->produk_jadi->sketsa ?? []; @endphp
+                    <div class="flex-1 flex items-center justify-center min-h-[140px] p-2">
+                        @if(count($opSketsas) > 0)
+                            <div class="grid grid-cols-2 gap-1 w-full h-full">
+                                @foreach(array_slice($opSketsas, 0, 4) as $skPath)
+                                    <img src="{{ asset('storage/'.$skPath) }}" class="w-full h-full object-cover rounded-lg" alt="Sketsa">
+                                @endforeach
+                            </div>
                         @else
                             <div class="text-gray-600 text-sm">🚫 Belum tersedia</div>
                         @endif
@@ -267,19 +272,36 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
                 </div>
             </div>
 
+            @php
+                $opKat = is_array($produksi->produk_jadi->kategori) ? $produksi->produk_jadi->kategori : (json_decode($produksi->produk_jadi->kategori, true) ?: [$produksi->produk_jadi->kategori ?: '-']);
+                $opWar = is_array($produksi->produk_jadi->warna)    ? $produksi->produk_jadi->warna    : (json_decode($produksi->produk_jadi->warna, true)    ?: [$produksi->produk_jadi->warna    ?: '-']);
+                $opMot = is_array($produksi->produk_jadi->jenis_motif) ? $produksi->produk_jadi->jenis_motif : (json_decode($produksi->produk_jadi->jenis_motif, true) ?: [$produksi->produk_jadi->jenis_motif ?: '-']);
+            @endphp
             <div class="rounded-xl p-3 bg-white/5 border border-white/10 space-y-3">
                 <div class="grid grid-cols-3 gap-3">
                     <div class="text-center">
-                        <div class="text-[9px] text-gray-500 uppercase font-bold mb-1">KATEGORI</div>
-                        <div class="text-[11px] font-semibold text-white bg-white/10 px-2 py-1 rounded-lg capitalize">{{ str_replace(['[',']','"'], '', $produksi->produk_jadi->kategori) ?: '-' }}</div>
+                        <div class="text-[9px] text-gray-500 uppercase font-bold mb-2">KATEGORI</div>
+                        <div class="flex flex-wrap justify-center gap-1">
+                            @foreach($opKat as $item)
+                            <span class="inline-block text-[10px] font-semibold px-2 py-1 rounded-full capitalize" style="background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid rgba(59,130,246,0.3)">{{ $item }}</span>
+                            @endforeach
+                        </div>
                     </div>
                     <div class="text-center">
-                        <div class="text-[9px] text-gray-500 uppercase font-bold mb-1">WARNA</div>
-                        <div class="text-[11px] font-semibold text-white bg-white/10 px-2 py-1 rounded-lg capitalize">{{ str_replace(['[',']','"'], '', $produksi->produk_jadi->warna) ?: '-' }}</div>
+                        <div class="text-[9px] text-gray-500 uppercase font-bold mb-2">WARNA</div>
+                        <div class="flex flex-wrap justify-center gap-1">
+                            @foreach($opWar as $item)
+                            <span class="inline-block text-[10px] font-semibold px-2 py-1 rounded-full capitalize" style="background:rgba(236,72,153,0.2);color:#f9a8d4;border:1px solid rgba(236,72,153,0.3)">{{ $item }}</span>
+                            @endforeach
+                        </div>
                     </div>
                     <div class="text-center">
-                        <div class="text-[9px] text-gray-500 uppercase font-bold mb-1">MOTIF</div>
-                        <div class="text-[11px] font-semibold text-white bg-white/10 px-2 py-1 rounded-lg capitalize">{{ str_replace(['[',']','"'], '', $produksi->produk_jadi->jenis_motif) ?: '-' }}</div>
+                        <div class="text-[9px] text-gray-500 uppercase font-bold mb-2">MOTIF</div>
+                        <div class="flex flex-wrap justify-center gap-1">
+                            @foreach($opMot as $item)
+                            <span class="inline-block text-[10px] font-semibold px-2 py-1 rounded-full capitalize" style="background:rgba(168,85,247,0.2);color:#d8b4fe;border:1px solid rgba(168,85,247,0.3)">{{ $item }}</span>
+                            @endforeach
+                        </div>
                     </div>
                 </div>
                 <div class="pt-2 border-t border-white/5 text-center">

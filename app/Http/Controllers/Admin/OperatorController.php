@@ -35,15 +35,45 @@ class OperatorController extends Controller
      */
     public function index()
     {
-        // Ambil semua user dengan role 'operator'
         $operators = User::where('role', 'operator')
-            ->withCount(['bahanBakus as total_input_bahan']) // Menghitung jumlah bahan yang diinput/update user ini
+            ->withCount(['bahanBakus as total_input_bahan'])
             ->withSum(['produksis as total_produk_dibuat' => function($q) {
                 $q->where('status', 'SELESAI');
-            }], 'jumlah_produksi') // Menghitung total qty produk yang selesai dikerjakan
+            }], 'jumlah_produksi')
             ->latest()
             ->paginate(12);
-            
+
+        // Load statistik detail per operator
+        foreach ($operators as $op) {
+            // Bahan terbanyak yang diinput operator
+            $bahanTerbanyak = \DB::table('bahan_bakus')
+                ->where('user_id', $op->id)
+                ->select('nama_material', \DB::raw('COUNT(*) as total'))
+                ->groupBy('nama_material')
+                ->orderByDesc('total')
+                ->first();
+            $op->bahan_terbanyak = $bahanTerbanyak ? (object)[
+                'nama' => $bahanTerbanyak->nama_material,
+                'total' => $bahanTerbanyak->total,
+                'satuan' => 'Lembar'
+            ] : null;
+
+            // Produk terbanyak yang dikerjakan operator (status SELESAI)
+            $produkTerbanyak = \DB::table('produksis')
+                ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
+                ->where('produksis.operator_id', $op->id)
+                ->where('produksis.status', 'SELESAI')
+                ->select('produk_jadis.nama_produk as nama', \DB::raw('SUM(produksis.jumlah_produksi) as total'))
+                ->groupBy('produk_jadis.nama_produk')
+                ->orderByDesc('total')
+                ->first();
+            $op->produk_terbanyak = $produkTerbanyak ? (object)[
+                'nama' => $produkTerbanyak->nama,
+                'total' => $produkTerbanyak->total,
+                'satuan' => 'Pcs'
+            ] : null;
+        }
+
         return view('admin.operator.index', compact('operators'));
     }
 
@@ -115,12 +145,14 @@ class OperatorController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:users,name,' . $id,
             'email' => 'required|email|unique:users,email,' . $id,
+            'sub_role' => 'required|in:kepala_gudang,pekerja',
             'password' => 'nullable|string|min:6|confirmed',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $operator->name = $validated['name'];
         $operator->email = $validated['email'];
+        $operator->sub_role = $validated['sub_role'];
 
         if ($request->filled('password')) {
             $operator->password = Hash::make($validated['password']);
@@ -152,6 +184,16 @@ class OperatorController extends Controller
     public function toggleStatus($id)
     {
         $operator = User::where('role', 'operator')->findOrFail($id);
+
+        // Jika request meminta toggle sub_role
+        if (request()->has('toggle_sub_role')) {
+            $operator->sub_role = $operator->sub_role === 'kepala_gudang' ? 'pekerja' : 'kepala_gudang';
+            $operator->save();
+            $label = $operator->sub_role === 'kepala_gudang' ? 'Kepala Gudang' : 'Pekerja';
+            return redirect()->back()->with('success', "Role {$operator->name} berhasil diubah menjadi {$label}.");
+        }
+
+        // Toggle status aktif/nonaktif
         $operator->is_active = !$operator->is_active;
         $operator->save();
 

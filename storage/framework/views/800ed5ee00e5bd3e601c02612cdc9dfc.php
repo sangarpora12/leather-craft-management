@@ -150,32 +150,25 @@
                     </a>
                 </div>
 
-                
-                <div class="mb-6">
-                    <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Logistik</p>
-                    <a href="<?php echo e(route('admin.pengadaan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.pengadaan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
-                        <i class="fa-solid fa-cart-shopping w-5"></i> Pengadaan Material
-                    </a>
-                    <a href="<?php echo e(route('admin.laporan.supplier.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.laporan.supplier.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
-                        <i class="fa-solid fa-truck-loading w-5"></i> Data Supplier
-                    </a>
-                </div>
+                 
+                 <div class="mb-6">
+                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Logistik</p>
+                      <a href="<?php echo e(route('admin.pengadaan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.pengadaan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
+                          <i class="fa-solid fa-cart-shopping w-5"></i> Pengadaan Material
+                      </a>
+                      <a href="<?php echo e(route('admin.laporan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.laporan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
+                          <i class="fa-solid fa-file-invoice w-5"></i> Laporan
+                      </a>
+                      
+                 </div>
 
-                
-                <div class="mb-6">
-                    <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Laporan</p>
-                    <a href="<?php echo e(route('admin.laporan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.laporan.*') && !request()->routeIs('admin.laporan.pengaturan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
-                        <i class="fa-solid fa-file-pdf w-5"></i> Laporan & Mutasi
-                    </a>
-                </div>
-
-                
-                <div class="mb-4">
-                    <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Sistem</p>
-                    <a href="<?php echo e(route('admin.laporan.pengaturan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.laporan.pengaturan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
-                        <i class="fa-solid fa-gear w-5"></i> Pengaturan Sistem
-                    </a>
-                </div>
+                 
+                 <div class="mb-4">
+                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Sistem</p>
+                     <a href="<?php echo e(route('admin.laporan.pengaturan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.laporan.pengaturan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
+                         <i class="fa-solid fa-gear w-5"></i> Pengaturan Sistem
+                     </a>
+                 </div>
 
             </nav>
 
@@ -203,7 +196,11 @@
                     </button>
                     
                     <h1 id="navbar-title" class="text-base font-semibold text-white truncate hidden md:block max-w-xs">
-                        <?php echo $__env->yieldContent('page_title', 'Dashboard'); ?>
+                        <?php if(\Request::routeIs('admin.laporan.pengaturan.*') || \Request::routeIs('admin.pengaturan.*')): ?>
+                            Pengaturan Sistem
+                        <?php else: ?>
+                            <?php echo $__env->yieldContent('page_title', 'Dashboard'); ?>
+                        <?php endif; ?>
                     </h1>
                 </div>
 
@@ -331,19 +328,94 @@
 
     
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3500,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
+        // Global SweetAlert Dark Theme Config
+        const swalDarkTheme = {
+            background: '#1C222D',
+            color: '#fff',
+            confirmButtonColor: '#FF6B00',
+            confirmButtonText: 'Ya, Lanjutkan',
+            cancelButtonColor: '#2D3139',
+            cancelButtonText: 'Batal',
+            customClass: {
+                popup: 'rounded-2xl border border-white/10',
+                title: 'text-white font-bold text-lg',
+                htmlContainer: 'text-gray-400 text-sm',
+                confirmButton: 'rounded-xl px-6 py-2.5 text-sm font-bold shadow-lg',
+                cancelButton: 'rounded-xl px-6 py-2.5 text-sm font-bold border border-white/10',
+                icon: 'border-none'
+            },
+            buttonsStyling: false
+        };
 
+        // Toast Dark Config
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true,
+            background: '#1C222D',
+            color: '#fff',
+            customClass: {
+                popup: 'rounded-xl border border-white/10 shadow-2xl',
+                title: 'text-sm font-semibold text-white ml-2',
+                timerProgressBar: 'bg-orange-500'
+            },
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+
+        // Global Confirm Function
+        window.swalConfirm = function(options) {
+            return Swal.fire({
+                ...swalDarkTheme,
+                title: options.title || 'Konfirmasi',
+                text: options.text || 'Apakah Anda yakin?',
+                icon: options.icon || 'warning',
+                showCancelButton: true,
+                showConfirmButton: true,
+                confirmButtonText: options.confirmText || 'Ya, Lanjutkan',
+                cancelButtonText: options.cancelText || 'Batal',
+                reverseButtons: true,
+                focusCancel: true,
+                ...options.custom
+            }).then((result) => {
+                if (result.isConfirmed && options.onConfirm) {
+                    options.onConfirm();
+                }
+                return result.isConfirmed;
+            });
+        };
+
+        // Global Success Alert
+        window.swalSuccess = function(title, text) {
+            return Swal.fire({
+                ...swalDarkTheme,
+                title: title || 'Berhasil!',
+                text: text || '',
+                icon: 'success',
+                confirmButtonText: 'OK',
+                showCancelButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        };
+
+        // Global Error Alert
+        window.swalError = function(title, text) {
+            return Swal.fire({
+                ...swalDarkTheme,
+                title: title || 'Terjadi Kesalahan!',
+                text: text || '',
+                icon: 'error',
+                confirmButtonText: 'Mengerti',
+                showCancelButton: false
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
             <?php if(session('success')): ?>
                 Toast.fire({
                     icon: 'success',

@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\ProdukJadi;
-use App\Models\RiwayatPenguranganStok;
+use App\Models\ProdukKeluar;
 
 class PenguranganStokController extends Controller
 {
@@ -16,6 +17,15 @@ class PenguranganStokController extends Controller
     {
         $query = ProdukJadi::query();
 
+        // ✅ FILTER HANYA PRODUK JADI YANG SUDAH SELESAI PRODUKSI DAN VALID
+        $produkSelesaiIds = \App\Models\Produksi::where('status', 'SELESAI')
+            ->whereNotNull('produk_jadi_id')
+            ->pluck('produk_jadi_id')
+            ->unique();
+            
+        $query->whereIn('id', $produkSelesaiIds)
+              ->has('boms'); // Hanya produk yang sudah punya BOM
+
         // Filter Pencarian Nama
         if ($request->filled('search')) {
             $query->where('nama_produk', 'like', '%' . $request->search . '%');
@@ -23,7 +33,7 @@ class PenguranganStokController extends Controller
 
         // Filter Kategori
         if ($request->filled('kategori')) {
-            $query->where('kategori', $request->kategori);
+            $query->whereJsonContains('kategori', $request->kategori);
         }
 
         // Filter Status Stok
@@ -55,7 +65,35 @@ class PenguranganStokController extends Controller
         }
 
         $produkJadis = $query->paginate(12)->withQueryString();
-        $kategoris = ProdukJadi::select('kategori')->distinct()->whereNotNull('kategori')->orderBy('kategori')->get();
+        
+        // ✅ AMBIL KATEGORI DARI TABEL PENGATURAN, JIKA KOSONG FALLBACK DARI PRODUK
+        $kategorisRaw = \App\Models\Pengaturan::where('nama_pengaturan', 'kategori_produk')->first();
+        $kategoris = collect();
+        
+        if ($kategorisRaw && $kategorisRaw->nilai) {
+            $kategoriArray = is_string($kategorisRaw->nilai) ? json_decode($kategorisRaw->nilai, true) : $kategorisRaw->nilai;
+            if (is_array($kategoriArray) && count($kategoriArray) > 0) {
+                $kategoris = collect($kategoriArray)->sort()->values();
+            }
+        }
+        
+        // ✅ FALLBACK: JIKA DI PENGATURAN KOSONG, AMBIL DARI PRODUK
+        if ($kategoris->isEmpty()) {
+            $kategorisRaw = ProdukJadi::select('kategori')->distinct()->whereNotNull('kategori')->get();
+            
+            foreach ($kategorisRaw as $kat) {
+                $val = is_string($kat->kategori) ? json_decode($kat->kategori, true) : $kat->kategori;
+                if(is_array($val)) {
+                    foreach($val as $v) {
+                        if(!$kategoris->contains($v)) $kategoris->push($v);
+                    }
+                } else {
+                    if(!$kategoris->contains($val)) $kategoris->push($val);
+                }
+            }
+            
+            $kategoris = $kategoris->sort()->values();
+        }
 
         return view('admin.pakai-produk.index', compact('produkJadis', 'kategoris'));
     }
@@ -75,30 +113,45 @@ class PenguranganStokController extends Controller
      */
     public function store(Request $request)
     {
-        // 1. Validasi input
-        $request->validate([
-            'produk_jadi_id' => 'required|exists:produk_jadis,id',
-            'kuantitas' => 'required|integer|min:1',
-            'alasan' => 'required|string|max:255',
-        ]);
+        DB::beginTransaction();
+        
+        try {
+            // 1. Validasi input
+            $request->validate([
+                'produk_jadi_id' => 'required|exists:produk_jadis,id',
+                'jumlah' => 'required|integer|min:1',
+                'alasan' => 'required|string|max:255',
+            ]);
 
-        // 2. Cari produk
-        $produk = ProdukJadi::findOrFail($request->produk_jadi_id);
+            // 2. Cari produk dengan LOCK untuk mencegah Race Condition
+            $produk = ProdukJadi::lockForUpdate()->findOrFail($request->produk_jadi_id);
 
-        // 3. Panggil metode kurangiStok
-        $berhasil = $produk->kurangiStok($request->kuantitas, $request->alasan);
-
-        // 4. Beri respon
-        if ($berhasil) {
-            // DIUBAH: Langsung arahkan ke halaman riwayat untuk melihat hasilnya.
-            return redirect()->route('admin.pakai-produk.index')->with('success', 'Stok berhasil dikurangi. Riwayat baru telah dicatat.');
-        } else {
-            // Cek apakah masalahnya adalah stok tidak cukup
-            if ($produk->stok < $request->kuantitas) {
-                return back()->with('error', 'Gagal mengurangi stok. Kuantitas melebihi stok yang tersedia (' . $produk->stok . ').');
+            // 3. Validasi Stok
+            if ($produk->stok < $request->jumlah) {
+                return back()->with('error', 'Gagal mengurangi stok: Stok tersedia hanya ' . $produk->stok . ' unit.');
             }
-            // Jika bukan karena stok, berarti ada masalah lain saat transaksi
-            return back()->with('error', 'Terjadi kesalahan internal saat mencoba mengurangi stok. Silakan coba lagi.');
+
+            // 4. Kurangi Stok Secara Manual
+            $produk->stok = $produk->stok - $request->jumlah;
+            $produk->save();
+
+            // 5. Catat Riwayat di ProdukKeluar
+            \App\Models\ProdukKeluar::create([
+                'produk_jadi_id' => $produk->id,
+                'jumlah_keluar' => $request->jumlah,
+                'alasan' => $request->alasan,
+                'tanggal_keluar' => now(),
+                'user_id' => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            // 6. Beri respon sukses
+            return redirect()->route('admin.pakai-produk.index')->with('success', 'Stok ' . $produk->nama_produk . ' berhasil dikurangi sebanyak ' . $request->jumlah . ' unit.');
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal mengurangi stok: ' . $e->getMessage())->withInput();
         }
     }
 }

@@ -25,6 +25,7 @@
                         <th scope="col" class="px-6 py-3">Jumlah</th>
                         <th scope="col" class="px-6 py-3">Alasan</th>
                         <th scope="col" class="px-6 py-3">Dicatat oleh</th>
+                        <th scope="col" class="px-6 py-3 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,10 +46,19 @@
                             <td class="px-6 py-4">
                                 {{ $transaksi->user->name ?? 'Sistem' }}
                             </td>
+                            <td class="px-6 py-4 text-center">
+                                <form action="{{ route('admin.pakai-produk.destroy', $transaksi->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus riwayat ini? Stok produk akan dikembalikan.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-400 hover:text-red-300 transition">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center py-10">
+                            <td colspan="6" class="text-center py-10">
                                 <p class="text-gray-500">Belum ada riwayat pengurangan stok.</p>
                             </td>
                         </tr>

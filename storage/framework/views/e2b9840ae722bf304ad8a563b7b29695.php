@@ -1,24 +1,18 @@
 
 
 <?php $__env->startSection('content'); ?>
-<div class="bg-zinc-950 min-h-screen text-zinc-100">
-    <div class="border-b border-zinc-800 bg-zinc-900 px-6 py-4">
-        <h1 class="text-2xl font-bold text-white">Pengaturan Sistem</h1>
-        <p class="text-zinc-400 text-sm">Kelola pengaturan aplikasi dan profil Anda</p>
-    </div>
-
-    <div class="p-6">
+<div class="min-h-screen">
+    <div class="p-6 pt-2">
         <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <?php
                 $menus = [
                     ['id' => 'satuan', 'icon' => 'fa-ruler-combined', 'color' => 'purple', 'title' => 'Satuan & Kategori', 'desc' => 'Kelola satuan dan kategori'],
-                    ['id' => 'gudang', 'icon' => 'fa-warehouse', 'color' => 'green', 'title' => 'Konfigurasi Gudang', 'desc' => 'Batas stok & auto-potong'],
-                    ['id' => 'laporan', 'icon' => 'fa-file-pdf', 'color' => 'red', 'title' => 'Laporan & PDF', 'desc' => 'Format & template laporan'],
-                    ['id' => 'keuangan', 'icon' => 'fa-coins', 'color' => 'yellow', 'title' => 'Keuangan', 'desc' => 'PPN & margin keuntungan'],
+                    ['id' => 'gudang', 'icon' => 'fa-warehouse', 'color' => 'green', 'title' => 'Konfigurasi Gudang', 'desc' => 'Batas stok, margin & harga jual'],
+                    // ['id' => 'laporan', 'icon' => 'fa-file-pdf', 'color' => 'red', 'title' => 'Laporan & PDF', 'desc' => 'Format & template laporan'],
                     ['id' => 'notifikasi', 'icon' => 'fa-bell', 'color' => 'pink', 'title' => 'Notifikasi', 'desc' => 'Bot Telegram & stok kritis'],
-                    ['id' => 'shift', 'icon' => 'fa-clock', 'color' => 'indigo', 'title' => 'Shift & Operasional', 'desc' => 'Jadwal buka/tutup pabrik'],
-                    ['id' => 'hakakses', 'icon' => 'fa-shield-alt', 'color' => 'cyan', 'title' => 'Hak Akses', 'desc' => 'Manajemen role & izin'],
-                    ['id' => 'log', 'icon' => 'fa-history', 'color' => 'teal', 'title' => 'Log Aktivitas', 'desc' => 'Riwayat aktivitas sistem'],
+                    // ['id' => 'shift', 'icon' => 'fa-clock', 'color' => 'indigo', 'title' => 'Shift & Operasional', 'desc' => 'Jadwal buka/tutup pabrik'],
+                    // ['id' => 'hakakses', 'icon' => 'fa-shield-alt', 'color' => 'cyan', 'title' => 'Hak Akses', 'desc' => 'Manajemen role & izin'],
+                    // ['id' => 'log', 'icon' => 'fa-history', 'color' => 'teal', 'title' => 'Log Aktivitas', 'desc' => 'Riwayat aktivitas sistem'],
                     ['id' => 'danger', 'icon' => 'fa-exclamation-triangle', 'color' => 'red', 'title' => 'Danger Zone', 'desc' => 'Reset & hapus data'],
                 ];
             ?>

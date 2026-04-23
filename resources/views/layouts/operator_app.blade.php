@@ -27,12 +27,38 @@
             color: #ffffff;
             font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
             -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+        html {
+            overflow-x: hidden;
+            scroll-behavior: smooth;
         }
 
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
         .safe-top { padding-top: env(safe-area-inset-top); }
 
-        .operator-main { padding-bottom: 7.5rem; overflow-y: auto; }
+        .operator-main { 
+            padding-bottom: 7.5rem; 
+            min-height: 100vh;
+            background: var(--op-bg);
+        }
+        /* Hanya sembunyikan scrollbar tapi tetap bisa scroll normal */
+        ::-webkit-scrollbar {
+            width: 0px;
+            height: 0px;
+            opacity: 0;
+            pointer-events: none;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: transparent;
+        }
+        * {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
 
         .op-glass {
             background: var(--op-surface);

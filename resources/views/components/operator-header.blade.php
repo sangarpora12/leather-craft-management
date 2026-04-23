@@ -1,5 +1,5 @@
 {{-- Operator Header with Elegant Notification Dropdown --}}
-<div class="h-16 px-4 flex items-center justify-between bg-gray-900/90 border-b border-gray-700 sticky top-0 z-50"
+<div class="h-16 px-4 flex items-center justify-between bg-[#0B0E14] border-b border-gray-700 sticky top-0 z-50"
      style="padding-top: env(safe-area-inset-top);">
     <button type="button" class="w-8 h-8 flex items-center justify-center hover:bg-gray-700/60 rounded-full transition"
             title="Menu" onclick="window.dispatchEvent(new CustomEvent('operator:toggleSidebar'))">

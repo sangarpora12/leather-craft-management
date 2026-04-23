@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'Edit Operator')
-@section('title_header', 'Edit Data Operator')
+@section('title', 'Edit Akun')
+@section('title_header', 'Edit Akun')
 
 @section('content')
 <div class="max-w-2xl mx-auto">
@@ -28,13 +28,23 @@
                 </div>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-gray-400 mb-1">Foto (Opsional)</label>
-                <input type="file" name="foto" accept="image/*" class="w-full bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition">
-                @error('foto') <p class="text-red-500 text-[10px] mt-1">{{ $message }}</p> @enderror
-                @if($operator->foto)
-                    <p class="text-xs text-gray-500 mt-1">Foto saat ini: <a href="{{ asset('storage/' . $operator->foto) }}" target="_blank" class="text-teal-500">Lihat</a></p>
-                @endif
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 mb-1">Role</label>
+                    <select name="sub_role" class="w-full bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition">
+                        <option value="pekerja" {{ old('sub_role', $operator->sub_role) === 'pekerja' ? 'selected' : '' }}>Pekerja (Tidak Bisa Login)</option>
+                        <option value="kepala_gudang" {{ old('sub_role', $operator->sub_role) === 'kepala_gudang' ? 'selected' : '' }}>Kepala Gudang (Bisa Login)</option>
+                    </select>
+                    @error('sub_role') <p class="text-red-500 text-[10px] mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 mb-1">Foto (Opsional)</label>
+                    <input type="file" name="foto" accept="image/*" class="w-full bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition">
+                    @error('foto') <p class="text-red-500 text-[10px] mt-1">{{ $message }}</p> @enderror
+                    @if($operator->foto)
+                        <p class="text-xs text-gray-500 mt-1">Foto saat ini: <a href="{{ asset('storage/' . $operator->foto) }}" target="_blank" class="text-teal-500">Lihat</a></p>
+                    @endif
+                </div>
             </div>
 
             <div class="bg-yellow-500/5 border border-yellow-500/10 p-4 rounded-xl mt-4">

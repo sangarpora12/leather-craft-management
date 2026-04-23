@@ -10,12 +10,103 @@
             <h2 class="text-2xl font-bold text-white">Edit Resep Produksi (BOM)</h2>
             <p class="text-gray-400 text-sm">Atur bahan baku untuk: <span class="text-orange-500 font-bold">{{ $product->nama_produk }}</span></p>
         </div>
-        <a href="{{ route('admin.bom.index') }}" class="text-gray-400 hover:text-white text-sm">Kembali</a>
+        <div class="flex gap-3 items-center">
+            <a href="{{ route('admin.produk-jadi.edit', $product->id) }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition">
+                <i class="fa-solid fa-tag"></i> Edit Informasi Produk
+            </a>
+            <a href="{{ route('admin.bom.index') }}" class="text-gray-400 hover:text-white text-sm">Kembali</a>
+        </div>
     </div>
 
-    <form action="{{ route('admin.bom.update', $product->id) }}" method="POST" class="space-y-6">
+    <form action="{{ route('admin.bom.update', $product->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
         @csrf
         @method('PUT')
+
+        {{-- Spesifikasi Teknis Produk --}}
+        <div class="bg-[#1A1A1A] rounded-xl border border-white/10 p-6">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                <h3 class="font-bold text-white">Spesifikasi Teknis Produk</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-300 mb-2">Panjang (cm)</label>
+                    <input type="number" step="0.01" name="panjang"
+                        value="{{ old('panjang', $product->panjang) }}"
+                        class="w-full bg-[#111] border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:border-orange-500 outline-none"
+                        placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-300 mb-2">Lebar (cm)</label>
+                    <input type="number" step="0.01" name="lebar"
+                        value="{{ old('lebar', $product->lebar) }}"
+                        class="w-full bg-[#111] border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:border-orange-500 outline-none"
+                        placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-300 mb-2">Tinggi (cm)</label>
+                    <input type="number" step="0.01" name="tinggi"
+                        value="{{ old('tinggi', $product->tinggi) }}"
+                        class="w-full bg-[#111] border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:border-orange-500 outline-none"
+                        placeholder="0">
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <label class="block text-sm font-semibold text-gray-300 mb-2">Detail Pola / Catatan Potong</label>
+                <textarea name="detail_pola" rows="4"
+                    class="w-full bg-[#111] border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:border-orange-500 outline-none resize-vertical"
+                    placeholder="Catatan pola, jahitan, atau instruksi potong khusus...">{{ old('detail_pola', $product->detail_pola) }}</textarea>
+            </div>
+
+            <div class="mt-6">
+                <label class="block text-sm font-semibold text-gray-300 mb-2">Sketsa Produk <span class="text-xs text-gray-500">(Maksimal 4 foto)</span></label>
+
+                {{-- Gallery Sketsa Existing --}}
+                @php $existingSketsas = $product->sketsa ?? []; @endphp
+                @if(count($existingSketsas) > 0)
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        @foreach($existingSketsas as $index => $sketsaPath)
+                            <div class="relative group">
+                                <div class="aspect-square rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                                    <img src="{{ asset('storage/' . $sketsaPath) }}" class="w-full h-full object-cover" alt="Sketsa {{ $index + 1 }}">
+                                </div>
+                                <label class="absolute top-2 right-2 flex items-center gap-1 bg-red-600/90 hover:bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition">
+                                    <input type="checkbox" name="delete_sketsa[]" value="{{ $sketsaPath }}" class="w-3 h-3">
+                                    Hapus
+                                </label>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
+                {{-- Upload Sketsa Baru --}}
+                @if(count($existingSketsas) < 4)
+                    <div class="group relative w-full h-32 border-2 border-dashed border-white/20 hover:border-orange-500 hover:bg-white/5 rounded-xl flex flex-col items-center justify-center p-6 cursor-pointer transition-all duration-300 bg-black/30" id="sketsaDropzone">
+                        <svg class="w-10 h-10 text-gray-400 group-hover:text-orange-500 mb-2 transition" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"/>
+                        </svg>
+                        <p class="text-white font-medium text-sm mb-1">Klik atau drag gambar sketsa ke sini</p>
+                        <p class="text-xs text-gray-400" id="sketsaHint">Maks {{ 4 - count($existingSketsas) }} foto lagi. PNG, JPG, WEBP hingga 10MB</p>
+                        <input type="file" name="sketsa[]" accept="image/*" multiple
+                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            id="sketsaInput"
+                            onchange="handleSketsaSelect(this)">
+                    </div>
+                    {{-- Preview Gambar yang Dipilih --}}
+                    <div id="sketsaPreviewContainer" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 hidden"></div>
+                    @error('sketsa')
+                        <p class="text-red-500 text-xs mt-2">{{ $message }}</p>
+                    @enderror
+                    @error('sketsa.*')
+                        <p class="text-red-500 text-xs mt-2">{{ $message }}</p>
+                    @enderror
+                @else
+                    <p class="text-xs text-gray-500">✅ Sudah mencapai batas maksimal 4 foto sketsa. Hapus salah satu untuk mengganti.</p>
+                @endif
+            </div>
+        </div>
 
         <div class="bg-[#1A1A1A] rounded-xl border border-white/10 p-6">
             
@@ -129,6 +220,102 @@
 </div>
 
 <script>
+let sketsaFileTransfer = new DataTransfer();
+
+function handleSketsaSelect(input) {
+    const files = Array.from(input.files);
+    const container = document.getElementById('sketsaPreviewContainer');
+    const dropzone = document.getElementById('sketsaDropzone');
+    const hint = document.getElementById('sketsaHint');
+    const existingCount = document.querySelectorAll('[name^="delete_sketsa"]').length;
+    const maxTotal = 4;
+    const currentPreviews = container.querySelectorAll('.preview-item').length;
+    const remainingSlots = maxTotal - existingCount - currentPreviews;
+
+    if (files.length === 0) return;
+
+    // Validasi: jumlah total tidak boleh lebih dari 4
+    if (files.length > remainingSlots) {
+        alert('Maksimal ' + maxTotal + ' foto sketsa. Kamu bisa upload maksimal ' + remainingSlots + ' foto lagi.');
+        return;
+    }
+
+    container.classList.remove('hidden');
+
+    files.forEach((file) => {
+        sketsaFileTransfer.items.add(file);
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'preview-item relative group aspect-square rounded-xl overflow-hidden border border-white/10 bg-black/30';
+            wrapper.dataset.filename = file.name;
+            wrapper.innerHTML = `
+                <img src="${e.target.result}" class="w-full h-full object-cover" alt="Preview">
+                <button type="button" onclick="removeSketsaPreview(this, '${file.name.replace(/'/g, "\\'")}')" class="absolute top-2 right-2 bg-red-600/90 hover:bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded transition z-10">
+                    Hapus
+                </button>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 truncate">${file.name}</div>
+            `;
+            container.appendChild(wrapper);
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Assign kembali ke input supaya ikut submit
+    input.files = sketsaFileTransfer.files;
+
+    // Update hint text
+    const newRemaining = remainingSlots - files.length;
+    if (hint) {
+        hint.textContent = newRemaining > 0
+            ? 'Maks ' + newRemaining + ' foto lagi. PNG, JPG, WEBP hingga 10MB'
+            : 'Slot sketsa penuh. Hapus preview atau sketsa lama untuk mengganti.';
+    }
+
+    // Sembunyikan dropzone kalau sudah penuh
+    if (newRemaining <= 0 && dropzone) {
+        dropzone.classList.add('hidden');
+    }
+}
+
+function removeSketsaPreview(btn, fileName) {
+    const wrapper = btn.closest('.preview-item');
+    const container = document.getElementById('sketsaPreviewContainer');
+    const dropzone = document.getElementById('sketsaDropzone');
+    const hint = document.getElementById('sketsaHint');
+    const input = document.getElementById('sketsaInput');
+    const existingCount = document.querySelectorAll('[name^="delete_sketsa"]').length;
+    const maxTotal = 4;
+
+    wrapper.remove();
+
+    // Hapus file dari DataTransfer
+    const newDt = new DataTransfer();
+    Array.from(sketsaFileTransfer.files).forEach(file => {
+        if (file.name !== fileName) {
+            newDt.items.add(file);
+        }
+    });
+    sketsaFileTransfer = newDt;
+    if (input) input.files = sketsaFileTransfer.files;
+
+    const currentPreviews = container.querySelectorAll('.preview-item').length;
+    const remaining = maxTotal - existingCount - currentPreviews;
+
+    if (currentPreviews === 0) {
+        container.classList.add('hidden');
+    }
+
+    if (hint) {
+        hint.textContent = 'Maks ' + remaining + ' foto lagi. PNG, JPG, WEBP hingga 10MB';
+    }
+
+    if (dropzone) {
+        dropzone.classList.remove('hidden');
+    }
+}
+
 function bomForm() {
     return {
         rows: @json($existingBoms ?? []),

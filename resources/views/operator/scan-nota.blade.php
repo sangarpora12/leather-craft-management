@@ -3,13 +3,13 @@
 @section('title', 'Scan Nota - Berliano Leather')
 
 @section('content')
-<div class="w-full max-w-md mx-auto bg-gradient-to-br from-neutral-900 via-neutral-900 to-neutral-800 min-h-screen">
+<div class="w-full max-w-md mx-auto bg-[#0B0E14] min-h-screen">
 
     @include('components.operator-header', ['title' => 'SCAN NOTA'])
 
     <div class="px-6 py-6 space-y-6">
         <!-- Tab Navigation -->
-        <div class="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-3 border border-gray-700/50 shadow-xl">
+        <div class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-3 border border-white/5 shadow-xl">
             <div class="flex gap-2">
                 <button id="tabScan" class="flex-1 text-center py-2 px-3 text-sm font-semibold rounded-xl transition-all duration-300 bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400">
                     <div class="flex items-center justify-center gap-1.5">
@@ -41,7 +41,7 @@
 
         <!-- Scan Tab Content -->
         <div id="contentScan">
-            <div class="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 shadow-xl">
+            <div class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-6 border border-white/5 shadow-xl">
                 <div class="text-center mb-6">
                     <div class="w-14 h-14 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                         <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -82,22 +82,22 @@
                 <form id="pelengkapForm" action="{{ route('operator.bahan.store') }}" method="POST" class="space-y-4">
                     @csrf
                     
-                    <div class="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-5 border border-gray-700/50 shadow-xl">
+                    <div class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-5 border border-white/5 shadow-xl">
                         <div>
                             <label class="block text-sm font-medium text-gray-300 mb-2">Kode Material</label>
-                            <input type="text" name="kode_material" id="kodePelengkap" placeholder="Otomatis terisi saat pilih bahan..." class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-gray-400 focus:ring-2 focus:ring-purple-500 outline-none" readonly>
+                            <input type="text" name="kode_material" id="kodePelengkap" placeholder="Otomatis terisi saat pilih bahan..." class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-400 focus:ring-2 focus:ring-purple-500 outline-none" readonly>
                         </div>
 
                         <div class="relative mt-4">
                             <label class="block text-sm font-medium text-gray-300 mb-2">Nama Bahan Pelengkap <span class="text-red-500">*</span></label>
-                            <input type="text" id="nama_pelengkap" name="nama_material" placeholder="Ketik nama bahan pelengkap..." class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none" required autocomplete="off">
-                            <div id="suggestionsPelengkap" class="absolute top-full left-0 right-0 bg-gray-800 border border-gray-600 rounded-xl shadow-2xl mt-1 max-h-40 overflow-y-auto z-20 hidden"></div>
+                            <input type="text" id="nama_pelengkap" name="nama_material" placeholder="Ketik nama bahan pelengkap..." class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none" required autocomplete="off">
+                            <div id="suggestionsPelengkap" class="absolute top-full left-0 right-0 bg-[#1C222D] border border-white/10 rounded-xl shadow-2xl mt-1 max-h-40 overflow-y-auto z-20 hidden"></div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3 mt-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-300 mb-2">Kategori</label>
-                                <select name="kategori" id="kategoriPelengkapSelect" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                                <select name="kategori" id="kategoriPelengkapSelect" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
                                     <option value="">-- Pilih Kategori --</option>
                                     @forelse ($kategories as $kategori)
                                         <option value="{{ $kategori->nama_kategori }}">{{ $kategori->nama_kategori }}</option>
@@ -108,7 +108,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-300 mb-2">Satuan</label>
-                                <select name="satuan" id="satuanPelengkapSelect" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                                <select name="satuan" id="satuanPelengkapSelect" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
                                     <option value="">-- Pilih Satuan --</option>
                                     @forelse ($satuans as $satuan)
                                         <option value="{{ $satuan->nama_satuan }}">{{ $satuan->nama_satuan }}</option>
@@ -159,33 +159,33 @@
                 <form id="manualForm" action="{{ route('operator.bahan.store') }}" method="POST" class="space-y-4">
                     @csrf
                     
-                    <div class="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-5 border border-gray-700/50 shadow-xl">
+                    <div class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-5 border border-white/5 shadow-xl">
                         <div>
                             <label class="block text-sm font-medium text-gray-300 mb-2">Kode Material</label>
-                            <input type="text" name="kode_material" id="kodeMaterial" placeholder="Otomatis terisi saat pilih bahan..." class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-gray-400 focus:ring-2 focus:ring-blue-500 outline-none" readonly>
+                            <input type="text" name="kode_material" id="kodeMaterial" placeholder="Otomatis terisi saat pilih bahan..." class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-400 focus:ring-2 focus:ring-blue-500 outline-none" readonly>
                         </div>
 
                         <div class="relative mt-4">
                             <label class="block text-sm font-medium text-gray-300 mb-2">Nama Bahan <span class="text-red-500">*</span></label>
-                            <input type="text" id="nama_material" name="nama_material" placeholder="Ketik nama bahan..." class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none" required autocomplete="off">
-                            <div id="suggestions" class="absolute top-full left-0 right-0 bg-gray-800 border border-gray-600 rounded-xl shadow-2xl mt-1 max-h-40 overflow-y-auto z-20 hidden"></div>
+                            <input type="text" id="nama_material" name="nama_material" placeholder="Ketik nama bahan..." class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none" required autocomplete="off">
+                            <div id="suggestions" class="absolute top-full left-0 right-0 bg-[#1C222D] border border-white/10 rounded-xl shadow-2xl mt-1 max-h-40 overflow-y-auto z-20 hidden"></div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3 mt-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-300 mb-2">Supplier</label>
-                                <input type="text" name="supplier" id="supplierInput" placeholder="Contoh: CV. Kulit Jaya" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <input type="text" name="supplier" id="supplierInput" placeholder="Contoh: CV. Kulit Jaya" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-300 mb-2">Ref / Nota</label>
-                                <input type="text" name="ref_no" id="refNoInput" placeholder="No Nota / Barcode" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <input type="text" name="ref_no" id="refNoInput" placeholder="No Nota / Barcode" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3 mt-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-300 mb-2">Kategori</label>
-                                <select name="kategori" id="kategoriSelect" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <select name="kategori" id="kategoriSelect" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
                                      <option value="">-- Pilih Kategori --</option>
                                      @forelse ($kategories as $kategori)
                                          <option value="{{ $kategori->nama_kategori }}">{{ $kategori->nama_kategori }}</option>
@@ -196,7 +196,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-300 mb-2">Satuan <span class="text-red-500">*</span></label>
-                                <select name="satuan" id="satuanSelect" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none" required>
+                                <select name="satuan" id="satuanSelect" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none" required>
                                     <option value="">-- Pilih Satuan --</option>
                                     @forelse ($satuans as $satuan)
                                         <option value="{{ $satuan->nama_satuan }}">{{ $satuan->nama_satuan }}</option>
@@ -210,12 +210,12 @@
                         <div class="grid grid-cols-2 gap-3 mt-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-300 mb-2">Jumlah Masuk <span class="text-red-500">*</span></label>
-                                <input type="number" name="stok" id="jumlahInput" placeholder="0" step="0.01" min="0.01" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none" required>
+                                <input type="number" name="stok" id="jumlahInput" placeholder="0" step="0.01" min="0.01" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none" required>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-300 mb-2">Harga Beli (Rp) <span class="text-red-500">*</span></label>
                                 <div id="lastPriceInfo" class="hidden text-xs text-amber-400 mb-2"></div>
-                                <input type="number" name="harga_satuan" id="hargaSatuan" placeholder="Rp" step="0.01" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none" required>
+                                <input type="number" name="harga_satuan" id="hargaSatuan" placeholder="Rp" step="0.01" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none" required>
                             </div>
                         </div>
 
@@ -225,9 +225,9 @@
                             <div class="relative">
                                 <input type="file" name="foto_bukti" id="fotoBuktiInput" accept="image/*" class="hidden">
                                 <div id="fotoBuktiPreview" class="hidden mb-3">
-                                    <img id="fotoBuktiThumbnail" class="w-full h-32 object-cover rounded-xl border border-gray-600">
+                                    <img id="fotoBuktiThumbnail" class="w-full h-32 object-cover rounded-xl border border-white/10">
                                 </div>
-                                <button type="button" id="btnFotoBukti" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white flex items-center justify-center gap-2 hover:bg-gray-700/50 transition">
+                                <button type="button" id="btnFotoBukti" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white flex items-center justify-center gap-2 hover:bg-gray-700/50 transition">
                                     <i class="fa-solid fa-camera text-gray-400"></i>
                                     <span id="textFotoBukti">Tambah Foto Bukti Fisik</span>
                                 </button>
@@ -236,7 +236,7 @@
 
                         <div class="mt-4">
                             <label class="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" name="is_inventory" value="1" class="w-5 h-5 rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" checked>
+                                <input type="checkbox" name="is_inventory" value="1" class="w-5 h-5 rounded border-white/10 bg-[#1C222D] text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" checked>
                                 <span class="text-sm text-gray-300">
                                     <strong>Hitung Stok & Harga</strong> - Bahan ini akan dihitung stok dan harganya
                                 </span>
@@ -260,7 +260,7 @@
         </div>
         
         <!-- Preview Area (for camera scan) -->
-        <div id="previewArea" class="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 shadow-xl hidden">
+        <div id="previewArea" class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-6 border border-white/5 shadow-xl hidden">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold text-white">Preview Foto</h3>
                 <div class="flex gap-2">
@@ -272,7 +272,7 @@
                     </button>
                 </div>
             </div>
-            <div class="border-2 border-dashed border-gray-600 rounded-lg p-4 mb-4">
+            <div class="border-2 border-dashed border-white/10 rounded-lg p-4 mb-4">
                 <img id="previewImage" class="w-full h-auto rounded-lg shadow-md" alt="Preview Nota">
             </div>
             <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
@@ -297,7 +297,7 @@
 
         <!-- Loading Overlay -->
         <div id="loadingOverlay" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
-            <div class="bg-gray-800 rounded-xl p-8 text-center shadow-2xl max-w-sm mx-4 border border-gray-700">
+            <div class="bg-[#1C222D] rounded-xl p-8 text-center shadow-2xl max-w-sm mx-4 border border-gray-700">
                 <div class="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p class="text-white font-bold text-lg" id="loadingText">Memproses OCR...</p>
                 <p class="text-gray-400 text-sm mt-2">Mohon tunggu, sedang menganalisis nota</p>
@@ -760,7 +760,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const kodeTampil = item.kode_bahan || item.kode_material || '-';
                         
                         itemDiv.innerHTML = `
-                            <div class="w-14 h-14 flex-shrink-0 rounded-xl overflow-hidden border border-gray-600 shadow-inner flex items-center justify-center bg-gray-700">
+                            <div class="w-14 h-14 flex-shrink-0 rounded-xl overflow-hidden border border-white/10 shadow-inner flex items-center justify-center bg-gray-700">
                                 ${htmlFoto}
                             </div>
                             <div class="flex-1 min-w-0">
@@ -809,8 +809,8 @@ async function loadSatuans() {
             const result = await response.json();
 
             if (result.success && result.data) {
-                satuanSelect.innerHTML = '<option value="" disabled selected class="bg-gray-800">Pilih satuan...</option>';
-                satuanPelengkapSelect.innerHTML = '<option value="" disabled selected class="bg-gray-800">Pilih satuan...</option>';
+                satuanSelect.innerHTML = '<option value="" disabled selected class="bg-[#1C222D]">Pilih satuan...</option>';
+                satuanPelengkapSelect.innerHTML = '<option value="" disabled selected class="bg-[#1C222D]">Pilih satuan...</option>';
                 
                 for (const group in result.data) {
                     const optgroup = document.createElement('optgroup');
@@ -823,7 +823,7 @@ async function loadSatuans() {
                         const option = document.createElement('option');
                         option.value = satuan.nama_satuan.toLowerCase();
                         option.textContent = `${satuan.nama_satuan}`;
-                        option.className = 'bg-gray-800';
+                        option.className = 'bg-[#1C222D]';
                         
                         const optionPelengkap = option.cloneNode(true);
 
@@ -834,13 +834,13 @@ async function loadSatuans() {
                     satuanPelengkapSelect.appendChild(optgroupPelengkap);
                 }
             } else {
-                satuanSelect.innerHTML = '<option value="" disabled class="bg-gray-800">Gagal memuat</option>';
-                satuanPelengkapSelect.innerHTML = '<option value="" disabled class="bg-gray-800">Gagal memuat</option>';
+                satuanSelect.innerHTML = '<option value="" disabled class="bg-[#1C222D]">Gagal memuat</option>';
+                satuanPelengkapSelect.innerHTML = '<option value="" disabled class="bg-[#1C222D]">Gagal memuat</option>';
             }
         } catch (error) {
             console.error('Error loading satuans:', error);
-            satuanSelect.innerHTML = '<option value="" disabled class="bg-gray-800">Error</option>';
-            satuanPelengkapSelect.innerHTML = '<option value="" disabled class="bg-gray-800">Error</option>';
+            satuanSelect.innerHTML = '<option value="" disabled class="bg-[#1C222D]">Error</option>';
+            satuanPelengkapSelect.innerHTML = '<option value="" disabled class="bg-[#1C222D]">Error</option>';
         }
     }
 
@@ -855,7 +855,7 @@ async function loadSatuans() {
                 kategoriSelect.innerHTML = '<option value="" disabled selected>Pilih kategori...</option>';
                 kategoriPelengkapSelect.innerHTML = '<option value="" disabled selected>Pilih kategori...</option>';
                 data.forEach(kategori => {
-                    const option = `<option class="bg-gray-800" value="${kategori.nama_kategori}">${kategori.nama_kategori}</option>`;
+                    const option = `<option class="bg-[#1C222D]" value="${kategori.nama_kategori}">${kategori.nama_kategori}</option>`;
                     kategoriSelect.innerHTML += option;
                     kategoriPelengkapSelect.innerHTML += option;
                 });

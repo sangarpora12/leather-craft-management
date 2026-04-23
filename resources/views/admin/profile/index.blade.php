@@ -114,7 +114,7 @@
                             <label class="block text-sm font-medium text-zinc-400">Foto Profil</label>
                             <input type="file" name="foto_profil" accept="image/*"
                                 class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:cursor-pointer">
-                            <p class="text-xs text-zinc-500">Format: JPG, PNG. Max 2MB</p>
+                            <p class="text-xs text-zinc-500">Format: JPG, PNG. Max 10MB</p>
                         </div>
                     </div>
                     

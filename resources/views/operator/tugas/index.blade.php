@@ -18,7 +18,7 @@
 @endsection
 
 @section('content')
-<div class="min-h-screen bg-[#0f172a] bg-[radial-gradient(circle_at_top,#1e293b,transparent)]">
+<div class="min-h-screen bg-[#0B0E14]">
     <div class="max-w-md mx-auto shadow-2xl shadow-black/50 min-h-screen relative">
 
         @include('components.operator-header', ['title' => 'TUGAS'])
@@ -26,7 +26,7 @@
         {{-- Flash messages --}}
         @if(session('success'))
             <div class="px-5 py-4">
-                <div class="glass-card p-4">
+                <div class="bg-[#1C222D] border border-white/5 rounded-2xl p-4">
                     <div class="flex items-center">
                         <i class="fas fa-check-circle text-emerald-400 mr-2"></i>
                         <span class="text-emerald-400 font-semibold text-sm">{{ session('success') }}</span>
@@ -37,7 +37,7 @@
 
         @if(session('error'))
             <div class="px-5 py-4">
-                <div class="glass-card p-4">
+                <div class="bg-[#1C222D] border border-white/5 rounded-2xl p-4">
                     <div class="flex items-center">
                         <i class="fas fa-exclamation-triangle text-red-400 mr-2"></i>
                         <span class="text-red-400 font-semibold text-sm">{{ session('error') }}</span>
@@ -51,15 +51,15 @@
             {{-- ====================== PENDING ====================== --}}
             <div>
                 <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-sm font-black tracking-widest text-slate-300 uppercase">Produk Belum Dikerjakan</h2>
-                    <span class="text-xs text-slate-400">{{ $pendingTasks->count() }} SPK</span>
+                    <h2 class="text-sm font-black tracking-widest text-white uppercase">Produk Belum Dikerjakan</h2>
+                    <span class="text-xs text-gray-400">{{ $pendingTasks->count() }} SPK</span>
                 </div>
 
                 <div class="space-y-4">
                     @forelse($pendingTasks as $spk)
                         @include('operator.tugas.partials.spk-card', ['spk' => $spk])
                     @empty
-                        <div class="glass-card p-6 text-center text-slate-500 text-sm">
+                        <div class="bg-[#1C222D] border border-white/5 rounded-2xl p-6 text-center text-gray-500 text-sm">
                             Tidak ada SPK yang menunggu.
                         </div>
                     @endforelse
@@ -69,15 +69,15 @@
             {{-- ====================== PROSES ====================== --}}
             <div>
                 <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-sm font-black tracking-widest text-slate-300 uppercase">Produk Di Proses</h2>
-                    <span class="text-xs text-slate-400">{{ $processTasks->count() }} SPK</span>
+                    <h2 class="text-sm font-black tracking-widest text-white uppercase">Produk Di Proses</h2>
+                    <span class="text-xs text-gray-400">{{ $processTasks->count() }} SPK</span>
                 </div>
 
                 <div class="space-y-4">
                     @forelse($processTasks as $spk)
                         @include('operator.tugas.partials.spk-card', ['spk' => $spk])
                     @empty
-                        <div class="glass-card p-6 text-center text-slate-500 text-sm">
+                        <div class="bg-[#1C222D] border border-white/5 rounded-2xl p-6 text-center text-gray-500 text-sm">
                             Belum ada SPK yang sedang dikerjakan.
                         </div>
                     @endforelse
@@ -87,15 +87,15 @@
             {{-- ====================== SELESAI ====================== --}}
             <div>
                 <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-sm font-black tracking-widest text-slate-300 uppercase">Produk Selesai</h2>
-                    <span class="text-xs text-slate-400">{{ $doneTasks->count() }} SPK</span>
+                    <h2 class="text-sm font-black tracking-widest text-white uppercase">Produk Selesai</h2>
+                    <span class="text-xs text-gray-400">{{ $doneTasks->count() }} SPK</span>
                 </div>
 
                 <div class="space-y-4">
                     @forelse($doneTasks as $spk)
                         @include('operator.tugas.partials.spk-card', ['spk' => $spk])
                     @empty
-                        <div class="glass-card p-6 text-center text-slate-500 text-sm">
+                        <div class="bg-[#1C222D] border border-white/5 rounded-2xl p-6 text-center text-gray-500 text-sm">
                             Belum ada SPK yang selesai.
                         </div>
                     @endforelse

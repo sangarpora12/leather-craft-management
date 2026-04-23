@@ -1,14 +1,14 @@
 @extends('layouts.operator_app')
 
 @section('content')
-<div class="w-full max-w-md mx-auto bg-gray-900 text-white font-normal" style="font-family: 'Poppins', sans-serif;">
+<div class="w-full max-w-md mx-auto bg-[#0B0E14] text-white font-normal" style="font-family: 'Poppins', sans-serif;">
     <!-- Header -->
     @include('components.operator-header', ['title' => 'PENERIMAAN BAHAN'])
 
     <!-- Filter Deadline -->
     <div class="px-5 py-3">
         <form method="GET" action="{{ route('operator.belanja.index') }}">
-            <select name="deadline_filter" onchange="this.form.submit()" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white focus:border-emerald-500 focus:outline-none">
+            <select name="deadline_filter" onchange="this.form.submit()" class="w-full bg-[#1C222D] border border-white/5 rounded-lg px-4 py-3 text-sm text-white focus:border-emerald-500 focus:outline-none">
                 <option value="" {{ !request('deadline_filter') ? 'selected' : '' }}>📅 Semua Deadline</option>
                 <option value="hari_ini" {{ request('deadline_filter') == 'hari_ini' ? 'selected' : '' }}>📍 Hari Ini</option>
                 <option value="minggu_ini" {{ request('deadline_filter') == 'minggu_ini' ? 'selected' : '' }}>📆 Minggu Ini</option>
@@ -19,7 +19,7 @@
 
     <!-- Stats -->
     <div class="px-5 py-3">
-        <div class="bg-gray-800 border border-gray-700 rounded-xl p-4">
+        <div class="bg-[#1C222D] border border-white/5 rounded-xl p-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
@@ -44,14 +44,14 @@
             $deadline = \Carbon\Carbon::parse($pengadaan->deadline_terdekat);
             $isOverdue = $deadline->isPast() && $sisa > 0;
         @endphp
-        <div class="rounded-xl p-5 mb-4 {{ $isOverdue ? 'bg-red-500/10 border border-red-500/40' : 'bg-gray-800 border border-gray-700' }}">
+        <div class="rounded-xl p-5 mb-4 {{ $isOverdue ? 'bg-red-500/10 border border-red-500/40' : 'bg-[#1C222D] border border-white/5' }}">
             <div class="flex gap-4 items-start mb-4">
                 <!-- FOTO BAHAN -->
                 <div class="flex-shrink-0">
                     @if($pengadaan->bahan && $pengadaan->bahan->foto)
-                        <img src="{{ asset('storage/' . $pengadaan->bahan->foto) }}" class="w-14 h-14 rounded-xl object-cover border border-gray-700">
+                        <img src="{{ asset('storage/' . $pengadaan->bahan->foto) }}" class="w-14 h-14 rounded-xl object-cover border border-white/5">
                     @else
-                        <div class="w-14 h-14 rounded-xl bg-gray-700 flex items-center justify-center border border-gray-700">
+                        <div class="w-14 h-14 rounded-xl bg-[#1C222D] flex items-center justify-center border border-white/5">
                             <i class="fa-solid fa-box text-gray-500 text-xl"></i>
                         </div>
                     @endif
@@ -82,12 +82,12 @@
             </div>
             
             <!-- Status Penerimaan -->
-            <div class="bg-gray-900/50 rounded-lg p-3 mb-4">
+            <div class="bg-[#0B0E14]/50 rounded-lg p-3 mb-4">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-xs text-gray-400 font-normal">Sudah Diterima</span>
                     <span class="text-sm font-normal text-green-400">{{ $sudahDiterima }} {{ $pengadaan->bahan->satuan ?? 'pcs' }}</span>
                 </div>
-                <div class="w-full bg-gray-700 rounded-full h-2 mb-2">
+                <div class="w-full bg-[#1C222D] rounded-full h-2 mb-2">
                     @php $progress = $pengadaan->total_jumlah > 0 ? ($sudahDiterima / $pengadaan->total_jumlah) * 100 : 0; @endphp
                     <div class="bg-green-500 h-2 rounded-full" style="width: {{ $progress }}%"></div>
                 </div>
@@ -103,7 +103,7 @@
                     <span class="text-xs font-normal {{ $isOverdue ? 'text-red-400 font-bold' : 'text-gray-400' }}">Deadline: {{ \Carbon\Carbon::parse($pengadaan->deadline_terdekat)->format('d M Y') }}</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="text-xs bg-gray-700 text-gray-300 border border-gray-600 px-3 py-1 rounded font-normal">{{ $pengadaan->bahan->satuan ?? 'Unit' }}</span>
+                    <span class="text-xs bg-[#1C222D] text-gray-300 border border-white/5 px-3 py-1 rounded font-normal">{{ $pengadaan->bahan->satuan ?? 'Unit' }}</span>
                     <button onclick="openNotesModal({{ $pengadaan->bahan_baku_id }})" class="text-xs px-3 py-1 rounded font-normal bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">
                         🔍 Lihat Detail
                     </button>
@@ -112,7 +112,7 @@
             
             
             @if($sisa > 0)
-            <div class="w-full py-2 rounded-lg text-sm font-normal flex items-center justify-center gap-2 {{ $isOverdue ? 'bg-red-500/10 border border-red-500 text-red-400' : 'bg-gray-700/50 text-gray-400' }}">
+            <div class="w-full py-2 rounded-lg text-sm font-normal flex items-center justify-center gap-2 {{ $isOverdue ? 'bg-red-500/10 border border-red-500 text-red-400' : 'bg-[#1C222D]/50 text-gray-400' }}">
                 @if($isOverdue)
                 <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 <span>⚠️ DEADLINE TERLEWAT - SEGERA BELI</span>
@@ -130,7 +130,7 @@
             @endif
         </div>
         @empty
-        <div class="py-12 border-2 border-dashed border-gray-700 rounded-xl text-center">
+        <div class="py-12 border-2 border-dashed border-white/5 rounded-xl text-center">
             <svg class="w-12 h-12 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
             <span class="text-sm text-gray-500 font-normal">Tidak ada bahan yang menunggu penerimaan</span>
         </div>
@@ -146,8 +146,8 @@
 
 <!-- Modal Penerimaan Bahan -->
 <div id="receiveModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-sm">
-        <div class="p-5 border-b border-gray-700">
+    <div class="bg-[#1C222D] border border-white/5 rounded-2xl w-full max-w-sm">
+        <div class="p-5 border-b border-white/5">
             <h3 class="text-lg font-bold text-white">Terima Barang</h3>
             <p class="text-sm text-gray-400" id="modalMaterialName">Nama Material</p>
         </div>
@@ -155,7 +155,7 @@
         <form id="receiveForm" method="POST">
             @csrf
             <div class="p-5">
-                <div class="bg-gray-900/50 rounded-lg p-4 mb-4">
+                <div class="bg-[#0B0E14]/50 rounded-lg p-4 mb-4">
                     <div class="flex justify-between mb-2">
                         <span class="text-xs text-gray-400">Jumlah Dipesan</span>
                         <span class="text-sm font-bold text-white" id="modalJumlahDipesan">0</span>
@@ -176,7 +176,7 @@
                            name="jumlah_diterima" 
                            id="jumlahDiterima"
                            min="1" 
-                           class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white font-bold text-lg focus:outline-none focus:border-green-500"
+                           class="w-full bg-[#0B0E14] border border-white/5 rounded-lg px-4 py-3 text-white font-bold text-lg focus:outline-none focus:border-green-500"
                            required>
                     <p class="text-xs text-gray-500 mt-2">Masukkan jumlah barang yang benar-benar datang</p>
                 </div>
@@ -184,8 +184,8 @@
                 <input type="hidden" name="pengadaan_id" id="pengadaanId">
             </div>
             
-            <div class="p-5 border-t border-gray-700 flex gap-3">
-                <button type="button" onclick="closeReceiveModal()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg font-normal uppercase">
+            <div class="p-5 border-t border-white/5 flex gap-3">
+                <button type="button" onclick="closeReceiveModal()" class="flex-1 bg-[#1C222D] hover:bg-[#0B0E14] text-white py-3 rounded-lg font-normal uppercase">
                     Batal
                 </button>
                 <button type="submit" class="flex-1 bg-green-500 hover:bg-green-400 text-white py-3 rounded-lg font-bold uppercase">
@@ -198,15 +198,15 @@
 
 <!-- Modal Catatan Admin -->
 <div id="notesModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-sm">
-        <div class="p-5 border-b border-gray-700">
+    <div class="bg-[#1C222D] border border-white/5 rounded-2xl w-full max-w-sm">
+        <div class="p-5 border-b border-white/5">
             <h3 class="text-lg font-bold text-white" id="notesModalTitle">Catatan Admin</h3>
             <p class="text-sm text-gray-400" id="notesModalSubtitle">Nama Bahan</p>
         </div>
         <div class="p-5" id="notesContent">
         </div>
-        <div class="p-5 border-t border-gray-700">
-            <button onclick="closeNotesModal()" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg font-normal uppercase">
+        <div class="p-5 border-t border-white/5">
+            <button onclick="closeNotesModal()" class="w-full bg-[#1C222D] hover:bg-[#0B0E14] text-white py-3 rounded-lg font-normal uppercase">
                 Tutup
             </button>
         </div>
@@ -256,7 +256,7 @@ function openNotesModal(bahanId) {
     
     if (!data.notes || data.notes.length === 0) {
         html += `
-            <div class="text-center text-sm text-gray-500 py-4 bg-gray-900/50 rounded-lg">
+            <div class="text-center text-sm text-gray-500 py-4 bg-[#0B0E14]/50 rounded-lg">
                 Tidak ada catatan khusus dari Admin.
             </div>
         `;
@@ -264,7 +264,7 @@ function openNotesModal(bahanId) {
         html += `<ul class="space-y-2">`;
         data.notes.forEach(note => {
             html += `
-                <li class="pl-3 border-l-2 border-orange-500/50 text-sm text-gray-300 py-2 bg-gray-900/30 rounded pr-3">
+                <li class="pl-3 border-l-2 border-orange-500/50 text-sm text-gray-300 py-2 bg-[#0B0E14]/30 rounded pr-3">
                     ${note}
                 </li>
             `;

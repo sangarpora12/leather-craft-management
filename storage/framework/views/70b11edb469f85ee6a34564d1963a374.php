@@ -286,15 +286,6 @@ if (!isset($mode) || empty($mode)) {
                 </div>
             </div>
 
-            <!-- GRAFIK TREN 30 HARI -->
-            <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
-                <div class="px-4 py-3 border-b border-zinc-800">
-                    <h3 class="text-white text-sm font-bold">Tren Aktivitas 30 Hari Terakhir</h3>
-                </div>
-                <div class="p-4">
-                    <canvas id="trendChart" height="100"></canvas>
-                </div>
-            </div>
 
             <!-- TOP PRODUK & BAHAN CEPAT HABIS -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -496,54 +487,6 @@ window.onafterprint = function() {
     }
 };
 
-// Chart.js - Tren 30 Hari
-const ctx = document.getElementById('trendChart');
-if (ctx) {
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: <?php echo json_encode($chartLabels ?? [], 15, 512) ?>,
-            datasets: [
-                {
-                    label: 'Pemasukan (Penjualan)',
-                    data: <?php echo json_encode($chartPemasukan ?? [], 15, 512) ?>,
-                    borderColor: '#16a34a',
-                    backgroundColor: 'rgba(22, 163, 74, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                },
-                {
-                    label: 'Pengeluaran (Produksi)',
-                    data: <?php echo json_encode($chartPengeluaran ?? [], 15, 512) ?>,
-                    borderColor: '#dc2626',
-                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: { color: '#9ca3af' }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: '#374151' },
-                    ticks: { color: '#9ca3af' }
-                },
-                x: {
-                    grid: { color: '#374151' },
-                    ticks: { color: '#9ca3af' }
-                }
-            }
-        }
-    });
-}
 </script>
 <?php $__env->stopSection(); ?>
 

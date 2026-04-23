@@ -85,14 +85,19 @@ class ProdukJadiController extends Controller
             });
         });
 
-        // 4. Filter Status Stok
-        $query->when($request->filled('status_stok'), function ($q) use ($request) {
+        // 4. Filter Status Stok - SEHARUSNYA LOGIKA:
+        $stokMinimum = Pengaturan::where('nama_pengaturan', 'stok_minimum_produk')->value('nilai') ?? 2;
+        
+        $query->when($request->filled('status_stok'), function ($q) use ($request, $stokMinimum) {
             if ($request->status_stok == 'tersedia') {
-                $q->where('stok', '>', 5);
+                // ✅ Stok Tersedia = SEMUA YANG LEBIH DARI 0 (semua yang tidak habis)
+                $q->where('stok', '>', 0);
             } elseif ($request->status_stok == 'menipis') {
-                $q->whereBetween('stok', [1, 5]);
+                // ✅ Stok Menipis = SEMUA YANG <= Stok Minimum GLOBAL DARI PENGATURAN
+                $q->whereBetween('stok', [1, $stokMinimum]);
             } elseif ($request->status_stok == 'habis') {
-                $q->where('stok', 0);
+                // ✅ Stok Habis = HANYA YANG STOK = 0
+                $q->where('stok', '=', 0);
             }
             // 'semua' = tidak filter
         });
@@ -111,6 +116,9 @@ class ProdukJadiController extends Controller
                     break;
                 case 'stok_terbanyak':
                     $q->orderBy('stok', 'desc');
+                    break;
+                case 'stok_terkecil':
+                    $q->orderBy('stok', 'asc');
                     break;
                 case 'terbaru':
                 default:
@@ -188,13 +196,13 @@ $motifs = Motif::all(['id', 'nama_motif']);
             'harga_jual'   => ['required', 'string', 'min:1'],
             'deskripsi'    => ['nullable', 'string'],
             'keterangan'   => ['nullable', 'string'],
-            'stok_minimum' => ['nullable', 'integer', 'min:0'],
             'foto'         => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:10240'],
             'panjang'      => ['nullable', 'numeric', 'min:0'],
             'lebar'        => ['nullable', 'numeric', 'min:0'],
             'tinggi'       => ['nullable', 'numeric', 'min:0'],
             'detail_pola'  => ['nullable', 'string'],
             'sketsa'       => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+            'tipe_harga'   => ['nullable', 'string', 'in:manual,otomatis'],
         ]);
 
         // ✅ FIX FINAL - PARSING HARGA JUAL
@@ -237,13 +245,13 @@ $motifs = Motif::all(['id', 'nama_motif']);
                 'deskripsi'    => $validated['deskripsi'],
                 'keterangan'   => $validated['keterangan'],
                 'stok'         => 0,
-                'stok_minimum' => $validated['stok_minimum'] ?? 10,
                 'foto'         => $pathFoto,
                 'panjang'      => $validated['panjang'] ?? null,
                 'lebar'        => $validated['lebar'] ?? null,
                 'tinggi'       => $validated['tinggi'] ?? null,
                 'detail_pola'  => $validated['detail_pola'] ?? null,
                 'sketsa'       => $pathSketsa,
+                'tipe_harga'   => $validated['tipe_harga'] ?? 'manual',
             ]);
 
             return redirect()->route('admin.bom.create', $product->id)
@@ -257,7 +265,8 @@ $motifs = Motif::all(['id', 'nama_motif']);
     public function show($id)
     {
         $product = ProdukJadi::with(['boms.material', 'produkKeluars'])->findOrFail($id);
-        return view('admin.produk-jadi.show', compact('product'));
+        $margin = (float) (Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->value('nilai') ?? 50);
+        return view('admin.produk-jadi.show', compact('product', 'margin'));
     }
 
     /**
@@ -281,7 +290,10 @@ $motifs = Motif::all(['id', 'nama_motif']);
         $warnas = Warna::all(['id', 'nama_warna']);
         $motifs = Motif::all(['id', 'nama_motif']);
         
-        return view('admin.produk-jadi.edit', compact('product', 'kategories', 'warnas', 'motifs'));
+        // ✅ AMBIL MARGIN GLOBAL DARI PENGATURAN
+        $margin = (float) (Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->value('nilai') ?? 50);
+        
+        return view('admin.produk-jadi.edit', compact('product', 'kategories', 'warnas', 'motifs', 'margin'));
     }
 
     /**
@@ -302,48 +314,51 @@ $motifs = Motif::all(['id', 'nama_motif']);
             'harga_jual'   => ['required', 'string', 'min:1'],
             'deskripsi'    => ['nullable', 'string'],
             'keterangan'   => ['nullable', 'string'],
-            'stok_minimum' => ['nullable', 'integer', 'min:0'],
             'foto'         => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:10240'],
             'panjang'      => ['nullable', 'numeric', 'min:0'],
             'lebar'        => ['nullable', 'numeric', 'min:0'],
             'tinggi'       => ['nullable', 'numeric', 'min:0'],
             'detail_pola'  => ['nullable', 'string'],
             'sketsa'       => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+            'tipe_harga'   => ['nullable', 'string', 'in:manual,otomatis'],
         ]);
 
-        // ✅ FIX: Jika mode harga otomatis, hitung ulang HPP dari BOM
+        // ✅ ✅ LOGIKA BARU FIX DATABASE ERROR
         $hargaJual = 0;
         
         if ($request->filled('tipe_harga') && $request->tipe_harga === 'otomatis') {
-            // Hitung ulang HPP secara realtime dari BOM
-            $product->load('boms.material');
+            // ✅ HITUNG HARGA OTOMATIS LANGSUNG DISINI
+            $margin = (float) (Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->value('nilai') ?? 50);
+            
+            // Hitung total HPP dari BOM
             $totalHpp = 0;
+            $product->load('boms.material');
             foreach ($product->boms as $bom) {
                 if ($bom->material) {
-                    // ✅ FIX: Paksa cast ke float agar perkalian desimal akurat
                     $hargaSatuan = (float) str_replace(',', '.', $bom->material->harga_satuan);
                     $jumlahKebutuhan = (float) str_replace(',', '.', $bom->jumlah_kebutuhan);
-                    
                     $totalHpp += $hargaSatuan * $jumlahKebutuhan;
                 }
             }
-            $margin = 0.30;
-            $hargaJual = ceil($totalHpp + ($totalHpp * $margin));
+            
+            $hargaJual = ceil($totalHpp + ($totalHpp * ($margin / 100)));
         } else {
-            // Mode manual: pakai input user
+            // ✅ JIKA MANUAL: PAKAI NILAI INPUT USER
             if (!empty($request->harga_jual)) {
                 $hargaJual = (int) str_replace(['.', ',', 'Rp', ' '], '', $request->harga_jual);
             }
         }
 
+        $pathFoto = $product->foto;
         if ($request->hasFile('foto')) {
             if ($product->foto) Storage::disk('public')->delete($product->foto);
-            $product->foto = $request->file('foto')->store('produk-jadi', 'public');
+            $pathFoto = $request->file('foto')->store('produk-jadi', 'public');
         }
 
+        $pathSketsa = $product->sketsa;
         if ($request->hasFile('sketsa')) {
             if ($product->sketsa) Storage::disk('public')->delete($product->sketsa);
-            $product->sketsa = $request->file('sketsa')->store('produk/sketsa', 'public');
+            $pathSketsa = $request->file('sketsa')->store('produk/sketsa', 'public');
         }
 
         $product->update([
@@ -354,11 +369,13 @@ $motifs = Motif::all(['id', 'nama_motif']);
             'harga_jual'   => $hargaJual,
             'deskripsi'    => $validated['deskripsi'] ?? $product->deskripsi,
             'keterangan'   => $validated['keterangan'] ?? $product->keterangan,
-            'stok_minimum' => $validated['stok_minimum'] ?? $product->stok_minimum,
             'panjang'      => $validated['panjang'] ?? $product->panjang,
             'lebar'        => $validated['lebar'] ?? $product->lebar,
             'tinggi'       => $validated['tinggi'] ?? $product->tinggi,
             'detail_pola'  => $validated['detail_pola'] ?? $product->detail_pola,
+            'sketsa'       => $pathSketsa,
+            'foto'         => $pathFoto,
+            'tipe_harga'   => $validated['tipe_harga'] ?? $product->tipe_harga ?? 'manual',
         ]);
 
         return redirect()->route('admin.produk-jadi.index')->with('success', 'Perubahan disimpan.');
@@ -481,13 +498,13 @@ $motifs = Motif::all(['id', 'nama_motif']);
             }
         }
         
-        // Margin 30% (0.3)
-        $margin = 0.30;
-        $hargaJual = $totalHpp + ($totalHpp * $margin);
+        // ✅ AMBIL MARGIN DARI PENGATURAN DATABASE (BUKAN HARDCODE!)
+        $margin = (float) (Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->value('nilai') ?? 50);
+        $hargaJual = $totalHpp + ($totalHpp * ($margin / 100));
         
         return response()->json([
             'hpp' => $totalHpp,
-            'margin' => $margin * 100,
+            'margin' => $margin,
             'harga_jual' => ceil($hargaJual) // Pembulatan ke atas
         ]);
     }
@@ -513,7 +530,7 @@ $motifs = Motif::all(['id', 'nama_motif']);
             $newNumber = 1;
         }
 
-        // Format nomor dengan padding nol (misal: 0001)
-        return $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+        // Format nomor tanpa padding nol (misal: 1)
+        return $prefix . $newNumber;
     }
 }

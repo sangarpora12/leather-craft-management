@@ -21,9 +21,32 @@
         </div>
     </div>
 
+    <!-- Progress Realisasi -->
+    @php
+        $realPercent = $produksi->jumlah_produksi > 0 ? round(($produksi->jumlah_selesai / $produksi->jumlah_produksi) * 100) : 0;
+    @endphp
+    <div class="glass-card rounded-2xl p-5 mb-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-gray-300 flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                    <i class="fa-solid fa-bars-progress text-indigo-400 text-xs"></i>
+                </div>
+                Progress Realisasi
+            </h3>
+            <span class="text-lg font-bold {{ $realPercent >= 100 ? 'text-emerald-300' : 'text-indigo-300' }}">{{ $realPercent }}%</span>
+        </div>
+        <div class="w-full bg-white/10 rounded-full h-3 overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-700 {{ $realPercent >= 100 ? 'bg-emerald-500' : 'bg-indigo-500' }}" style="width: {{ min($realPercent, 100) }}%"></div>
+        </div>
+        <div class="flex justify-between mt-2 text-xs text-gray-500">
+            <span>Target: <strong class="text-white">{{ number_format($produksi->jumlah_produksi, 0, ',', '.') }} Pcs</strong></span>
+            <span>Selesai: <strong class="text-emerald-300">{{ number_format($produksi->jumlah_selesai, 0, ',', '.') }} Pcs</strong></span>
+        </div>
+    </div>
+
     <!-- Foto Komparasi -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- Foto Produk (Katalog) -->
+        <!-- Foto Produk (Katalog) + Sketsa -->
         <div class="glass-card rounded-2xl p-5">
             <h3 class="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2">
                 <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
@@ -31,7 +54,7 @@
                 </div>
                 Foto Produk (Katalog)
             </h3>
-            <div class="aspect-video rounded-xl overflow-hidden bg-[#111] border border-white/10">
+            <div class="aspect-video rounded-xl overflow-hidden bg-[#111] border border-white/10 mb-4">
                 @if(!empty($produksi->product->foto))
                     <img src="{{ asset('storage/' . $produksi->product->foto) }}" class="w-full h-full object-cover" alt="Produk Katalog">
                 @else
@@ -43,6 +66,21 @@
                     </div>
                 @endif
             </div>
+
+            <!-- Sketsa Produk -->
+            @php $rvSketsas = $produksi->produk_jadi->sketsa ?? []; @endphp
+            @if(count($rvSketsas) > 0)
+            <div class="mt-3">
+                <p class="text-[10px] text-gray-500 uppercase font-bold mb-2 tracking-wider">📏 Sketsa Produk</p>
+                <div class="grid grid-cols-4 gap-2">
+                    @foreach($rvSketsas as $skPath)
+                    <div class="aspect-square rounded-lg overflow-hidden border border-white/10">
+                        <img src="{{ asset('storage/' . $skPath) }}" class="w-full h-full object-cover hover:scale-110 transition-transform" alt="Sketsa">
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
         </div>
 
         <!-- Foto Bukti (Hasil Operator) -->
@@ -53,18 +91,29 @@
                 </div>
                 Foto Bukti (Hasil Produksi)
             </h3>
-            <div class="aspect-video rounded-xl overflow-hidden bg-[#111] border border-white/10">
-                @if(!empty($produksi->foto_bukti))
-                    <img src="{{ asset('storage/' . $produksi->foto_bukti) }}" class="w-full h-full object-cover" alt="Foto Bukti Produksi">
-                @else
-                    <div class="w-full h-full flex items-center justify-center text-gray-600">
-                        <div class="text-center">
-                            <i class="fa-solid fa-camera text-4xl mb-2 opacity-30"></i>
-                            <p class="text-xs">Tidak ada foto bukti</p>
-                        </div>
+            @php
+                $fotoBuktiList = [];
+                if (!empty($produksi->foto_bukti)) {
+                    $decoded = json_decode($produksi->foto_bukti, true);
+                    $fotoBuktiList = is_array($decoded) ? $decoded : [$produksi->foto_bukti];
+                }
+            @endphp
+            @if(count($fotoBuktiList) > 0)
+                <div class="grid grid-cols-2 gap-3">
+                    @foreach($fotoBuktiList as $fotoPath)
+                    <div class="aspect-video rounded-xl overflow-hidden bg-[#111] border border-white/10">
+                        <img src="{{ asset('storage/' . $fotoPath) }}" class="w-full h-full object-cover hover:scale-105 transition-transform" alt="Foto Bukti">
                     </div>
-                @endif
-            </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="aspect-video rounded-xl overflow-hidden bg-[#111] border border-white/10 flex items-center justify-center text-gray-600">
+                    <div class="text-center">
+                        <i class="fa-solid fa-camera text-4xl mb-2 opacity-30"></i>
+                        <p class="text-xs">Tidak ada foto bukti</p>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -98,6 +147,11 @@
             </div>
         </div>
 
+        @php
+            $rvKat = is_array($produksi->produk_jadi->kategori) ? $produksi->produk_jadi->kategori : (json_decode($produksi->produk_jadi->kategori, true) ?: [$produksi->produk_jadi->kategori ?: '-']);
+            $rvWar = is_array($produksi->produk_jadi->warna)    ? $produksi->produk_jadi->warna    : (json_decode($produksi->produk_jadi->warna, true)    ?: [$produksi->produk_jadi->warna    ?: '-']);
+            $rvMot = is_array($produksi->produk_jadi->jenis_motif) ? $produksi->produk_jadi->jenis_motif : (json_decode($produksi->produk_jadi->jenis_motif, true) ?: [$produksi->produk_jadi->jenis_motif ?: '-']);
+        @endphp
         <!-- Detail Produk -->
         <div class="glass-card rounded-2xl p-5">
             <h3 class="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2">
@@ -111,15 +165,64 @@
                     <span class="text-xs text-gray-500 block mb-1">Nama Produk</span>
                     <span class="text-sm font-bold text-white">{{ $produksi->product->nama_produk ?? '-' }}</span>
                 </div>
-                <div class="flex gap-2">
-                    @if($produksi->product->warna)
-                        <span class="text-xs px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400">{{ $produksi->product->warna }}</span>
-                    @endif
-                    @if($produksi->product->jenis_motif)
-                        <span class="text-xs px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400">{{ $produksi->product->jenis_motif }}</span>
-                    @endif
+
+                <!-- Kategori Badge -->
+                <div>
+                    <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Kategori</span>
+                    <div class="flex flex-wrap gap-1">
+                        @foreach($rvKat as $item)
+                        <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize" style="background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid rgba(59,130,246,0.3)">{{ $item }}</span>
+                        @endforeach
+                    </div>
                 </div>
-                <div class="flex justify-between items-center">
+
+                <!-- Warna & Motif Badge -->
+                <div class="flex gap-3">
+                    <div class="flex-1">
+                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Warna</span>
+                        <div class="flex flex-wrap gap-1">
+                            @foreach($rvWar as $item)
+                            <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize" style="background:rgba(236,72,153,0.2);color:#f9a8d4;border:1px solid rgba(236,72,153,0.3)">{{ $item }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Motif</span>
+                        <div class="flex flex-wrap gap-1">
+                            @foreach($rvMot as $item)
+                            <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize" style="background:rgba(168,85,247,0.2);color:#d8b4fe;border:1px solid rgba(168,85,247,0.3)">{{ $item }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dimensi -->
+                @if($produksi->product->panjang || $produksi->product->lebar || $produksi->product->tinggi)
+                <div class="pt-2 border-t border-white/5">
+                    <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">📐 Dimensi</span>
+                    <div class="flex gap-2">
+                        @if($produksi->product->panjang)
+                        <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-500/10 text-blue-300">P {{ (int)$produksi->product->panjang }} cm</span>
+                        @endif
+                        @if($produksi->product->lebar)
+                        <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-green-500/10 text-green-300">L {{ (int)$produksi->product->lebar }} cm</span>
+                        @endif
+                        @if($produksi->product->tinggi)
+                        <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-red-500/10 text-red-300">T {{ (int)$produksi->product->tinggi }} cm</span>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
+                <!-- Detail Pola -->
+                @if($produksi->product->detail_pola)
+                <div class="pt-2 border-t border-white/5">
+                    <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">📝 Detail Pola</span>
+                    <p class="text-[11px] text-gray-300 leading-relaxed">{{ $produksi->product->detail_pola }}</p>
+                </div>
+                @endif
+
+                <div class="flex justify-between items-center pt-2 border-t border-white/5">
                     <span class="text-xs text-gray-500">Target Produksi</span>
                     <span class="text-xs font-bold text-white">{{ number_format($produksi->jumlah_produksi, 0, ',', '.') }} Pcs</span>
                 </div>

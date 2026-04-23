@@ -61,6 +61,9 @@ class PengaturanController extends Controller
         $oldPrefixBahan = Pengaturan::where('nama_pengaturan', 'prefix_bahan')->value('nilai') ?? 'BHN-';
         $oldPrefixProduk = Pengaturan::where('nama_pengaturan', 'prefix_produk')->value('nilai') ?? 'PR-';
         
+        $marginChanged = false;
+        $newMarginValue = null;
+
         foreach ($inputs as $key => $value) {
             if ($key === 'logo_perusahaan' && $request->hasFile('logo_perusahaan')) {
                 $file = $request->file('logo_perusahaan');
@@ -73,6 +76,11 @@ class PengaturanController extends Controller
 
             if ($value !== null && $value !== '') {
                 Pengaturan::updateOrCreate(['nama_pengaturan' => $key], ['nilai' => $value]);
+                
+                if ($key === 'margin_keuntungan') {
+                    $marginChanged = true;
+                    $newMarginValue = (float) $value;
+                }
             }
         }
 
@@ -101,7 +109,23 @@ class PengaturanController extends Controller
             }
         }
 
+        // ✅ GLOBAL PRICE SYNC: Update harga jual otomatis jika margin berubah
+        $syncCount = 0;
+        if ($marginChanged && $newMarginValue !== null) {
+            $produkOtomatis = \App\Models\ProdukJadi::where('tipe_harga', 'otomatis')->get();
+            foreach ($produkOtomatis as $produk) {
+                if ($produk->updateAutomaticPrice($newMarginValue)) {
+                    $syncCount++;
+                }
+            }
+        }
+
         $msg = !empty($successMessages) ? 'Berhasil! ' . implode('. ', $successMessages) : 'Pengaturan Berhasil Disimpan!';
+        
+        if ($syncCount > 0) {
+            $msg .= " ✅ Margin diperbarui dan {$syncCount} produk otomatis dihitung ulang harganya.";
+        }
+        
         return redirect()->route('admin.laporan.pengaturan.index')->with('success', $msg);
     }
 
@@ -135,6 +159,7 @@ class PengaturanController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
+            'foto_profil' => 'nullable|image|mimes:jpeg,png,jpg|max:10240', // Max 10MB
         ]);
         
         $user->name = $request->name;
@@ -170,13 +195,37 @@ class PengaturanController extends Controller
             $inputs['stok_minimum_global'] = $inputs['stok_minimum'];
         }
         
+        $marginChanged = false;
+        $newMarginValue = null;
+
         foreach ($inputs as $key => $value) {
             if ($value !== null && $value !== '') {
                 Pengaturan::updateOrCreate(['nama_pengaturan' => $key], ['nilai' => $value]);
+                
+                if ($key === 'margin_keuntungan') {
+                    $marginChanged = true;
+                    $newMarginValue = (float) $value;
+                }
             }
         }
         
-        return redirect()->route('admin.laporan.pengaturan.gudang.index')->with('success', 'Konfigurasi Gudang Berhasil Disimpan!');
+        // ✅ GLOBAL PRICE SYNC: Update harga jual otomatis jika margin berubah
+        $syncCount = 0;
+        if ($marginChanged && $newMarginValue !== null) {
+            $produkOtomatis = \App\Models\ProdukJadi::where('tipe_harga', 'otomatis')->get();
+            foreach ($produkOtomatis as $produk) {
+                if ($produk->updateAutomaticPrice($newMarginValue)) {
+                    $syncCount++;
+                }
+            }
+        }
+        
+        $msg = 'Konfigurasi Gudang Berhasil Disimpan!';
+        if ($syncCount > 0) {
+            $msg .= " ✅ Margin diperbarui dan {$syncCount} produk otomatis dihitung ulang harganya.";
+        }
+        
+        return redirect()->route('admin.laporan.pengaturan.gudang.index')->with('success', $msg);
     }
 
     /**

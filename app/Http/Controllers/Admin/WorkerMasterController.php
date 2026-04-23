@@ -30,7 +30,43 @@ class WorkerMasterController extends Controller
 
     public function index()
     {
-        $operators = User::where('role', 'operator')->latest()->get();
+        $operators = User::where('role', 'operator')
+            ->withCount(['bahanBakus as total_input_bahan'])
+            ->withSum(['produksis as total_produk_dibuat' => function($q) {
+                $q->where('status', 'SELESAI');
+            }], 'jumlah_produksi')
+            ->latest()
+            ->paginate(12);
+
+        // Load statistik detail per operator
+        foreach ($operators as $op) {
+            $bahanTerbanyak = \DB::table('bahan_bakus')
+                ->where('user_id', $op->id)
+                ->select('nama_material', \DB::raw('COUNT(*) as total'))
+                ->groupBy('nama_material')
+                ->orderByDesc('total')
+                ->first();
+            $op->bahan_terbanyak = $bahanTerbanyak ? (object)[
+                'nama' => $bahanTerbanyak->nama_material,
+                'total' => $bahanTerbanyak->total,
+                'satuan' => 'Lembar'
+            ] : null;
+
+            $produkTerbanyak = \DB::table('produksis')
+                ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
+                ->where('produksis.operator_id', $op->id)
+                ->where('produksis.status', 'SELESAI')
+                ->select('produk_jadis.nama_produk as nama', \DB::raw('SUM(produksis.jumlah_produksi) as total'))
+                ->groupBy('produk_jadis.nama_produk')
+                ->orderByDesc('total')
+                ->first();
+            $op->produk_terbanyak = $produkTerbanyak ? (object)[
+                'nama' => $produkTerbanyak->nama,
+                'total' => $produkTerbanyak->total,
+                'satuan' => 'Pcs'
+            ] : null;
+        }
+
         return view('admin.pekerja-master.index', compact('operators'));
     }
 
@@ -49,8 +85,9 @@ class WorkerMasterController extends Controller
             'email' => $request->email,
             'password' => bcrypt($request->password),
             'role' => 'operator',
+            'sub_role' => $request->sub_role ?? 'pekerja',
             'jabatan' => $request->jabatan ?? 'Staff Produksi',
-            'email_verified_at' => null, 
+            'email_verified_at' => null,
         ]);
 
         // Buat link verifikasi - gunakan base URL operator (ngrok) agar bisa dibuka dari HP

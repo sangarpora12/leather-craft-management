@@ -72,15 +72,19 @@ class PerintahProduksiNotification extends Notification
             ], now()->addDays(1)); // URL valid 7 hari
         }
 
+        // Cek apakah operator adalah Kepala Gudang (bisa login) atau Pekerja (tidak bisa login)
+        $isKepalaGudang = $notifiable->sub_role === 'kepala_gudang';
+
         return (new MailMessage)
             ->subject($subject)
             ->markdown('emails.produksi.perintah_baru', [
                 'spks' => $this->createdSpks,
                 'operator' => $notifiable,
                 'adminName' => $this->adminName,
-                'url' => $url, // Akan null jika tidak di-assign
+                'url' => $url,
                 'isAssigned' => $this->isAssigned,
-                'fotoProduk' => $fotoProduk, // Kirim array URL gambar ke view
+                'fotoProduk' => $fotoProduk,
+                'isKepalaGudang' => $isKepalaGudang,
             ]);
     }
 

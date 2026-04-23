@@ -1,106 +1,179 @@
 @extends('layouts.operator_app')
 
 @section('content')
-<div class="w-full max-w-md mx-auto bg-gradient-to-br from-neutral-900 via-neutral-900 to-neutral-800 min-h-screen">
+<div class="min-h-screen bg-[#0B0E14] pb-24">
 
-    @include('components.operator-header', ['title' => 'DASHBOARD'])
+    {{-- HEADER HALAMAN --}}
+    <div class="px-6 py-6 safe-top">
+        <div class="flex items-center justify-between mb-6">
+            <button onclick="window.dispatchEvent(new CustomEvent('operator:toggleSidebar'))" class="text-white text-xl p-2 -ml-2 rounded-lg hover:bg-white/5 transition">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            
+            <h1 class="text-xl font-bold text-white tracking-wider">DASHBOARD</h1>
+            
+            <div class="flex items-center gap-4">
+                <a href="{{ route('operator.notifications') }}" class="relative text-white text-xl p-2 -mr-2 rounded-lg hover:bg-white/5 transition">
+                    <i class="fa-solid fa-bell"></i>
+                    @if(($unreadCount ?? 0) > 0)
+                    <div class="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-[#0B0E14]"></div>
+                    @endif
+                </a>
+                <a href="{{ route('operator.profile') }}" class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold hover:bg-blue-500 transition overflow-hidden">
+                    @if(Auth::user()->profile_photo_path)
+                        <img src="{{ asset('storage/'.Auth::user()->profile_photo_path) }}" class="w-full h-full object-cover rounded-full" alt="">
+                    @elseif(Auth::user()->avatar)
+                        <img src="{{ asset(Auth::user()->avatar) }}" class="w-full h-full object-cover rounded-full" alt="">
+                    @else
+                        {{ substr(Auth::user()->name, 0, 1) }}
+                    @endif
+                </a>
+            </div>
+        </div>
 
-    <div class="px-6 py-6 space-y-6">
+        {{-- SEARCH BAR --}}
+        <form action="{{ route('operator.search') }}" method="GET" class="relative mb-6">
+            <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"></i>
+            <input type="text" name="q"
+                   placeholder="Cari bahan, produk, atau SPK..." 
+                   class="w-full bg-[#1C222D] border border-white/5 rounded-2xl px-5 py-4 pl-14 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500 transition-all">
+        </form>
 
-        {{-- Profile Section --}}
-        <div class="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 shadow-xl">
-            <div class="flex items-center mb-4">
-                <div class="w-14 h-14 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
-                    <span class="text-white text-xl font-bold">{{ substr(Auth::user()->name, 0, 1) }}</span>
+        {{-- PROFIL CARD STATISTIK --}}
+        <div class="bg-[#1C222D] rounded-2xl border border-white/5 p-6 mb-6">
+            <div class="flex items-start justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-bold text-white">{{ Auth::user()->name }}</h2>
+                    <span class="inline-flex items-center mt-2 bg-green-500/15 text-green-400 text-sm font-medium px-3 py-1 rounded-full border border-green-500/25">
+                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                        Operator Produksi
+                    </span>
                 </div>
-                <div class="flex-1">
-                    <div class="text-lg font-semibold text-white">{{ Auth::user()->name }}</div>
-                    <div class="text-sm text-emerald-400 font-medium">Operator Produksi</div>
+                <div class="text-right">
+                    <p class="text-gray-400 text-sm">{{ \Carbon\Carbon::now()->timezone('Asia/Jakarta')->locale('id')->isoFormat('dddd, D MMM Y') }}</p>
+                    <p class="text-white font-semibold text-sm mt-1">{{ \Carbon\Carbon::now()->timezone('Asia/Jakarta')->format('H:i') }} WIB</p>
                 </div>
             </div>
 
-            {{-- Top 3 Cards: Tugas Aktif, Selesai, Total Bulan Ini --}}
-            <div class="grid grid-cols-3 gap-4">
-                <div class="bg-neutral-800/50 rounded-xl p-3 text-center border border-neutral-700/50">
-                    <div class="text-2xl font-bold text-white mb-1">{{ $tugasAktifCount }}</div>
-                    <div class="text-xs text-gray-400 font-medium">Tugas Aktif</div>
-                    <div class="text-xs text-amber-400 font-medium">{{ $tugasPendingCount }} Pending</div>
+            {{-- 3 KOLOM STATISTIK --}}
+            <div class="grid grid-cols-3 divide-x divide-white/10">
+                <div class="text-center">
+                    <p class="text-gray-400 text-xs uppercase tracking-wider mb-1">Tugas</p>
+                    <p class="text-3xl font-bold text-white mb-1">{{ $tugasAktifCount }}</p>
+                    <p class="text-gray-500 text-xs">{{ $tugasPendingCount }} Pending</p>
                 </div>
-                <div class="bg-neutral-800/50 rounded-xl p-3 text-center border border-neutral-700/50">
-                    <div class="text-2xl font-bold text-emerald-400 mb-1">{{ number_format($jumlahSelesai) }}</div>
-                    <div class="text-xs text-gray-400 font-medium">Selesai</div>
-                    <div class="text-xs text-gray-500 font-medium">Pcs OK</div>
+                <div class="text-center">
+                    <p class="text-gray-400 text-xs uppercase tracking-wider mb-1">Pengadaan</p>
+                    <p class="text-3xl font-bold text-green-400 mb-1">{{ number_format($totalPengadaan) }}</p>
+                    <p class="text-gray-500 text-xs">Total Tugas</p>
                 </div>
-                <div class="bg-neutral-800/50 rounded-xl p-3 text-center border border-neutral-700/50">
-                    <div class="text-2xl font-bold text-blue-400 mb-1">{{ number_format($totalBulanIni) }}</div>
-                    <div class="text-xs text-gray-400 font-medium">Total</div>
-                    <div class="text-xs text-gray-500 font-medium">Bulan Ini</div>
+                <div class="text-center">
+                    <p class="text-gray-400 text-xs uppercase tracking-wider mb-1">Total Bahan</p>
+                    <p class="text-3xl font-bold text-blue-400 mb-1">{{ number_format($totalStokBahan) }}</p>
+                    <p class="text-gray-500 text-xs">Stok Saat Ini</p>
                 </div>
             </div>
         </div>
 
-        {{-- Status Produksi - Updated --}}
-        <div>
-            <h2 class="text-lg font-semibold text-white mb-4">Status Produksi</h2>
-            <div class="grid grid-cols-3 gap-3">
-                {{-- Selesai Hari Ini --}}
-                <div class="bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 border border-emerald-500/20 rounded-2xl p-4 text-center backdrop-blur-sm">
-                    <div class="w-10 h-10 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-                        <i class="fas fa-calendar-check text-white text-sm"></i>
-                    </div>
-                    <div class="text-xl font-bold text-white mb-1">{{ number_format($selesaiHariIni) }}</div>
-                    <div class="text-xs text-emerald-300 font-medium">Selesai Hari Ini</div>
+        {{-- 3 CARD STATUS PRODUKSI --}}
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            {{-- PERINTAH BARU --}}
+            <a href="{{ route('operator.tugas.index') }}?filter=pending" class="bg-[#1C222D] rounded-2xl border border-white/5 p-5 relative overflow-hidden hover:border-blue-500/30 transition">
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-l-2xl"></div>
+                <div class="w-10 h-10 bg-blue-500/15 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-check text-blue-400"></i>
                 </div>
+                <p class="text-2xl font-bold text-white text-center mb-1">{{ $perintahBaruCount }}</p>
+                <p class="text-gray-400 text-xs text-center">Perintah Baru</p>
+            </a>
 
-                {{-- Bahan Masuk --}}
-                <div class="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-2xl p-4 text-center backdrop-blur-sm">
-                    <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-                        <i class="fas fa-arrow-down text-white text-sm"></i>
-                    </div>
-                    <div class="text-xl font-bold text-white mb-1">{{ number_format($bahanMasukBulanIni) }}</div>
-                    <div class="text-xs text-blue-300 font-medium">Bahan Masuk</div>
+            {{-- SEDANG AKTIF --}}
+            <a href="{{ route('operator.tugas.index') }}?filter=proses" class="bg-[#1C222D] rounded-2xl border border-white/5 p-5 relative overflow-hidden hover:border-amber-500/30 transition">
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-l-2xl"></div>
+                <div class="w-10 h-10 bg-amber-500/15 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-gear text-amber-400"></i>
                 </div>
+                <p class="text-2xl font-bold text-white text-center mb-1">{{ $sedangAktifCount }}</p>
+                <p class="text-gray-400 text-xs text-center">Sedang Aktif</p>
+            </a>
 
-                {{-- Bahan Keluar --}}
-                <div class="bg-gradient-to-br from-amber-500/10 to-amber-600/10 border border-amber-500/20 rounded-2xl p-4 text-center backdrop-blur-sm">
-                    <div class="w-10 h-10 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-                        <i class="fas fa-arrow-up text-white text-sm"></i>
-                    </div>
-                    <div class="text-xl font-bold text-white mb-1">{{ number_format($bahanKeluarBulanIni) }}</div>
-                    <div class="text-xs text-amber-300 font-medium">Bahan Keluar</div>
+            {{-- TUNGGU VALIDASI --}}
+            <a href="{{ route('operator.tugas.index') }}?filter=selesai" class="bg-[#1C222D] rounded-2xl border border-white/5 p-5 relative overflow-hidden hover:border-green-500/30 transition">
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-green-500 rounded-l-2xl"></div>
+                <div class="w-10 h-10 bg-green-500/15 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-clipboard-check text-green-400"></i>
                 </div>
+                <p class="text-2xl font-bold text-white text-center mb-1">{{ $jumlahSelesai ?? 0 }}</p>
+                <p class="text-gray-400 text-xs text-center">Selesai</p>
+            </a>
+        </div>
 
-                {{-- Total Harga Beli --}}
-                <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/10 border border-purple-500/20 rounded-2xl p-4 text-center backdrop-blur-sm">
-                    <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-                        <i class="fas fa-money-bill text-white text-sm"></i>
-                    </div>
-                    <div class="text-xl font-bold text-white mb-1">Rp {{ number_format($totalHargaBeli, 0, ',', '.') }}</div>
-                    <div class="text-xs text-purple-300 font-medium">Total Beli</div>
+        {{-- RINGKASAN LENGKAP --}}
+        <div class="bg-[#1C222D] rounded-2xl border border-white/5 p-5 mb-6">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-blue-400"></i> Ringkasan Operasional
+            </h3>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between py-2 border-b border-white/5">
+                    <span class="text-gray-400 text-sm">Bahan Masuk Bulan Ini</span>
+                    <span class="text-white font-semibold text-sm">{{ number_format($bahanMasukBulanIni ?? 0) }} unit</span>
                 </div>
-
-                {{-- Perintah Baru --}}
-                <div class="bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 border border-cyan-500/20 rounded-2xl p-4 text-center backdrop-blur-sm">
-                    <div class="w-10 h-10 bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-                        <i class="fas fa-plus text-white text-sm"></i>
-                    </div>
-                    <div class="text-xl font-bold text-white mb-1">{{ $perintahBaruCount }}</div>
-                    <div class="text-xs text-cyan-300 font-medium">Perintah Baru</div>
+                <div class="flex items-center justify-between py-2 border-b border-white/5">
+                    <span class="text-gray-400 text-sm">Bahan Keluar (Produksi)</span>
+                    <span class="text-white font-semibold text-sm">{{ number_format($bahanKeluarBulanIni ?? 0) }} unit</span>
                 </div>
-
-                {{-- Sedang Aktif --}}
-                <div class="bg-gradient-to-br from-orange-500/10 to-orange-600/10 border border-orange-500/20 rounded-2xl p-4 text-center backdrop-blur-sm">
-                    <div class="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-                        <i class="fas fa-cog text-white text-sm"></i>
-                    </div>
-                    <div class="text-xl font-bold text-white mb-1">{{ $sedangAktifCount }}</div>
-                    <div class="text-xs text-orange-300 font-medium">Sedang Aktif</div>
+                <div class="flex items-center justify-between py-2 border-b border-white/5">
+                    <span class="text-gray-400 text-sm">Total Nilai Beli</span>
+                    <span class="text-green-400 font-semibold text-sm">Rp {{ number_format($totalHargaBeli ?? 0, 0, ',', '.') }}</span>
+                </div>
+                <div class="flex items-center justify-between py-2">
+                    <span class="text-gray-400 text-sm">Produksi Selesai Hari Ini</span>
+                    <span class="text-blue-400 font-semibold text-sm">{{ number_format($selesaiHariIni ?? 0) }} pcs</span>
                 </div>
             </div>
+        </div>
+
+        {{-- SHORTCUT MENU --}}
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            <a href="{{ route('operator.scan.index') }}" class="bg-[#1C222D] rounded-2xl border border-white/5 p-4 flex items-center gap-3 hover:border-blue-500/30 transition">
+                <div class="w-10 h-10 bg-blue-500/15 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-camera text-blue-400"></i>
+                </div>
+                <div>
+                    <p class="text-white font-semibold text-sm">Scan Nota</p>
+                    <p class="text-gray-500 text-xs">Input bahan via OCR</p>
+                </div>
+            </a>
+            <a href="{{ route('operator.bahan.tambah') }}" class="bg-[#1C222D] rounded-2xl border border-white/5 p-4 flex items-center gap-3 hover:border-emerald-500/30 transition">
+                <div class="w-10 h-10 bg-emerald-500/15 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-plus text-emerald-400"></i>
+                </div>
+                <div>
+                    <p class="text-white font-semibold text-sm">Tambah Bahan</p>
+                    <p class="text-gray-500 text-xs">Input manual stok</p>
+                </div>
+            </a>
+            <a href="{{ route('operator.pengadaan.index') }}" class="bg-[#1C222D] rounded-2xl border border-white/5 p-4 flex items-center gap-3 hover:border-purple-500/30 transition">
+                <div class="w-10 h-10 bg-purple-500/15 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-cart-flatbed text-purple-400"></i>
+                </div>
+                <div>
+                    <p class="text-white font-semibold text-sm">Pengadaan</p>
+                    <p class="text-gray-500 text-xs">Daftar belanja</p>
+                </div>
+            </a>
+            <a href="{{ route('operator.laporan.index') }}" class="bg-[#1C222D] rounded-2xl border border-white/5 p-4 flex items-center gap-3 hover:border-amber-500/30 transition">
+                <div class="w-10 h-10 bg-amber-500/15 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-file-lines text-amber-400"></i>
+                </div>
+                <div>
+                    <p class="text-white font-semibold text-sm">Laporan</p>
+                    <p class="text-gray-500 text-xs">Riwayat & PDF</p>
+                </div>
+            </a>
         </div>
 
     </div>
-</div>
 
-{{-- Header operator sudah menangani notifikasi, jadi script lama ini tidak dipakai lagi. --}}
+</div>
 @endsection

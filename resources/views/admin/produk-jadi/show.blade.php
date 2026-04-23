@@ -48,7 +48,7 @@
                             <h1 class="text-2xl font-bold text-white mb-1">{{ $product->nama_produk }}</h1>
                             <p class="text-sm text-gray-500 mb-4">
                                 SKU: <span class="font-mono text-orange-400">{{ $product->kode_produk }}</span> • 
-                                Warna: {{ $product->warna }}
+                                Warna: {{ is_array($product->warna) ? implode(', ', $product->warna) : ($product->warna ?? '-') }}
                             </p>
                         </div>
                         @if($product->stok <= ($product->stok_minimum ?? 10))
@@ -115,14 +115,18 @@
                         </div>
                     </div>
 
-                    {{-- Sketsa --}}
+                    {{-- Sketsa Gallery --}}
                     <div class="space-y-2">
-                        <h4 class="text-xs text-gray-500 uppercase font-bold">Sketsa</h4>
-                        @if($product->sketsa)
-                            <div class="w-full h-40 bg-[#111] rounded-xl flex items-center justify-center overflow-hidden border border-white/5">
-                                <a href="{{ asset('storage/' . $product->sketsa) }}" target="_blank">
-                                    <img src="{{ asset('storage/' . $product->sketsa) }}" class="w-full h-full object-contain">
-                                </a>
+                        <h4 class="text-xs text-gray-500 uppercase font-bold">Sketsa Produksi</h4>
+                        @php $sketsas = $product->sketsa ?? []; @endphp
+                        @if(count($sketsas) > 0)
+                            <div class="grid grid-cols-2 gap-3">
+                                @foreach(array_slice($sketsas, 0, 4) as $index => $sketsaPath)
+                                    <div class="aspect-square bg-[#111] rounded-xl overflow-hidden border border-white/5 cursor-pointer hover:border-orange-500/50 transition"
+                                         onclick="openSketsaLightbox('{{ asset('storage/' . $sketsaPath) }}')">
+                                        <img src="{{ asset('storage/' . $sketsaPath) }}" class="w-full h-full object-cover" alt="Sketsa {{ $index + 1 }}">
+                                    </div>
+                                @endforeach
                             </div>
                         @else
                             <div class="w-full h-40 bg-[#111] rounded-xl flex items-center justify-center border border-dashed border-white/10">
@@ -241,4 +245,18 @@
     </div>
 
 </div>
+
+{{-- Lightbox Modal Sketsa --}}
+<div id="sketsaLightbox" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-sm p-4" onclick="this.classList.add('hidden'); this.classList.remove('flex');">
+    <img id="sketsaLightboxImg" src="" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl border border-white/10">
+</div>
+
+<script>
+function openSketsaLightbox(src) {
+    const box = document.getElementById('sketsaLightbox');
+    document.getElementById('sketsaLightboxImg').src = src;
+    box.classList.remove('hidden');
+    box.classList.add('flex');
+}
+</script>
 @endsection

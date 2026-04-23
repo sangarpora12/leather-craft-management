@@ -30,17 +30,24 @@ class AuthController extends Controller
         }
 
         if (Auth::attempt($credentials)) {
-            // CEK STATUS AKUN - Jika nonaktif, logout dan tampilkan pesan error
             $user = Auth::user();
-            
-            // Cek jika akun nonaktif (is_active = false)
+
+            // Cek jika akun nonaktif
             if (isset($user->is_active) && $user->is_active === false) {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
                 return back()->withErrors(['username' => 'Login gagal! Akun Anda telah dinonaktifkan. Hubungi administrator.']);
             }
-            
+
+            // Cek sub_role: Pekerja tidak bisa login
+            if ($user->role === 'operator' && $user->sub_role === 'pekerja') {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                return back()->withErrors(['username' => 'Akun Anda hanya untuk menerima instruksi via Gmail. Hubungi Kepala Gudang untuk validasi.']);
+            }
+
             $request->session()->regenerate();
             if ($user->role === 'admin') {
                 return redirect()->intended(route('admin.dashboard'));

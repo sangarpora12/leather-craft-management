@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                     </svg>
                 </a>
-                <h4 class="text-xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">Detail Produksi</h4>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">Detail Produksi</h1>
             </div>
             <p class="text-sm text-gray-400">
                 Kode SPK: <strong class="text-amber-400 font-mono">{{ $produksi->kode_spk }}</strong>
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {{-- KIRI 8 KOLOM --}}
-        <div class="lg:col-span-6 space-y-6">
+        <div class="lg:col-span-8 space-y-6">
 
             {{-- INFORMASI PRODUK --}}
             <div class="bg-gradient-to-b from-[#1A1A1A] to-[#0F0F0F] border border-white/10 rounded-3xl p-6 shadow-2xl shadow-black/50">
@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Nama Produk</div>
-                        <div class="font-bold text-lg text-white">{{ $produksi->product?->nama_produk ?? '-' }}</div>
+                        <div class="font-bold text-xl text-white">{{ $produksi->product?->nama_produk ?? '-' }}</div>
                     </div>
                     <div>
                         <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Kode Produk</div>
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         @if($produksi->product?->panjang)
                         <div class="bg-cyan-500/10 border border-cyan-500/30 rounded-xl px-4 py-3">
                             <div class="text-xs text-cyan-400 mb-1">PANJANG</div>
-                            <div class="font-bold text-white">{{ $formatQty($produksi->product->panjang) }} cm</div>
+                            <div class="font-bold text-white text-lg">{{ fmod($produksi->product->panjang, 1) !== 0.0 ? number_format($produksi->product->panjang, 2) : (int)$produksi->product->panjang }} cm</div>
                         </div>
                         @endif
                         @if($produksi->product?->lebar)
@@ -158,7 +158,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <table class="w-full">
                         <thead>
                             <tr class="text-left text-gray-400 text-xs uppercase tracking-wider">
-                                <th class="pb-4">Foto</th>
                                 <th class="pb-4">Nama Bahan</th>
                                 <th class="pb-4 text-center">Kebutuhan / Unit</th>
                                 <th class="pb-4 text-center">Total Kebutuhan</th>
@@ -168,18 +167,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <tbody class="divide-y divide-white/10">
                             @foreach($produksi->produk_jadi->boms as $bom)
                             <tr>
-                                <td class="py-4">
-                                    @if($bom->bahanBaku && $bom->bahanBaku->foto)
-                                        <img src="{{ asset('storage/' . $bom->bahanBaku->foto) }}" class="w-10 h-10 rounded-lg object-cover border border-white/10 no-print">
-                                    @else
-                                        <div class="w-10 h-10 rounded-lg bg-[#2D3139] flex items-center justify-center border border-white/10 no-print">
-                                            <i class="fa-solid fa-image text-gray-500 text-xs"></i>
-                                        </div>
-                                    @endif
-                                </td>
                                 <td class="py-4 text-white font-medium">{{ $bom->bahanBaku?->nama_material ?? '-' }}</td>
-                                <td class="py-4 text-center text-gray-300">{{ fmod($bom->jumlah_kebutuhan, 1) !== 0.0 ? number_format($bom->jumlah_kebutuhan, 2) : (int)$bom->jumlah_kebutuhan }}</td>
-                                <td class="py-4 text-center text-white font-bold">{{ fmod(($bom->jumlah_kebutuhan * $produksi->jumlah_produksi), 1) !== 0.0 ? number_format(($bom->jumlah_kebutuhan * $produksi->jumlah_produksi), 2) : (int)($bom->jumlah_kebutuhan * $produksi->jumlah_produksi) }}</td>
+                                <td class="py-4 text-center text-gray-300">{{ $bom->jumlah_kebutuhan }}</td>
+                                <td class="py-4 text-center text-white font-bold">{{ number_format($bom->jumlah_kebutuhan * $produksi->jumlah_produksi, 2) }}</td>
                                 <td class="py-4 text-center text-gray-300">{{ $bom->bahanBaku?->satuan ?? '-' }}</td>
                             </tr>
                             @endforeach
@@ -204,8 +194,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         </div>
 
-        {{-- KANAN 6 KOLOM --}}
-        <div class="lg:col-span-6 space-y-6">
+        {{-- KANAN 4 KOLOM --}}
+        <div class="lg:col-span-4 space-y-6">
             
             {{-- INFORMASI SPK --}}
             <div class="bg-gradient-to-b from-[#1A1A1A] to-[#0F0F0F] border border-white/10 rounded-3xl p-6 shadow-2xl shadow-black/50">
@@ -254,14 +244,34 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             @endif
 
+            {{-- SKETSA PRODUK --}}
+            @php $adminSketsas = $produksi->produk_jadi->sketsa ?? []; @endphp
+            @if(count($adminSketsas) > 0)
+            <div class="bg-gradient-to-b from-[#1A1A1A] to-[#0F0F0F] border border-white/10 rounded-3xl p-6 shadow-2xl shadow-black/50">
+                <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    Sketsa Produk
+                </h3>
+                <div class="grid grid-cols-2 gap-3">
+                    @foreach($adminSketsas as $sketsaPath)
+                    <div class="rounded-xl overflow-hidden border border-white/10 aspect-square">
+                        <img src="{{ asset('storage/' . $sketsaPath) }}" alt="Sketsa" class="w-full h-full object-cover hover:scale-105 transition-transform duration-300">
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- FOTO BUKTI --}}
             <div class="bg-gradient-to-b from-[#1A1A1A] to-[#0F0F0F] border border-white/10 rounded-3xl p-6 shadow-2xl shadow-black/50">
                 <h5 class="font-bold text-white mb-4">📸 Foto Bukti Pengerjaan</h5>
                 @if($produksi->foto_bukti)
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-2 gap-3">
                     @foreach(json_decode($produksi->foto_bukti) as $foto)
-                    <div class="rounded-lg overflow-hidden border border-emerald-500/20">
-                        <img src="{{ asset('storage/' . $foto) }}" alt="Foto Bukti" class="w-full h-28 object-cover">
+                    <div class="rounded-xl overflow-hidden border border-emerald-500/20">
+                        <img src="{{ asset('storage/' . $foto) }}" alt="Foto Bukti" class="w-full h-auto">
                     </div>
                     @endforeach
                 </div>

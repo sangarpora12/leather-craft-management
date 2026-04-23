@@ -1,12 +1,9 @@
 @extends('layouts.admin')
 
+@section('page_title', 'Pakai / Kurangi Stok Produk')
+
 @section('content')
 <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-    <!-- Header -->
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold text-white text-center sm:text-left">Pakai / Kurangi Stok Produk</h2>
-    </div>
 
     <!-- Filter Panel -->
     <div class="bg-[#1A1C24] border border-[#343842] rounded-2xl p-4 mb-6">
@@ -25,8 +22,8 @@
                     <select name="kategori" id="kategori" class="w-full bg-[#2D3139] border border-[#343842] text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FD730D]">
                         <option value="">Semua Kategori</option>
                         @foreach($kategoris as $kategori)
-                            <option value="{{ $kategori->kategori }}" {{ request('kategori') == $kategori->kategori ? 'selected' : '' }}>
-                                {{ $kategori->kategori }}
+                            <option value="{{ $kategori }}" {{ request('kategori') == $kategori ? 'selected' : '' }}>
+                                {{ ucwords($kategori) }}
                             </option>
                         @endforeach
                     </select>
@@ -120,13 +117,16 @@
                         
                         <div class="text-xs text-gray-400 mb-3 space-y-1 flex-grow">
                             @if($produk->kategori)
-                                <p><strong class="text-gray-300">Kategori:</strong> {{ $produk->kategori }}</p>
+                                @php $kategori = is_string($produk->kategori) ? json_decode($produk->kategori, true) : $produk->kategori; @endphp
+                                <p><strong class="text-gray-300">Kategori:</strong> {{ is_array($kategori) ? implode(', ', $kategori) : $kategori }}</p>
                             @endif
                             @if($produk->warna)
-                                <p><strong class="text-gray-300">Warna:</strong> {{ $produk->warna }}</p>
+                                @php $warna = is_string($produk->warna) ? json_decode($produk->warna, true) : $produk->warna; @endphp
+                                <p><strong class="text-gray-300">Warna:</strong> {{ is_array($warna) ? implode(', ', $warna) : $warna }}</p>
                             @endif
                             @if($produk->jenis_motif)
-                                <p><strong class="text-gray-300">Motif:</strong> {{ $produk->jenis_motif }}</p>
+                                @php $motif = is_string($produk->jenis_motif) ? json_decode($produk->jenis_motif, true) : $produk->jenis_motif; @endphp
+                                <p><strong class="text-gray-300">Motif:</strong> {{ is_array($motif) ? implode(', ', $motif) : $motif }}</p>
                             @endif
                         </div>
 

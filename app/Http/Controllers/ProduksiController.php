@@ -573,6 +573,33 @@ class ProduksiController extends Controller
             // ✅ Tambah stok berdasarkan TOTAL qty yang benar-benar diselesaikan kloter ini
             $produkJadi->increment('stok', $totalQtyDiselesaikan);
 
+            // ✅ UPDATE HARGA OTOMATIS SETELAH STOK DITAMBAHKAN
+            // Hitung ulang harga jual dengan margin yang benar
+            $margin = (float) Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->value('nilai') ?? 50;
+            
+            // Hitung total HPP dari BOM
+            $produkJadi->load('boms.material');
+            $totalHpp = 0;
+            foreach ($produkJadi->boms as $bom) {
+                if ($bom->material) {
+                    $hargaSatuan = (float) str_replace(',', '.', $bom->material->harga_satuan);
+                    $jumlahKebutuhan = (float) str_replace(',', '.', $bom->jumlah_kebutuhan);
+                    $totalHpp += $hargaSatuan * $jumlahKebutuhan;
+                }
+            }
+            
+            // Hitung harga jual otomatis dengan margin
+            if ($totalHpp > 0) {
+                $hargaJual = ceil($totalHpp + ($totalHpp * ($margin / 100)));
+                $produkJadi->update(['harga_jual' => $hargaJual]);
+                Log::info('Harga produk diupdate otomatis setelah produksi selesai', [
+                    'produk_jadi_id' => $produkJadiId,
+                    'hpp' => $totalHpp,
+                    'margin' => $margin,
+                    'harga_jual_baru' => $hargaJual
+                ]);
+            }
+
             // ── 6. Kirim notifikasi ke admin ──────────────────────────────
             $isProdNotifAktif = Pengaturan::where('nama_pengaturan', 'notif_produksi_selesai')->value('nilai') ?? '1';
             $isEmailAktif     = Pengaturan::where('nama_pengaturan', 'notif_gmail_aktif')->value('nilai') ?? '1';

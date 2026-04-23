@@ -12,9 +12,10 @@
 </div>
 
 {{-- 2. FOTO & SKETSA (DAMPINGAN) --}}
+@php $sketsas = $spk->product->sketsa ?? []; @endphp
 <table style="width: 100%; margin-bottom: 20px;">
     <tr>
-        <td style="width: 50%; text-align: center; padding: 10px; border: 1px solid #eee;">
+        <td style="width: 50%; text-align: center; padding: 10px; border: 1px solid #eee; vertical-align: top;">
             <div style="font-size: 11px; color: #95a5a6;">📸 FOTO PRODUK</div>
             @if ($spk->product->foto)
                 <img src="{{ Storage::disk('public')->url($spk->product->foto) }}" width="100%" style="border-radius: 8px; margin-top: 5px;">
@@ -22,10 +23,14 @@
                 <div style="padding: 20px; color: #e74c3c; font-size: 12px;">🚫 Tidak Ada Foto Produk</div>
             @endif
         </td>
-        <td style="width: 50%; text-align: center; padding: 10px; border: 1px solid #eee;">
+        <td style="width: 50%; text-align: center; padding: 10px; border: 1px solid #eee; vertical-align: top;">
             <div style="font-size: 11px; color: #95a5a6;">📏 SKETSA POLA</div>
-            @if ($spk->product->sketsa)
-                <img src="{{ Storage::disk('public')->url($spk->product->sketsa) }}" width="100%" style="border-radius: 8px; margin-top: 5px;">
+            @if (count($sketsas) > 0)
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 5px;">
+                    @foreach(array_slice($sketsas, 0, 4) as $sketsaPath)
+                        <img src="{{ Storage::disk('public')->url($sketsaPath) }}" style="width: 100%; border-radius: 6px; object-fit: cover; aspect-ratio: 1/1;">
+                    @endforeach
+                </div>
             @else
                 <div style="padding: 20px; color: #e74c3c; font-size: 12px;">🚫 Tidak Ada Sketsa</div>
             @endif
@@ -38,19 +43,47 @@
     Tinggi: {{ (int)$spk->product->tinggi }}cm | Panjang: {{ (int)$spk->product->panjang }}cm | Lebar: {{ (int)$spk->product->lebar }}cm
 </div>
 
+@php
+    $eKategori = is_array($spk->product->kategori) ? $spk->product->kategori : (json_decode($spk->product->kategori, true) ?: [$spk->product->kategori ?: 'Tidak Ada']);
+    $eWarna    = is_array($spk->product->warna)    ? $spk->product->warna    : (json_decode($spk->product->warna, true)    ?: [$spk->product->warna    ?: 'Tidak Ada']);
+    $eMotif    = is_array($spk->product->jenis_motif) ? $spk->product->jenis_motif : (json_decode($spk->product->jenis_motif, true) ?: [$spk->product->jenis_motif ?: 'Tidak Ada']);
+@endphp
+
 {{-- 4. SPESIFIKASI --}}
-<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-    <tr style="background: #fafafa; font-size: 12px;">
-        <th style="border: 1px solid #eee; padding: 8px;">Kategori</th>
-        <th style="border: 1px solid #eee; padding: 8px;">Warna</th>
-        <th style="border: 1px solid #eee; padding: 8px;">Motif</th>
-    </tr>
-    <tr style="text-align: center; font-size: 13px;">
-        <td style="border: 1px solid #eee; padding: 8px;">{{ str_replace(['[',']','"'], '', $spk->product->kategori) ?: 'Tidak Ada' }}</td>
-        <td style="border: 1px solid #eee; padding: 8px;">{{ str_replace(['[',']','"'], '', $spk->product->warna) ?: 'Tidak Ada' }}</td>
-        <td style="border: 1px solid #eee; padding: 8px;">{{ str_replace(['[',']','"'], '', $spk->product->jenis_motif) ?: 'Tidak Ada' }}</td>
-    </tr>
-</table>
+<div style="background: #f8f9fa; border-radius: 10px; padding: 16px; margin-bottom: 20px; border: 1px solid #e9ecef;">
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 6px 0; vertical-align: top; width: 90px;">
+                <span style="font-size: 11px; color: #6c757d; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Kategori</span>
+            </td>
+            <td style="padding: 6px 0;">
+                @foreach($eKategori as $item)
+                <span style="display: inline-block; background: #e3f2fd; color: #1565c0; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin: 2px;">{{ $item }}</span>
+                @endforeach
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0; vertical-align: top;">
+                <span style="font-size: 11px; color: #6c757d; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Warna</span>
+            </td>
+            <td style="padding: 6px 0;">
+                @foreach($eWarna as $item)
+                <span style="display: inline-block; background: #fce4ec; color: #c2185b; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin: 2px;">{{ $item }}</span>
+                @endforeach
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0; vertical-align: top;">
+                <span style="font-size: 11px; color: #6c757d; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Motif</span>
+            </td>
+            <td style="padding: 6px 0;">
+                @foreach($eMotif as $item)
+                <span style="display: inline-block; background: #f3e5f5; color: #7b1fa2; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin: 2px;">{{ $item }}</span>
+                @endforeach
+            </td>
+        </tr>
+    </table>
+</div>
 
 {{-- 5. INFO TAMBAHAN (DESKRIPSI, POLA, INTERNAL) --}}
 <div style="font-size: 13px; line-height: 1.6; color: #2c3e50;">
@@ -86,7 +119,11 @@
 @endforeach
 
 <div style="text-align: center; margin-top: 20px;">
-    <a href="{{ route('login') }}" style="background: #27ae60; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">LOGIN KE SISTEM</a>
+    @if($isKepalaGudang)
+        <a href="{{ route('login') }}" style="background: #27ae60; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">LOGIN DASHBOARD</a>
+    @else
+        <p style="color: #7f8c8d; font-size: 12px;">Anda menerima instruksi ini sebagai Pekerja. Silakan hubungi Kepala Gudang untuk validasi.</p>
+    @endif
 </div>
 
 @endcomponent

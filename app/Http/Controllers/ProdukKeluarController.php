@@ -92,4 +92,30 @@ class ProdukKeluarController extends Controller
             return back()->with('error', 'Gagal memproses pengurangan stok. Silakan coba lagi.')->withInput();
         }
     }
+
+    /**
+     * Menghapus riwayat transaksi dan mengembalikan stok produk.
+     */
+    public function destroy($id)
+    {
+        DB::beginTransaction();
+
+        try {
+            $transaksi = ProdukKeluar::findOrFail($id);
+            
+            // Kembalikan stok produk
+            $produk = ProdukJadi::lockForUpdate()->findOrFail($transaksi->produk_jadi_id);
+            $produk->increment('stok', $transaksi->jumlah_keluar);
+            
+            // Hapus riwayat transaksi
+            $transaksi->delete();
+
+            DB::commit();
+
+            return back()->with('success', "Riwayat berhasil dihapus. Stok {$produk->nama_produk} telah dikembalikan sebanyak {$transaksi->jumlah_keluar} unit.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal menghapus riwayat. Silakan coba lagi.');
+        }
+    }
 }

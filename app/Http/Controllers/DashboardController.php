@@ -43,7 +43,7 @@ class DashboardController extends Controller
                 DB::raw('SUM(pengadaans.jumlah) as total_masuk'),
                 DB::raw('COUNT(pengadaans.id) as jumlah_transaksi')
             )
-            ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
+            ->groupBy('bahan_bakus.id', 'bahan_bakus.kode_material', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
             ->orderByDesc('total_masuk')
             ->limit(10)
             ->get();
@@ -59,7 +59,7 @@ class DashboardController extends Controller
                 'bahan_bakus.satuan',
                 DB::raw('SUM(produksis.jumlah_selesai * bom.jumlah_kebutuhan) as total_keluar')
             )
-            ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
+            ->groupBy('bahan_bakus.id', 'bahan_bakus.kode_material', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
             ->orderByDesc('total_keluar')
             ->limit(10)
             ->get();
@@ -84,6 +84,7 @@ class DashboardController extends Controller
 
         // 2. Data Ringkasan (KPI Cards)
         $totalBahan = BahanBaku::count();
+        $totalStokBahan = BahanBaku::count();
         // Produk jadi yang valid: sudah ada BOM & sudah pernah produksi selesai
         $produkSelesaiIds = Produksi::query()
             ->where('status', 'SELESAI')
@@ -114,8 +115,9 @@ class DashboardController extends Controller
         $minGlobal = (int) ($globalMinStok ?: 5);
         $jumlahKritis = BahanBaku::where('stok', '<=', $minGlobal)->count();
 
-        // Hitung Produk Kritis (Default batas bawah 5 jika tidak diatur)
-        $jumlahProdukKritis = (clone $produkValidQuery)->where('stok', '<=', 5)->count();
+        // Hitung Produk Jadi KRITIS (Stok <= Stok Minimum Global)
+        $stokMinProduk = (int) (Pengaturan::where('nama_pengaturan', 'stok_minimum_produk')->value('nilai') ?? 2);
+        $jumlahProdukKritis = (clone $produkValidQuery)->where('stok', '<=', $stokMinProduk)->count();
 
         // 3. Daftar Produksi Aktif (Status PENDING/PROSES saja) - Grouped by product
         $produksiAktif = Produksi::with('product')
@@ -127,15 +129,26 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // 4. Pengadaan Bahan yang Pending (belum selesai)
-        $pengadaanBahan = DB::table('pengadaans')
+        // 4. Pengadaan Bahan yang Pending (belum selesai) - GROUP BY BAHAN DAN SUM JUMLAH
+        $pengadaanPendingQuery = DB::table('pengadaans')
             ->join('bahan_bakus', 'pengadaans.bahan_baku_id', '=', 'bahan_bakus.id')
             ->leftJoin('users', 'pengadaans.operator_id', '=', 'users.id')
-            ->where('pengadaans.status', 'PENDING')
-            ->select('pengadaans.*', 'bahan_bakus.nama_material', 'bahan_bakus.satuan', 'users.name as operator_name')
-            ->orderByDesc('pengadaans.created_at')
-            ->limit(5)
-            ->get();
+            ->where('pengadaans.status', '!=', 'Selesai/Dibeli')
+            ->where('pengadaans.status', '!=', 'DITERIMA')
+            ->select(
+                'bahan_bakus.id',
+                'bahan_bakus.kode_material',
+                'bahan_bakus.nama_material', 
+                'bahan_bakus.satuan', 
+                DB::raw('SUM(pengadaans.jumlah) as total_jumlah'),
+                DB::raw('MAX(pengadaans.created_at) as terakhir_dibuat'),
+                DB::raw('GROUP_CONCAT(DISTINCT users.name SEPARATOR ", ") as operator_names')
+            )
+            ->groupBy('bahan_bakus.id', 'bahan_bakus.kode_material', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
+            ->orderByDesc(DB::raw('MAX(pengadaans.created_at)'));
+        
+        $pengadaanBahan = (clone $pengadaanPendingQuery)->limit(100)->get();
+        $totalPengadaanPending = $pengadaanPendingQuery->count();
 
         // ✅ FIX GRAFIK KOSONG: Ambil data statistik untuk Chart.js
         $chartData = $this->buildChartData('daily');
@@ -144,21 +157,31 @@ class DashboardController extends Controller
         $bahanKeluar = $chartData['bahan']['keluar'];
         $produkMasuk = $chartData['produk']['masuk'];
         $produkKeluar = $chartData['produk']['keluar'];
+        
+        // Hitung total produk keluar bulan ini
+        $produkKeluarBulanIni = DB::table('transaksi_stok')
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->where('jenis_transaksi', 'PRODUK_KELUAR')
+            ->sum('jumlah') ?? 0;
 
         return view('admin.dashboard', compact(
             'totalBahan', 
             'totalProduk', 
             'totalAsetBahan', 
+            'totalStokBahan',
             'stokProduk',
             'jumlahKritis',
             'jumlahProdukKritis',
             'produksiAktif',
             'pengadaanBahan',
+            'totalPengadaanPending',
             'chartLabels',
             'bahanMasuk',
             'bahanKeluar',
             'produkMasuk',
-            'produkKeluar'
+            'produkKeluar',
+            'produkKeluarBulanIni'
         ));
     }
 
@@ -202,6 +225,9 @@ class DashboardController extends Controller
             ->where('status', 'PROSES')
             ->count();
 
+        // Total tugas pengadaan operator
+        $totalPengadaan = \App\Models\Pengadaan::where('operator_id', $user->id)->count();
+
         // Bahan masuk bulan ini (dari log_stok - termasuk scan OCR)
         $bahanMasukBulanIni = DB::table('log_stok')
             ->whereYear('created_at', now()->year)
@@ -224,6 +250,9 @@ class DashboardController extends Controller
             ->where('log_stok.jenis_transaksi', 'LIKE', 'MASUK%')
             ->selectRaw('SUM(log_stok.jumlah * bahan_bakus.harga_satuan) as total')
             ->value('total') ?? 0;
+            
+        // ✅ Total JENIS BAHAN (jumlah kode produk bahan yang berbeda)
+        $totalStokBahan = BahanBaku::count();
 
         return view('operator.dashboard', compact(
             'unreadCount',
@@ -234,9 +263,11 @@ class DashboardController extends Controller
             'totalBulanIni',
             'perintahBaruCount',
             'sedangAktifCount',
+            'totalPengadaan',
             'bahanMasukBulanIni',
             'bahanKeluarBulanIni',
-            'totalHargaBeli'
+            'totalHargaBeli',
+            'totalStokBahan'
         ));
     }
 
@@ -298,6 +329,65 @@ class DashboardController extends Controller
         }
 
         return redirect()->route('operator.tugas.index');
+    }
+
+    /**
+     * Search global untuk operator (bahan + produk + tugas)
+     */
+    public function operatorSearch(Request $request)
+    {
+        $q = $request->query('q', '');
+        if (empty($q)) {
+            return redirect()->route('operator.dashboard');
+        }
+
+        $keyword = '%' . $q . '%';
+
+        // Cari di bahan baku
+        $bahanResults = \App\Models\BahanBaku::where('nama_material', 'LIKE', $keyword)
+            ->orWhere('kode_material', 'LIKE', $keyword)
+            ->limit(5)
+            ->get();
+
+        // Cari di produk jadi
+        $produkResults = \App\Models\ProdukJadi::where('nama_produk', 'LIKE', $keyword)
+            ->orWhere('kode_produk', 'LIKE', $keyword)
+            ->limit(5)
+            ->get();
+
+        // Cari di produksi (SPK)
+        $spkResults = Produksi::where('operator_id', auth()->id())
+            ->where(function ($query) use ($keyword) {
+                $query->where('kode_spk', 'LIKE', $keyword)
+                      ->orWhereHas('product', function ($q) use ($keyword) {
+                          $q->where('nama_produk', 'LIKE', $keyword);
+                      });
+            })
+            ->limit(5)
+            ->get();
+
+        // Kalau hanya 1 hasil bahan → langsung ke detail bahan
+        if ($bahanResults->count() === 1 && $produkResults->isEmpty() && $spkResults->isEmpty()) {
+            return redirect()->route('operator.bahan.show', $bahanResults->first()->id);
+        }
+
+        // Kalau hanya 1 hasil SPK → langsung ke detail tugas
+        if ($spkResults->count() === 1 && $bahanResults->isEmpty() && $produkResults->isEmpty()) {
+            return redirect()->route('operator.tugas.detail', $spkResults->first()->id);
+        }
+
+        // Kalau hasil bahan dominan → ke halaman bahan dengan filter search
+        if ($bahanResults->count() > 0) {
+            return redirect()->route('operator.bahan.index', ['search' => $q]);
+        }
+
+        // Kalau hasil SPK dominan → ke halaman tugas dengan filter search
+        if ($spkResults->count() > 0) {
+            return redirect()->route('operator.tugas.index', ['search' => $q]);
+        }
+
+        // Default: ke halaman bahan (karena operator paling sering cari bahan)
+        return redirect()->route('operator.bahan.index', ['search' => $q]);
     }
 
     /**
@@ -598,25 +688,24 @@ class DashboardController extends Controller
             $produkMasukRaw = DB::table('produksis')
                 ->whereDate('updated_at', $today)
                 ->where('status', 'SELESAI')
-                ->get(['updated_at', 'jumlah_produksi']);
+                ->get(['updated_at', 'jumlah_selesai']);
             
             foreach ($produkMasukRaw as $row) {
                 $hour = Carbon::parse($row->updated_at)->timezone('Asia/Jakarta')->hour + 1;
                 if ($hour >= 1 && $hour <= 24) {
-                    $pMasukData[$hour] += floatval($row->jumlah_produksi);
+                    $pMasukData[$hour] += floatval($row->jumlah_selesai);
                 }
             }
             
             // Produk Keluar (Penjualan)
-            $produkKeluarRaw = DB::table('transaksi_stok')
+            $produkKeluarRaw = DB::table('produk_keluars')
                 ->whereDate('created_at', $today)
-                ->where('jenis_transaksi', 'PRODUK_KELUAR')
-                ->get(['created_at', 'jumlah']);
+                ->get(['created_at', 'jumlah_keluar']);
             
             foreach ($produkKeluarRaw as $row) {
                 $hour = Carbon::parse($row->created_at)->timezone('Asia/Jakarta')->hour + 1;
                 if ($hour >= 1 && $hour <= 24) {
-                    $pKeluarData[$hour] += floatval($row->jumlah);
+                    $pKeluarData[$hour] += floatval($row->jumlah_keluar);
                 }
             }
             
@@ -638,8 +727,8 @@ class DashboardController extends Controller
 
                 $bMasuk[] = DB::table('log_stok')->whereDate('created_at', $d)->where('jenis_transaksi', 'LIKE', 'MASUK%')->sum('jumlah');
                 $bKeluar[] = DB::table('log_stok')->whereDate('created_at', $d)->where('jenis_transaksi', 'PENGELUARAN_PRODUKSI')->sum('jumlah');
-                $pMasuk[] = DB::table('produksis')->whereDate('updated_at', $d)->where('status', 'SELESAI')->sum('jumlah_produksi');
-                $pKeluar[] = DB::table('transaksi_stok')->whereDate('created_at', $d)->where('jenis_transaksi', 'PRODUK_KELUAR')->sum('jumlah');
+                $pMasuk[] = DB::table('produksis')->whereDate('updated_at', $d)->where('status', 'SELESAI')->sum('jumlah_selesai');
+                $pKeluar[] = DB::table('produk_keluars')->whereDate('created_at', $d)->sum('jumlah_keluar');
             }
         } else { // Monthly view for the current year (Jan-Dec)
             $currentYear = Carbon::now()->year;
@@ -652,8 +741,8 @@ class DashboardController extends Controller
 
                 $bMasuk[] = DB::table('log_stok')->whereBetween('created_at', [$start, $end])->where('jenis_transaksi', 'LIKE', 'MASUK%')->sum('jumlah') ?? 0;
                 $bKeluar[] = DB::table('log_stok')->whereBetween('created_at', [$start, $end])->where('jenis_transaksi', 'PENGELUARAN_PRODUKSI')->sum('jumlah') ?? 0;
-                $pMasuk[] = DB::table('produksis')->whereBetween('updated_at', [$start, $end])->where('status', 'SELESAI')->sum('jumlah_produksi') ?? 0;
-                $pKeluar[] = DB::table('transaksi_stok')->whereBetween('created_at', [$start, $end])->where('jenis_transaksi', 'PRODUK_KELUAR')->sum('jumlah') ?? 0;
+                $pMasuk[] = DB::table('produksis')->whereBetween('updated_at', [$start, $end])->where('status', 'SELESAI')->sum('jumlah_selesai') ?? 0;
+                $pKeluar[] = DB::table('produk_keluars')->whereBetween('created_at', [$start, $end])->sum('jumlah_keluar') ?? 0;
             }
         }
 

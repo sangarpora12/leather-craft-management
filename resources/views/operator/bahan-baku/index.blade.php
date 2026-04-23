@@ -1,13 +1,13 @@
 @extends('layouts.operator_app')
 
 @section('content')
-<div class="w-full max-w-md mx-auto bg-gray-900 text-white min-h-screen">
+<div class="w-full max-w-md mx-auto bg-[#0B0E14] text-white min-h-screen">
     <!-- Header -->
     @include('components.operator-header', ['title' => 'BAHAN BAKU'])
 
     <!-- Stats -->
     <div class="px-4 py-3">
-        <div class="bg-gray-800 border border-gray-700 rounded-xl p-4">
+        <div class="bg-[#1C222D] border border-white/5 rounded-xl p-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
@@ -30,28 +30,28 @@
     <div class="px-4 pb-4">
         <form method="GET" action="{{ route('operator.bahan.index') }}" class="space-y-3">
             <div class="relative">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama / kode bahan..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none pr-10">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama / kode bahan..." class="w-full bg-[#1C222D] border border-white/5 rounded-2xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none pr-10">
                 <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
                     <i class="fas fa-search"></i>
                 </button>
             </div>
             
             <div class="flex overflow-x-auto gap-2 pb-1 scrollbar-hide">
-                <select name="kategori" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[100px]">
+                <select name="kategori" class="bg-[#1C222D] border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[100px]">
                     <option value="" {{ !request('kategori') ? 'selected' : '' }}>Semua Kategori</option>
                     @foreach($kategories as $k)
                         <option value="{{ $k->nama_kategori }}" {{ request('kategori') == $k->nama_kategori ? 'selected' : '' }}>{{ $k->nama_kategori }}</option>
                     @endforeach
                 </select>
                 
-                <select name="satuan" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[90px]">
+                <select name="satuan" class="bg-[#1C222D] border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[90px]">
                     <option value="" {{ !request('satuan') ? 'selected' : '' }}>Semua Satuan</option>
                     @foreach($satuans as $s)
                         <option value="{{ $s->nama_satuan }}" {{ request('satuan') == $s->nama_satuan ? 'selected' : '' }}>{{ $s->nama_satuan }}</option>
                     @endforeach
                 </select>
                 
-                <select name="sort" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[120px]">
+                <select name="sort" class="bg-[#1C222D] border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[120px]">
                     <option value="terbaru" {{ !request('sort') || request('sort') == 'terbaru' ? 'selected' : '' }}>Terbaru</option>
                     <option value="stok_terendah" {{ request('sort') == 'stok_terendah' ? 'selected' : '' }}>Stok Rendah</option>
                     <option value="nama_asc" {{ request('sort') == 'nama_asc' ? 'selected' : '' }}>Nama A-Z</option>
@@ -67,7 +67,7 @@
     <!-- Bahan Baku List -->
     <div class="px-4 pb-24">
         @forelse($bahanBakus as $bahan)
-        <div class="rounded-xl mb-3 overflow-hidden relative @if($bahan->stok <= $bahan->stok_minimum) bg-red-500/10 border border-red-500/40 @else bg-gray-800 border border-gray-700 @endif">
+        <div class="rounded-xl mb-3 overflow-hidden relative @if($bahan->stok <= $bahan->stok_minimum) bg-red-500/10 border border-red-500/40 @else bg-[#1C222D] border border-white/5 @endif">
             <!-- ICON EDIT POJOK KANAN ATAS -->
             <a href="{{ route('operator.bahan.edit', $bahan->id) }}" 
                onclick="event.stopPropagation();"
@@ -76,10 +76,10 @@
             </a>
         
             <!-- SELURUH KARTU ADALAH LINK DETAIL -->
-            <a href="{{ route('operator.bahan.show', $bahan->id) }}" class="block p-4 hover:bg-gray-700/30 transition">
+            <a href="{{ route('operator.bahan.show', $bahan->id) }}" class="block p-4 hover:bg-white/5 transition">
                 <div class="flex items-center gap-3">
                     <!-- ✅ FOTO BAHAN KIRI -->
-                    <div class="w-14 h-14 overflow-hidden rounded-xl bg-gray-700 border border-gray-700 flex-shrink-0">
+                    <div class="w-14 h-14 overflow-hidden rounded-xl bg-gray-700 border border-white/5 flex-shrink-0">
                         @if($bahan->foto)
                             <img src="{{ asset('storage/' . $bahan->foto) }}" class="w-full h-full object-cover">
                         @else
@@ -102,7 +102,7 @@
             </a>
         </div>
         @empty
-        <div class="py-12 border-2 border-dashed border-gray-700 rounded-xl text-center">
+        <div class="py-12 border-2 border-dashed border-white/5 rounded-xl text-center">
             <span class="text-sm text-gray-500">Belum ada bahan baku</span>
         </div>
         @endforelse

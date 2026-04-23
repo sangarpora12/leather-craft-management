@@ -29,7 +29,7 @@ class ProfileController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'no_hp' => 'nullable|string|max:20',
-            'foto_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'foto_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
         ]);
 
         $user->name = $validated['name'];

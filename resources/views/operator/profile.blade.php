@@ -3,331 +3,123 @@
 @section('title', 'Profil Saya')
 
 @section('content')
-<style>
-    /* Force Two-Column Layout */
-    .profile-wrapper {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        padding: 20px;
-    }
-    
-    .profile-left {
-        flex: 1;
-        min-width: 300px;
-        max-width: 350px;
-    }
-    
-    .profile-right {
-        flex: 2;
-        min-width: 400px;
-    }
-    
-    .mini-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 15px;
-        margin-bottom: 20px;
-    }
-    
-    /* Card Styles */
-    .profile-card {
-        background-color: #1e1e1e;
-        border: 1px solid #333;
-        border-radius: 16px;
-        padding: 32px;
-        text-align: center;
-    }
-    
-    .info-card {
-        background-color: #1e1e1e;
-        border: 1px solid #333;
-        border-radius: 16px;
-        padding: 28px;
-    }
-    
-    .stat-mini-card {
-        background-color: #252525;
-        border: 1px solid #333;
-        border-radius: 12px;
-        padding: 20px;
-        text-align: center;
-        transition: all 0.3s ease;
-    }
-    
-    .stat-mini-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-        border-color: #444;
-    }
-    
-    /* Avatar */
-    .avatar-large {
-        width: 140px;
-        height: 140px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 4px solid #b45309;
-        box-shadow: 0 8px 30px rgba(180,83,9,0.3);
-        margin: 0 auto 20px;
-        display: block;
-    }
-    
-    /* Badge */
-    .badge-role {
-        background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
-        color: white;
-        padding: 8px 20px;
-        border-radius: 24px;
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        display: inline-block;
-        margin-bottom: 20px;
-    }
-    
-    /* Stat */
-    .stat-number {
-        font-size: 28px;
-        font-weight: 700;
-        color: #ffffff;
-        margin-bottom: 4px;
-    }
-    
-    .stat-label {
-        font-size: 11px;
-        color: #888;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    /* Info Row */
-    .info-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 14px 0;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    
-    .info-row:last-child {
-        border-bottom: none;
-    }
-    
-    .info-label {
-        font-size: 12px;
-        color: #888;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .info-value {
-        font-size: 15px;
-        color: #fff;
-        font-weight: 600;
-    }
-    
-    /* Buttons */
-    .btn-amber {
-        background: linear-gradient(135deg, #b45309 0%, #d97706 100%);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 14px;
-        transition: all 0.3s ease;
-        width: 100%;
-    }
-    
-    .btn-amber:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(180,83,9,0.4);
-        color: white;
-    }
-    
-    .btn-logout {
-        background: rgba(239,68,68,0.1);
-        color: #ef4444;
-        border: 1px solid rgba(239,68,68,0.2);
-        padding: 12px 24px;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 14px;
-        transition: all 0.3s ease;
-        width: 100%;
-        margin-top: 10px;
-    }
-    
-    .btn-logout:hover {
-        background: rgba(239,68,68,0.2);
-        color: #ef4444;
-    }
-    
-    /* Stat Icon */
-    .stat-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 12px;
-    }
-    
-    /* Section Title */
-    .section-title {
-        font-size: 16px;
-        font-weight: 700;
-        color: #fff;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .section-title i {
-        color: #b45309;
-    }
-    
-    /* Responsive */
-    @media (max-width: 768px) {
-        .profile-left, .profile-right {
-            max-width: 100%;
-            flex: 100%;
-        }
-        
-        .mini-stats-grid {
-            grid-template-columns: repeat(3, 1fr);
-        }
-    }
-</style>
+<div class="min-h-screen bg-[#0B0E14] pb-24">
+    <div class="px-6 py-6 safe-top">
+        {{-- HEADER --}}
+        <div class="flex items-center justify-between mb-6">
+            <a href="{{ route('operator.dashboard') }}" class="text-white text-xl p-2 -ml-2 rounded-lg hover:bg-white/5 transition">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="text-2xl font-bold text-white tracking-wider">PROFIL</h1>
+            <div class="w-10"></div>
+        </div>
 
-<div class="container-fluid profile-wrapper" style="background-color: #121212; min-height: 100vh;">
-    {{-- SISI KIRI: Profile Card --}}
-    <div class="profile-left">
-        <div class="profile-card">
+        {{-- PROFILE CARD --}}
+        <div class="bg-[#1C222D] rounded-2xl border border-white/5 p-6 mb-6 text-center">
             {{-- Avatar --}}
             @if($user->foto)
-                <img src="{{ asset('storage/' . $user->foto) }}" alt="Foto Profil" class="avatar-large">
+                <img src="{{ asset('storage/' . $user->foto) }}" alt="Foto Profil" class="w-28 h-28 rounded-full object-cover border-4 border-blue-500/30 mx-auto mb-4">
             @else
-                <div class="avatar-large d-flex align-items-center justify-content-center text-white" 
-                     style="background: linear-gradient(135deg, #b45309 0%, #92400e 100%); font-size: 52px; font-weight: 700;">
+                <div class="w-28 h-28 rounded-full bg-blue-600 flex items-center justify-center text-white text-4xl font-bold border-4 border-blue-500/30 mx-auto mb-4">
                     {{ substr($user->name ?? $user->username, 0, 1) }}
                 </div>
             @endif
 
-            {{-- Name --}}
-            <h4 class="text-white mb-2" style="font-weight: 700; font-size: 20px;">{{ $user->name ?? $user->username }}</h4>
-            
-            {{-- Role Badge --}}
-            <span class="badge-role">Operator Produksi</span>
+            <h2 class="text-xl font-bold text-white mb-1">{{ $user->name ?? $user->username }}</h2>
+            <span class="inline-flex items-center bg-blue-500/15 text-blue-400 text-xs font-bold px-3 py-1 rounded-full border border-blue-500/25 uppercase tracking-wider">
+                Operator Produksi
+            </span>
+        </div>
 
-            <form action="{{ route('logout') }}" method="POST">
+        {{-- MINI STATS --}}
+        <div class="grid grid-cols-3 gap-3 mb-6">
+            <div class="bg-[#1C222D] rounded-2xl border border-white/5 p-4 text-center">
+                <div class="w-10 h-10 bg-emerald-500/15 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <i class="fa-solid fa-box text-emerald-400 text-sm"></i>
+                </div>
+                <p class="text-xl font-bold text-white">{{ number_format($user->productions()->sum('jumlah_produksi')) }}</p>
+                <p class="text-gray-500 text-[10px] uppercase tracking-wider mt-1">Total Produksi</p>
+            </div>
+            <div class="bg-[#1C222D] rounded-2xl border border-white/5 p-4 text-center">
+                <div class="w-10 h-10 bg-blue-500/15 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <i class="fa-solid fa-check-circle text-blue-400 text-sm"></i>
+                </div>
+                <p class="text-xl font-bold text-white">{{ $user->productions()->where('status', 'SELESAI')->count() }}</p>
+                <p class="text-gray-500 text-[10px] uppercase tracking-wider mt-1">SPK Selesai</p>
+            </div>
+            <div class="bg-[#1C222D] rounded-2xl border border-white/5 p-4 text-center">
+                <div class="w-10 h-10 bg-amber-500/15 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <i class="fa-solid fa-gear text-amber-400 text-sm"></i>
+                </div>
+                <p class="text-xl font-bold text-white">{{ $user->productions()->where('status', 'PROSES')->count() }}</p>
+                <p class="text-gray-500 text-[10px] uppercase tracking-wider mt-1">Sedang Proses</p>
+            </div>
+        </div>
+
+        {{-- INFO AKUN --}}
+        <div class="bg-[#1C222D] rounded-2xl border border-white/5 p-5 mb-6">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-user-circle text-blue-400"></i> Informasi Akun
+            </h3>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between py-3 border-b border-white/5">
+                    <span class="text-gray-400 text-sm"><i class="fa-solid fa-user mr-2 text-gray-500"></i>Username</span>
+                    <span class="text-white font-medium text-sm">{{ $user->username }}</span>
+                </div>
+                <div class="flex items-center justify-between py-3 border-b border-white/5">
+                    <span class="text-gray-400 text-sm"><i class="fa-solid fa-envelope mr-2 text-gray-500"></i>Email</span>
+                    <span class="text-white font-medium text-sm">{{ $user->email }}</span>
+                </div>
+                <div class="flex items-center justify-between py-3 border-b border-white/5">
+                    <span class="text-gray-400 text-sm"><i class="fa-solid fa-calendar mr-2 text-gray-500"></i>Bergabung</span>
+                    <span class="text-white font-medium text-sm">{{ $user->created_at->timezone('Asia/Jakarta')->locale('id')->isoFormat('D MMM Y') }}</span>
+                </div>
+                <div class="flex items-center justify-between py-3">
+                    <span class="text-gray-400 text-sm"><i class="fa-solid fa-shield mr-2 text-gray-500"></i>Role</span>
+                    <span class="text-white font-medium text-sm capitalize">{{ $user->role }}</span>
+                </div>
+            </div>
+        </div>
+
+        {{-- UPDATE FOTO --}}
+        <div class="bg-[#1C222D] rounded-2xl border border-white/5 p-5 mb-6">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-camera text-emerald-400"></i> Ganti Foto Profil
+            </h3>
+
+            @if(session('success'))
+                <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-3 mb-4">
+                    <p class="text-green-400 text-sm"><i class="fa-solid fa-check-circle mr-2"></i>{{ session('success') }}</p>
+                </div>
+            @endif
+            @if($errors->any())
+                <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-4">
+                    @foreach($errors->all() as $error)
+                        <p class="text-red-400 text-sm"><i class="fa-solid fa-exclamation-circle mr-2"></i>{{ $error }}</p>
+                    @endforeach
+                </div>
+            @endif
+
+            <form action="{{ route('operator.updateFoto') }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                <button type="submit" class="btn btn-logout">
-                    <i class="fas fa-sign-out-alt me-2"></i>Keluar
+                <div class="mb-4">
+                    <input type="file" name="foto" accept="image/jpeg,image/png,image/jpg"
+                           class="w-full bg-[#0B0E14] border border-white/10 rounded-xl px-4 py-3 text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:text-sm file:font-medium hover:file:bg-blue-500 transition">
+                    <p class="text-gray-500 text-xs mt-2">Format: JPG, PNG. Maksimal 2MB.</p>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition">
+                    <i class="fa-solid fa-save mr-2"></i>Simpan Foto Profil
                 </button>
             </form>
         </div>
-    </div>
 
-    {{-- SISI KANAN: Statistik & Informasi --}}
-    <div class="profile-right">
-        {{-- Baris Atas: Statistik (Mini Stats Grid) --}}
-        <div class="mini-stats-grid">
-            <div class="stat-mini-card">
-                <div class="stat-icon" style="background: linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.1) 100%);">
-                    <i class="fas fa-box text-success fa-lg"></i>
-                </div>
-                <div class="stat-number">{{ number_format($user->productions()->sum('jumlah_produksi')) }}</div>
-                <div class="stat-label">Total Produksi</div>
-            </div>
-            <div class="stat-mini-card">
-                <div class="stat-icon" style="background: linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(59,130,246,0.1) 100%);">
-                    <i class="fas fa-check-circle text-primary fa-lg"></i>
-                </div>
-                <div class="stat-number">{{ $user->productions()->where('status', 'SELESAI')->count() }}</div>
-                <div class="stat-label">SPK Selesai</div>
-            </div>
-            <div class="stat-mini-card">
-                <div class="stat-icon" style="background: linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(245,158,11,0.1) 100%);">
-                    <i class="fas fa-truck text-warning fa-lg"></i>
-                </div>
-                <div class="stat-number">{{ $user->productions()->where('status', 'PROSES')->count() }}</div>
-                <div class="stat-label">Sedang Proses</div>
-            </div>
-        </div>
-
-        {{-- Baris Bawah: Detail Informasi --}}
-        <div class="info-card">
-            <div class="section-title">
-                <i class="fas fa-user-circle"></i>
-                Informasi Akun
-            </div>
-
-            <div class="info-row">
-                <span class="info-label">
-                    <i class="fas fa-user me-2"></i>Username
-                </span>
-                <span class="info-value">{{ $user->username }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">
-                    <i class="fas fa-envelope me-2"></i>Email
-                </span>
-                <span class="info-value">{{ $user->email }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">
-                    <i class="fas fa-calendar me-2"></i>Bergabung Sejak
-                </span>
-                <span class="info-value">{{ $user->created_at->format('d M Y') }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">
-                    <i class="fas fa-shield me-2"></i>Role
-                </span>
-                <span class="info-value text-capitalize">{{ $user->role }}</span>
-            </div>
-
-            {{-- Form Edit Info Akun --}}
-            <div class="mt-4 pt-4" style="border-top: 1px solid rgba(255,255,255,0.05);">
-                @if(session('success'))
-                    <div class="alert alert-success mb-3" style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #10b981; border-radius: 8px; padding: 10px 14px; font-size: 13px;">
-                        <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                    </div>
-                @endif
-                @if($errors->any())
-                    <div class="alert alert-danger mb-3" style="background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; border-radius: 8px; padding: 10px 14px; font-size: 13px;">
-                        @foreach($errors->all() as $error)
-                            <div><i class="fas fa-exclamation-circle me-1"></i>{{ $error }}</div>
-                        @endforeach
-                    </div>
-                @endif
-
-                <form action="{{ route('operator.updateFoto') }}" method="POST" enctype="multipart/form-data">
-                    @csrf
-                    {{-- Upload Foto Profil --}}
-                    <div class="mb-3">
-                        <label class="info-label mb-2 d-block">
-                            <i class="fas fa-camera me-1"></i>Ganti Foto Profil
-                        </label>
-                        <input type="file" name="foto" accept="image/jpeg,image/png,image/jpg"
-                            class="form-control form-control-sm"
-                            style="background: #2a2a2a; border: 1px solid #444; color: #ccc; border-radius: 8px; font-size: 13px;">
-                        <small class="text-muted" style="font-size: 11px;">Format: JPG, PNG. Max 2MB.</small>
-                    </div>
-                    <button type="submit" class="btn btn-amber">
-                        <i class="fas fa-save me-2"></i>Simpan Foto Profil
-                    </button>
-                </form>
-            </div>
-        </div>
+        {{-- LOGOUT --}}
+        <form action="{{ route('logout') }}" method="POST">
+            @csrf
+            <button type="submit" class="w-full bg-red-600/10 border border-red-500/20 hover:bg-red-600/20 text-red-400 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-sign-out-alt"></i>Keluar Akun
+            </button>
+        </form>
     </div>
 </div>
-
-<script>
-</script>
 @endsection

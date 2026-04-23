@@ -28,7 +28,7 @@
                 <select onchange="window.location.href = this.value" class="bg-[#2A3140] text-white px-3 py-1.5 rounded-lg border-0 outline-none cursor-pointer">
                     <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'sort_by' => request('sort_by')])) }}" {{ !request('status_stok') ? 'selected' : '' }}>Semua</option>
                     <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => 'tersedia', 'sort_by' => request('sort_by')])) }}" {{ request('status_stok') == 'tersedia' ? 'selected' : '' }}>Stok Tersedia</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => 'menipis', 'sort_by' => request('sort_by')])) }}" {{ request('status_stok') == 'menipis' ? 'selected' : '' }}>Stok Menipis (< 10)</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => 'menipis', 'sort_by' => request('sort_by')])) }}" {{ request('status_stok') == 'menipis' ? 'selected' : '' }}>Stok Menipis</option>
                     <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => 'habis', 'sort_by' => request('sort_by')])) }}" {{ request('status_stok') == 'habis' ? 'selected' : '' }}>Stok Habis</option>
                 </select>
             </div>
@@ -42,80 +42,94 @@
                     <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => request('status_stok')])) }}" {{ !request('sort_by') ? 'selected' : '' }}>Default</option>
                     <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => request('status_stok'), 'sort_by' => 'harga_termahal'])) }}" {{ request('sort_by') == 'harga_termahal' ? 'selected' : '' }}>Termahal</option>
                     <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => request('status_stok'), 'sort_by' => 'harga_termurah'])) }}" {{ request('sort_by') == 'harga_termurah' ? 'selected' : '' }}>Termurah</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => request('status_stok'), 'sort_by' => 'stok_terbanyak'])) }}" {{ request('sort_by') == 'stok_terbanyak' ? 'selected' : '' }}>Stok Terbanyak</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_filter(['kategori' => request('kategori'), 'search' => request('search'), 'status_stok' => request('status_stok'), 'sort_by' => 'stok_terkecil'])) }}" {{ request('sort_by') == 'stok_terkecil' ? 'selected' : '' }}>Stok Terkecil</option>
                 </select>
             </div>
 
         </div>
     </div>
 
-    {{-- GRID PRODUK - TANPA ABSOLUTE APAPUN --}}
+    {{-- GRID PRODUK --}}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 
     @forelse($produk_jadi as $item)
+        @php
+            $stokMinProduk = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_produk')->value('nilai') ?? 2);
+            $isStokKritis = $item->stok <= $stokMinProduk;
+        @endphp
 
-        {{-- KARTU PRODUK PERSIS FIGMA --}}
-        <div class="bg-[#1C222D] rounded-2xl border-0 overflow-hidden flex flex-col hover:translate-y-[-2px] transition-all duration-300 shadow-xl">
+        {{-- KARTU PRODUK --}}
+        <div class="bg-[#1C222D] rounded-2xl border border-white/5 overflow-hidden flex flex-col hover:translate-y-[-2px] transition-all duration-300 shadow-xl">
 
-            {{-- FOTO ATAS 192px --}}
-            <div class="aspect-square w-full overflow-hidden relative">
-                @if($item->foto)
-                <img src="{{ asset('storage/'.$item->foto) }}" 
-                     class="w-full h-full object-cover" 
-                     alt="{{ $item->nama_produk }}">
-                @else
-                <div class="w-full h-full flex items-center justify-center">
-                    <i class="fa-solid fa-image text-neutral-600 text-4xl"></i>
-                </div>
-                @endif
-                
-                {{-- BADGE SKU --}}
-                <div class="absolute top-4 left-3 bg-black/60 px-2 py-1 rounded text-[10px] text-white">
-                    {{ $item->kode_produk ?? $item->sku ?? '-' }}
+            {{-- FOTO AREA DENGAN BACKGROUND TERANG --}}
+            <div class="p-3 pb-0">
+                <div class="aspect-square w-full bg-[#F5F5F5] rounded-xl overflow-hidden relative">
+                    @if($item->foto)
+                    <img src="{{ asset('storage/'.$item->foto) }}"
+                         class="w-full h-full object-cover"
+                         alt="{{ $item->nama_produk }}">
+                    @else
+                    <div class="w-full h-full flex items-center justify-center">
+                        <i class="fa-solid fa-image text-neutral-400 text-4xl"></i>
+                    </div>
+                    @endif
+
+                    {{-- BADGE KODE KANAN ATAS --}}
+                    <div class="absolute top-3 right-3 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded-md text-[10px] text-white font-medium">
+                        {{ $item->kode_produk ?? $item->sku ?? '-' }}
+                    </div>
+
+                    {{-- BADGE MENIPIS KIRI ATAS --}}
+                    @if($isStokKritis)
+                    <div class="absolute top-3 left-3 bg-red-500/90 backdrop-blur-sm px-2 py-1 rounded-md text-[10px] text-white font-bold">
+                        ⚠ MENIPIS
+                    </div>
+                    @endif
                 </div>
             </div>
 
-            {{-- KONTEN BAWAH 208px --}}
-            <div class="p-5 flex flex-col flex-1">
-                
-                {{-- NAMA & WARNA --}}
-                <div class="mb-5">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-bold text-white">
+            {{-- KONTEN BAWAH --}}
+            <div class="p-4 flex flex-col flex-1">
+
+                {{-- NAMA & BOM BADGE --}}
+                <div class="mb-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <h3 class="text-base font-bold text-white truncate">
                             {{ ucwords($item->nama_produk) }}
                         </h3>
                         @if($item->tipe_harga === 'otomatis' && $item->harga_jual > 0)
-                        <span class="bg-green-500/10 text-green-500 text-[9px] font-bold px-2 py-1 rounded border border-green-500/20">BOM: OK</span>
+                        <span class="bg-green-500/15 text-green-400 text-[9px] font-bold px-2 py-0.5 rounded border border-green-500/25 whitespace-nowrap">BOM: OK</span>
                         @endif
                     </div>
-                    <p class="text-gray-500 text-xs mt-1">
-                        {{ $item->deskripsi ? Str::limit($item->deskripsi, 50) : 'Deskripsi produk belum diisi' }}
+                    <p class="text-gray-500 text-[11px] mt-0.5 truncate">
+                        {{ $item->deskripsi ? Str::limit($item->deskripsi, 40) : 'Deskripsi produk belum diisi' }}
                     </p>
                 </div>
 
-                {{-- STOK --}}
-                <div class="flex justify-between items-center pb-2 mb-2 border-b border-neutral-800">
-                    <span class="text-gray-500 text-xs">Stok</span>
-                    <span class="text-white text-xs font-bold">{{ $item->stok }}</span>
-                </div>
-
-                {{-- HARGA --}}
-                <div class="flex justify-between items-center mb-4">
-                    <span class="text-gray-400 text-sm">Harga Jual</span>
-                    <span class="font-bold text-[#22C55E] text-lg">
-                        Rp {{ number_format($item->harga_jual, 0, ',', '.') }}
-                    </span>
+                {{-- INFO GRID 2 KOLOM --}}
+                <div class="grid grid-cols-2 gap-3 my-3">
+                    <div>
+                        <p class="text-gray-500 text-[10px] uppercase tracking-wider">Stok</p>
+                        <p class="text-white text-sm font-bold mt-0.5 {{ $isStokKritis ? 'text-red-400' : '' }}">{{ $item->stok }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-[10px] uppercase tracking-wider">Harga Jual</p>
+                        <p class="text-[#22C55E] text-sm font-bold mt-0.5">Rp {{ number_format($item->harga_jual, 0, ',', '.') }}</p>
+                    </div>
                 </div>
 
                 {{-- TOMBOL --}}
-                <div class="flex gap-3 mt-auto">
+                <div class="flex items-center gap-2 mt-auto">
                     <a href="{{ route('admin.produk-jadi.edit', $item->id) }}"
-                       class="w-16 h-9 border border-zinc-800 rounded-lg flex items-center justify-center text-gray-300 text-xs font-bold hover:bg-zinc-800 transition-colors">
-                        <i class="fa-solid fa-pen mr-1"></i> Edit
+                       class="w-10 h-9 border border-zinc-600 rounded-lg flex items-center justify-center text-gray-300 hover:bg-zinc-700 hover:text-white transition-colors shrink-0"
+                       title="Edit">
+                        <i class="fa-solid fa-pen text-xs"></i>
                     </a>
 
                     <a href="{{ route('admin.produk-jadi.show', $item->id) }}"
-                       class="flex-1 h-9 bg-[#FF6B00] hover:bg-[#FF8A33] rounded-lg text-white text-sm font-semibold text-center flex items-center justify-center transition-colors">
-                        Lihat Detail
+                       class="flex-1 h-9 bg-[#FF6B00] hover:bg-[#E55D00] rounded-lg text-white text-xs font-semibold flex items-center justify-center transition-colors">
+                        Lihat Detail <i class="fa-solid fa-arrow-right ml-2 text-[10px]"></i>
                     </a>
                 </div>
 

@@ -45,6 +45,7 @@ class ProdukJadi extends Model
         'kategori'    => 'array',
         'warna'       => 'array',
         'jenis_motif' => 'array',
+        'sketsa'      => 'array',
     ];
 
     /**
@@ -179,5 +180,96 @@ class ProdukJadi extends Model
         }
 
         return "Siap diproduksi.";
+    }
+
+    /**
+     * ✅ DYNAMIC PRICING: Hitung Harga Jual Otomatis
+     * Harga Jual = HPP (Harga Pokok Produksi) + (HPP * Margin / 100)
+     */
+    public function getHargaJualOtomatisAttribute()
+    {
+        // Hitung HPP terlebih dahulu dari BOM
+        $hpp = 0;
+        foreach ($this->boms as $bom) {
+            if ($bom->bahanBaku) {
+                $hpp += $bom->jumlah_kebutuhan * $bom->bahanBaku->harga;
+            }
+        }
+
+        // Ambil Margin dari Pengaturan
+        $pengaturan = \App\Models\Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->first();
+        $margin = $pengaturan && $pengaturan->nilai ? (float) $pengaturan->nilai : 50;
+        
+        // Hitung Harga Jual
+        $hargaJual = $hpp + ($hpp * $margin / 100);
+
+        // Pembulatan harga (jika diatur)
+        $pembulatanRaw = \App\Models\Pengaturan::where('nama_pengaturan', 'pembulatan_harga')->first();
+        $pembulatan = $pembulatanRaw && $pembulatanRaw->nilai ? $pembulatanRaw->nilai : 'none';
+        if ($pembulatan != 'none' && is_numeric($pembulatan)) {
+            $hargaJual = ceil($hargaJual / $pembulatan) * $pembulatan;
+        }
+
+        return (int) $hargaJual;
+    }
+
+    /**
+     * ✅ GLOBAL PRICE SYNC: Update harga jual otomatis berdasarkan HPP BOM + Margin
+     * Hanya dipanggil untuk produk dengan tipe_harga = 'otomatis'
+     * 
+     * @param float|null $margin Margin yang akan digunakan. Jika null, ambil dari Pengaturan.
+     * @return bool True jika berhasil diupdate, false jika produk mode manual atau gagal.
+     */
+    public function updateAutomaticPrice(?float $margin = null): bool
+    {
+        // Skip jika produk ini mode manual
+        if ($this->tipe_harga !== 'otomatis') {
+            return false;
+        }
+
+        // Load BOM dengan material
+        $this->load('boms.material');
+
+        // Hitung HPP dari BOM
+        $totalHpp = 0;
+        foreach ($this->boms as $bom) {
+            if ($bom->material) {
+                $hargaSatuan = (float) str_replace(',', '.', $bom->material->harga_satuan);
+                $jumlahKebutuhan = (float) str_replace(',', '.', $bom->jumlah_kebutuhan);
+                $totalHpp += $hargaSatuan * $jumlahKebutuhan;
+            }
+        }
+
+        // Ambil margin dari parameter atau dari Pengaturan database
+        if ($margin === null) {
+            $margin = (float) (\App\Models\Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->value('nilai') ?? 50);
+        }
+
+        // Hitung harga jual: HPP + (HPP * margin / 100), dibulatkan ke atas
+        $hargaJual = ceil($totalHpp + ($totalHpp * ($margin / 100)));
+
+        // Simpan ke database
+        $this->update(['harga_jual' => $hargaJual]);
+
+        return true;
+    }
+
+    /**
+     * ✅ Aksesor Override Harga Jual: Otomatis JIKA BELUM ADA NILAI MANUAL
+     * 
+     * Aturan Baru:
+     * ✅ Jika harga_jual NULL / 0 / belum diisi: TAMPILKAN OTOMATIS
+     * ✅ Jika sudah diisi manual: TAMPILKAN NILAI MANUAL (Prioritas tertinggi)
+     */
+    public function getHargaJualAttribute($value)
+    {
+        // ✅ ✅ UPDATE: Jika 0 atau NULL dianggap mode OTOMATIS
+        if ($value > 0) {
+            // ✅ JIKA ADA NILAI > 0: SELALU TAMPILKAN MANUAL
+            return $value;
+        }
+
+        // ✅ JIKA 0 ATAU NULL: TAMPILKAN HARGA OTOMATIS
+        return $this->harga_jual_otomatis;
     }
 }

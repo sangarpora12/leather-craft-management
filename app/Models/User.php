@@ -18,6 +18,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'sub_role',
         'no_hp',
         'jabatan',
         'foto_profil',
