@@ -12,7 +12,7 @@
 </div>
 <?php endif; ?>
 
-<form action="<?php echo e(route('admin.laporan.pengaturan.store')); ?>" method="POST">
+<form action="<?php echo e(route('admin.pengaturan.store')); ?>" method="POST">
     <?php echo csrf_field(); ?>
     
     <div class="bg-neutral-900 border border-zinc-800 rounded-xl p-6 mb-6">
@@ -71,5 +71,4 @@
             Simpan Pengaturan Notifikasi
         </button>
     </div>
-</form>
-<?php /**PATH C:\xampp\htdocs\berliano_leather\berliano-leather\resources\views/admin/pengaturan/tabs/_notifikasi.blade.php ENDPATH**/ ?>
+</form><?php /**PATH C:\xampp\htdocs\berliano_leather\berliano-leather\resources\views/admin/pengaturan/tabs/_notifikasi.blade.php ENDPATH**/ ?>

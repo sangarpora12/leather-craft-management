@@ -651,16 +651,41 @@ class BahanBakuController extends Controller
     public function getStockLayers($id)
     {
         $bahan = BahanBaku::findOrFail($id);
-        
-        // Ambil semua layer dengan qty_sisa > 0
+
+        // Ambil semua layer stok yang sisanya masih ada, urutkan dari yang paling lama (FIFO)
         $layers = \App\Models\BahanStokLayer::where('bahan_baku_id', $id)
             ->where('qty_sisa', '>', 0)
             ->orderBy('tanggal_masuk', 'asc')
             ->get();
-        
+
+        // PENANGANAN ERROR: Jika stok di master > 0, tapi tidak ada layer sisa stok yang ditemukan.
+        if ((float) $bahan->stok > 0 && $layers->isEmpty()) {
+            return response()->json([
+                'sync_error' => true,
+                'message' => 'Data riwayat belum sinkron, hubungi Admin.'
+            ]);
+        }
+
+        // Hitung total nilai aset dari layer yang ada
+        $totalAssetValue = $layers->sum(function($layer) {
+            return $layer->qty_sisa * $layer->harga_beli;
+        });
+
+        // Format data layer untuk dikirim sebagai JSON
+        $formattedLayers = $layers->map(function($layer) {
+            return [
+                'tanggal_masuk' => $layer->tanggal_masuk->format('d M Y'),
+                'no_nota' => $layer->sumber_harga, // Menggunakan sumber_harga sebagai No. Nota
+                'stok_sisa' => (float) $layer->qty_sisa,
+                'harga_satuan' => (float) $layer->harga_beli,
+            ];
+        });
+
         return response()->json([
             'bahan' => $bahan,
-            'layers' => $layers
+            'layers' => $formattedLayers,
+            'total_asset_value' => $totalAssetValue,
+            'sync_error' => false,
         ]);
     }
 

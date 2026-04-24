@@ -11,7 +11,7 @@
 </div>
 @endif
 
-<form action="{{ route('admin.laporan.pengaturan.store') }}" method="POST">
+<form action="{{ route('admin.pengaturan.store') }}" method="POST">
     @csrf
     
     <div class="bg-neutral-900 border border-zinc-800 rounded-xl p-6 mb-6">

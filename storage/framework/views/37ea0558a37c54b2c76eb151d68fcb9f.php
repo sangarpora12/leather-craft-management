@@ -30,7 +30,7 @@
         Reset Database Pilihan
     </h3>
     
-    <form id="resetDatabaseForm" action="<?php echo e(route('admin.laporan.pengaturan.resetData')); ?>" method="POST">
+    <form id="resetDatabaseForm" action="<?php echo e(route('admin.pengaturan.resetData')); ?>" method="POST">
         <?php echo csrf_field(); ?>
         
         <div class="space-y-3 mb-4">
@@ -129,5 +129,4 @@
         return true;
     });
 </script>
-<?php $__env->stopPush(); ?>
-<?php /**PATH C:\xampp\htdocs\berliano_leather\berliano-leather\resources\views/admin/pengaturan/tabs/_danger.blade.php ENDPATH**/ ?>
+<?php $__env->stopPush(); ?><?php /**PATH C:\xampp\htdocs\berliano_leather\berliano-leather\resources\views/admin/pengaturan/tabs/_danger.blade.php ENDPATH**/ ?>

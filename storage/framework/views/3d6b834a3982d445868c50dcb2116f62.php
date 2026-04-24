@@ -184,6 +184,10 @@
                                     <i class="fa-solid fa-eye text-xs"></i>
                                 </button>
                             </div>
+                            <form id="delete-form-<?php echo e($b->id); ?>" action="<?php echo e(route('admin.bahan.destroy', $b->id)); ?>" method="POST" style="display: none;">
+                                <?php echo csrf_field(); ?>
+                                <?php echo method_field('DELETE'); ?>
+                            </form>
                         </td>
                     </tr>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
@@ -206,334 +210,103 @@
 
 <?php echo $__env->make('admin.bahan._stock-layers-modal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-<div id="modalTambah" style="display: none; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center;">
-    <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.8);" onclick="closeModal('modalTambah')"></div>
+<div id="modalEdit" style="display: none; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center;">
+    <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.8);" onclick="closeModal('modalEdit')"></div>
     <div style="position: relative; background: #1A1C24; width: 100%; max-width: 32rem; border-radius: 1.5rem; border: 1px solid #2D3139; padding: 1.5rem; margin: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <div>
-                <h2 style="font-size: 1.25rem; font-weight: bold; color: white;">Input Stok Masuk</h2>
-                <p style="font-size: 0.625rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.1em; mt-1">Catat bahan baku baru dari supplier</p>
-            </div>
-            <button onclick="closeModal('modalTambah')" style="color: #9ca3af; background: #2D3139; width: 2.5rem; height: 2.5rem; border-radius: 50%; border: 1px solid #374151; display:flex; align-items:center; justify-content:center; cursor:pointer;">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-        
-        <form action="<?php echo e(route('admin.bahan.store')); ?>" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 1.25rem;">
-            <?php echo csrf_field(); ?>
-            
-            <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Kode Material</label>
-                <input type="text" id="kode_material" name="kode_material" readonly placeholder="Otomatis terisi saat pilih bahan..." style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: #9ca3af; font-size: 0.875rem;">
-            </div>
-
-            <div style="position: relative;">
-                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Nama Bahan</label>
-                <input type="text" id="nama_material" name="nama_material" placeholder="Ketik nama bahan..." autocomplete="off" required style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-                <div id="suggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: #1A1C24; border: 1px solid #2D3139; border-top: none; border-radius: 0 0 0.75rem 0.75rem; max-height: 10rem; overflow-y: auto; z-index: 10; display: none;"></div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Supplier</label>
-                    <input type="text" id="supplier" name="supplier" placeholder="Contoh: CV. Kulit Jaya" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Ref / Nota</label>
-                    <input type="text" id="ref_no" name="ref_no" placeholder="No Nota / Barcode" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Kategori</label>
-                    <select id="kategori" name="kategori" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-                        <option value="">-- Pilih Kategori --</option>
-                        <?php $__empty_1 = true; $__currentLoopData = $kategories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kategori): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                        <option value="<?php echo e($kategori->nama_kategori); ?>"><?php echo e($kategori->nama_kategori); ?></option>
-                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                        <option disabled>Data kategori belum ada</option>
-                        <?php endif; ?>
-                    </select>
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Satuan</label>
-                    <select id="satuan" name="satuan" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-                        <option value="">-- Pilih Satuan --</option>
-                        <?php $__empty_1 = true; $__currentLoopData = $satuans; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $satuan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                        <option value="<?php echo e($satuan->nama_satuan); ?>"><?php echo e($satuan->nama_satuan); ?></option>
-                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                        <option disabled>Data satuan belum ada</option>
-                        <?php endif; ?>
-                    </select>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Jumlah Masuk</label>
-                    <input type="number" id="stok" name="stok" placeholder="0" required style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem; color: white; font-size: 0.875rem; font-weight: bold; text-align: center;">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Harga Beli (Rp)</label>
-                    <input type="number" id="harga_satuan" name="harga_satuan" placeholder="Rp" required style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem; color: white; font-size: 0.875rem; font-weight: bold; text-align: center;">
-                </div>
-            </div>
-
-            <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Foto Bahan <span class="text-gray-500">(Opsional)</span></label>
-                <input type="file" name="foto" accept="image/*" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-                <p style="font-size: 0.625rem; color: #6b7280; margin-top: 0.35rem;">Max 20 MB</p>
-            </div>
-
-            <button type="submit" style="width: 100%; background: #FD730D; color: white; font-weight: bold; padding: 1rem; border-radius: 1rem; font-size: 0.875rem; margin-top: 0.5rem; border:none; cursor:pointer;">
-                Simpan Data
-            </button>
-        </form>
-    </div>
-</div>
-
-<div id="modalEdit" style="display: none; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center;">
-    <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.8);" onclick="closeModal('modalEdit')"></div>
-    <div style="position: relative; background: #1A1C24; width: 100%; max-width: 30rem; border-radius: 1.5rem; border: 1px solid #2D3139; padding: 1rem; margin: 1rem; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <div>
-                <h2 style="font-size: 1.25rem; font-weight: bold; color: white;">Edit Material</h2>
-                <p style="font-size: 0.625rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.1em; mt-1">Ubah data bahan baku</p>
+                <h2 style="font-size: 1.25rem; font-weight: bold; color: white;">Edit Data Bahan</h2>
+                <p style="font-size: 0.625rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.1em; mt-1">Perbarui detail material</p>
             </div>
             <button onclick="closeModal('modalEdit')" style="color: #9ca3af; background: #2D3139; width: 2.5rem; height: 2.5rem; border-radius: 50%; border: 1px solid #374151; display:flex; align-items:center; justify-content:center; cursor:pointer;">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
         
-        <form id="formEdit" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 1.25rem;">
-            <?php echo csrf_field(); ?> <?php echo method_field('PUT'); ?>
+        <form id="editForm" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <?php echo csrf_field(); ?>
+            <?php echo method_field('PUT'); ?>
             
-            <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Nama Bahan</label>
-                <input type="text" id="edit_nama_material" name="nama_material" required style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-            </div>
-
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Supplier</label>
-                    <input type="text" id="edit_supplier" name="supplier" placeholder="Contoh: CV. Kulit Jaya" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Kode Material</label>
+                    <input type="text" id="edit-kode_material" name="kode_material" readonly style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: #9ca3af; font-size: 0.875rem;">
                 </div>
                 <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Ref / Nota</label>
-                    <input type="text" id="edit_ref_no" name="ref_no" placeholder="No Nota / Barcode" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Nama Material</label>
+                    <input type="text" id="edit-nama_material" name="nama_material" required style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
                 </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Kategori</label>
-                    <select id="edit_kategori" name="kategori" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-                        <option value="Bahan Utama">Bahan Utama</option>
-                        <option value="Aksesoris">Aksesoris</option>
-                        <option value="Kimia">Kimia</option>
-                        <option value="Packaging">Packaging</option>
+                    <select id="edit-kategori" name="kategori" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
+                        <option value="">-- Pilih Kategori --</option>
+                        <?php $__currentLoopData = $kategories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kategori): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option value="<?php echo e($kategori->nama_kategori); ?>"><?php echo e($kategori->nama_kategori); ?></option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </select>
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Satuan</label>
-                    <select id="edit_satuan" name="satuan" required style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
+                    <select id="edit-satuan" name="satuan" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
                         <option value="">-- Pilih Satuan --</option>
                         <?php $__currentLoopData = $satuans; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $satuan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <option value="<?php echo e($satuan->nama_satuan); ?>"><?php echo e($satuan->nama_satuan); ?></option>
+                            <option value="<?php echo e($satuan->nama_satuan); ?>"><?php echo e($satuan->nama_satuan); ?></option>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </select>
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Jumlah</label>
-                    <input type="number" step="any" id="edit_stok" name="stok" readonly onmousedown="return false;" style="width: 100%; background: #20232A; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem; color: #9ca3af; font-size: 0.875rem; font-weight: bold; text-align: center; cursor: not-allowed;">
-                    <p style="font-size: 0.625rem; color: #6b7280; margin-top: 0.35rem;">Stok dikelola sistem FIFO</p>
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Harga Beli (Rp)</label>
-                    <input type="number" id="edit_harga_satuan" name="harga_satuan" readonly onmousedown="return false;" style="width: 100%; background: #20232A; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem; color: #9ca3af; font-size: 0.875rem; font-weight: bold; text-align: center; cursor: not-allowed;">
-                    <p style="font-size: 0.625rem; color: #6b7280; margin-top: 0.35rem;">Ubah melalui Pengadaan</p>
-                </div>
-            </div>
-
             <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Foto Bahan Saat Ini</label>
-                <div id="edit_foto_preview" class="mb-3"></div>
-                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Upload Foto Baru <span class="text-gray-500">(Opsional)</span></label>
+                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Foto Bahan <span class="text-gray-500">(Opsional, biarkan kosong jika tidak ingin ganti)</span></label>
                 <input type="file" name="foto" accept="image/*" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-                <p style="font-size: 0.625rem; color: #6b7280; margin-top: 0.35rem;">Biarkan kosong jika tidak ingin mengubah foto. Max 20 MB</p>
             </div>
 
-            <button type="submit" style="width: 100%; background: #FD730D; color: white; font-weight: bold; padding: 1rem; border-radius: 1rem; font-size: 0.875rem; margin-top: 0.5rem; border:none; cursor:pointer;">
-                Update Data
-            </button>
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                <button type="button" onclick="closeModal('modalEdit')" style="background: #2D3139; color: white; padding: 0.6rem 1.25rem; border-radius: 0.75rem; font-size: 0.75rem; font-weight: bold; border: 1px solid #374151;">Batal</button>
+                <button type="submit" style="background: #FD730D; color: white; padding: 0.6rem 1.25rem; border-radius: 0.75rem; font-size: 0.75rem; font-weight: bold;">Simpan Perubahan</button>
+            </div>
         </form>
     </div>
 </div>
 
-<script>
-function openModal(id) {
-    document.getElementById(id).style.display = 'flex';
-}
-function closeModal(id) {
-    document.getElementById(id).style.display = 'none';
-}
-
-function openEditModal(data) {
-    openModal('modalEdit');
-    document.getElementById('formEdit').action = "/admin/bahan/" + data.id;
-    document.getElementById('edit_nama_material').value = data.nama_material;
-    document.getElementById('edit_supplier').value = data.supplier || '';
-    document.getElementById('edit_ref_no').value = data.ref_no || '';
-    document.getElementById('edit_kategori').value = data.kategori || 'Bahan Utama';
-    document.getElementById('edit_satuan').value = data.satuan || 'Pcs';
-    document.getElementById('edit_stok').value = data.stok;
-    document.getElementById('edit_harga_satuan').value = data.harga_satuan;
-
-    // Tampilkan preview foto lama
-    const fotoPreview = document.getElementById('edit_foto_preview');
-    if(data.foto) {
-        fotoPreview.innerHTML = '<img src="/storage/' + data.foto + '" class="w-20 h-20 rounded-lg object-cover border border-[#2D3139]">';
-    } else {
-        fotoPreview.innerHTML = '<div class="w-20 h-20 rounded-lg bg-[#2D3139] flex items-center justify-center border border-gray-700/50"><i class="fa-solid fa-image text-gray-500"></i></div>';
-    }
-}
-
-// AUTOCOMPLETE FUNCTIONALITY (TIDAK DISENTUH SAMA SEKALI)
-document.addEventListener('DOMContentLoaded', function() {
-    var input = document.getElementById('nama_material');
-    var suggestions = document.getElementById('suggestions');
-    var timeout;
-
-    input.addEventListener('input', function() {
-        var query = this.value.trim();
-        if (query.length < 1) {
-            suggestions.style.display = 'none';
-            suggestions.innerHTML = '';
-            return;
-        }
-
-        clearTimeout(timeout);
-        timeout = setTimeout(function() {
-            fetch('<?php echo e(route("api.bahan.search")); ?>?q=' + encodeURIComponent(query), {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                },
-                credentials: 'include'
-            })
-            .then(response => response.json())
-            .then(data => {
-                suggestions.innerHTML = '';
-                if (data.length > 0) {
-                    data.forEach(function(item) {
-                        var itemDiv = document.createElement('div');
-                        itemDiv.style.padding = '0.75rem 1rem';
-                        itemDiv.style.cursor = 'pointer';
-                        itemDiv.style.color = 'white';
-                        itemDiv.style.fontSize = '0.875rem';
-                        itemDiv.style.borderBottom = '1px solid #374151';
-                        itemDiv.style.textAlign = 'left';
-                        // Tambahkan foto thumbnail pada autocomplete
-                        let fotoHTML = '';
-                        if(item.foto) {
-                            fotoHTML = '<img src="/storage/' + item.foto + '" class="w-8 h-8 rounded-lg object-cover mr-3 flex-shrink-0">';
-                        } else {
-                            fotoHTML = '<div class="w-8 h-8 rounded-lg bg-[#2D3139] flex items-center justify-center mr-3 flex-shrink-0"><i class="fa-solid fa-image text-gray-500 text-xs"></i></div>';
-                        }
-                        itemDiv.style.display = 'flex';
-                        itemDiv.style.alignItems = 'center';
-                        itemDiv.innerHTML = fotoHTML + '<div class="flex-1">' + item.nama_material + ' <span style="color: #9ca3af; font-size: 0.75rem;">(' + item.kode_material + ')</span></div>';
-                        
-                        // Simpan data dalam dataset
-                        itemDiv.dataset.kode = item.kode_material;
-                        itemDiv.dataset.nama = item.nama_material;
-                        itemDiv.dataset.kategori = item.kategori || '';
-                        itemDiv.dataset.satuan = item.satuan || '';
-                        itemDiv.dataset.supplier = item.supplier || '';
-                        itemDiv.dataset.refNo = item.ref_no || '';
-                        
-                        itemDiv.addEventListener('mouseenter', function() {
-                            this.style.backgroundColor = '#374151';
-                        });
-                        itemDiv.addEventListener('mouseleave', function() {
-                            this.style.backgroundColor = 'transparent';
-                        });
-                        itemDiv.addEventListener('click', function() {
-                            // Isi field otomatis
-                            document.getElementById('kode_material').value = this.dataset.kode;
-                            document.getElementById('nama_material').value = this.dataset.nama;
-                            document.getElementById('supplier').value = this.dataset.supplier;
-                            document.getElementById('ref_no').value = this.dataset.refNo;
-                            
-                            // Set kategori
-                            var kategoriSelect = document.getElementById('kategori');
-                            var foundKategori = false;
-                            for(var i = 0; i < kategoriSelect.options.length; i++) {
-                                if(kategoriSelect.options[i].value === this.dataset.kategori) {
-                                    kategoriSelect.selectedIndex = i;
-                                    foundKategori = true;
-                                    break;
-                                }
-                            }
-                            if(!foundKategori) kategoriSelect.selectedIndex = 0;
-                            
-                            // Set satuan
-                            var satuanSelect = document.getElementById('satuan');
-                            var foundSatuan = false;
-                            for(var i = 0; i < satuanSelect.options.length; i++) {
-                                if(satuanSelect.options[i].value === this.dataset.satuan) {
-                                    satuanSelect.selectedIndex = i;
-                                    foundSatuan = true;
-                                    break;
-                                }
-                            }
-                            if(!foundSatuan) satuanSelect.selectedIndex = 0;
-                            
-                            // KOSONGKAN stok dan harga - user harus isi sendiri
-                            document.getElementById('stok').value = '';
-                            document.getElementById('harga_satuan').value = '';
-                            
-                            // Sembunyikan suggestions
-                            suggestions.style.display = 'none';
-                            suggestions.innerHTML = '';
-                        });
-                        suggestions.appendChild(itemDiv);
-                    });
-                    suggestions.style.display = 'block';
-                } else {
-                    suggestions.style.display = 'none';
-                }
-            })
-            .catch(error => {
-                console.log('Fetch error:', error);
-            });
-        }, 300);
-    });
-
-    // Tutup suggestions saat klik di luar
-    document.addEventListener('click', function(e) {
-        if (!input.contains(e.target) && !suggestions.contains(e.target)) {
-            suggestions.style.display = 'none';
-        }
-    });
-    
-    // Reset form saat modal dibuka
-    document.querySelector('button[onclick="openModal(\'modalTambah\')"]').addEventListener('click', function() {
-        document.getElementById('kode_material').value = '';
-        document.getElementById('nama_material').value = '';
-        document.getElementById('supplier').value = '';
-        document.getElementById('ref_no').value = '';
-        document.getElementById('kategori').selectedIndex = 0;
-        document.getElementById('satuan').selectedIndex = 0;
-        document.getElementById('stok').value = '';
-        document.getElementById('harga_satuan').value = '';
-        document.getElementById('suggestions').style.display = 'none';
-    });
-});
-</script>
 <?php $__env->stopSection(); ?>
+
+<?php $__env->startPush('scripts'); ?>
+<script>
+    function openEditModal(bahan) {
+        document.getElementById('editForm').action = '/admin/bahan/' + bahan.id;
+        document.getElementById('edit-kode_material').value = bahan.kode_material;
+        document.getElementById('edit-nama_material').value = bahan.nama_material;
+        document.getElementById('edit-kategori').value = bahan.kategori;
+        document.getElementById('edit-satuan').value = bahan.satuan;
+        document.getElementById('modalEdit').style.display = 'flex';
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    function confirmDelete(id, name) {
+        Swal.fire({
+            title: 'Anda yakin?',
+            html: `Anda akan menghapus material <strong>${name}</strong> secara permanen. Tindakan ini tidak dapat dibatalkan.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, hapus!',
+            cancelButtonText: 'Batal',
+            background: '#1A1C24',
+            color: '#ffffff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('delete-form-' + id).submit();
+            }
+        })
+    }
+</script>
+<?php $__env->stopPush(); ?>
 <?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\xampp\htdocs\berliano_leather\berliano-leather\resources\views/admin/bahan/index.blade.php ENDPATH**/ ?>

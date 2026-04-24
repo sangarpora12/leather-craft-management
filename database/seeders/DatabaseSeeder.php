@@ -30,7 +30,7 @@ class DatabaseSeeder extends Seeder
         // Seed sample data produk + BOM agar menu Produksi punya data
         // (mengikuti struktur tabel `produk_jadis` dan `bom` di project ini)
         $this->call([
-            BerlianoSeeder::class,
+            ProdukJadiSeeder::class,
         ]);
     }
 }

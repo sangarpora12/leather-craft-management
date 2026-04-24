@@ -23,7 +23,7 @@
 </div>
 <?php endif; ?>
 
-<form action="<?php echo e(route('admin.laporan.pengaturan.store')); ?>" method="POST" class="space-y-6" id="form-konfigurasi">
+<form action="<?php echo e(route('admin.pengaturan.store')); ?>" method="POST" class="space-y-6" id="form-konfigurasi">
     <?php echo csrf_field(); ?>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -99,5 +99,4 @@
             confirmButtonText: 'OK'
         });
     <?php endif; ?>
-</script>
-<?php /**PATH C:\xampp\htdocs\berliano_leather\berliano-leather\resources\views/admin/pengaturan/tabs/_gudang.blade.php ENDPATH**/ ?>
+</script><?php /**PATH C:\xampp\htdocs\berliano_leather\berliano-leather\resources\views/admin/pengaturan/tabs/_gudang.blade.php ENDPATH**/ ?>

@@ -28,7 +28,7 @@
         Reset Database Pilihan
     </h3>
     
-    <form id="resetDatabaseForm" action="{{ route('admin.laporan.pengaturan.resetData') }}" method="POST">
+    <form id="resetDatabaseForm" action="{{ route('admin.pengaturan.resetData') }}" method="POST">
         @csrf
         
         <div class="space-y-3 mb-4">

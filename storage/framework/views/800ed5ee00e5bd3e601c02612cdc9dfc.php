@@ -128,6 +128,9 @@
                     <a href="<?php echo e(route('admin.bahan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.bahan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
                         <i class="fa-solid fa-box-open w-5"></i> Bahan Baku
                     </a>
+                    <a href="<?php echo e(route('admin.suppliers.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.suppliers.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
+                        <i class="fa-solid fa-truck-field w-5"></i> Supplier
+                    </a>
                     <a href="<?php echo e(route('admin.produk-jadi.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.produk-jadi.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
                         <i class="fa-solid fa-shirt w-5"></i> Produk Jadi
                     </a>
@@ -156,16 +159,15 @@
                       <a href="<?php echo e(route('admin.pengadaan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.pengadaan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
                           <i class="fa-solid fa-cart-shopping w-5"></i> Pengadaan Material
                       </a>
-                      <a href="<?php echo e(route('admin.laporan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.laporan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
-                          <i class="fa-solid fa-file-invoice w-5"></i> Laporan
-                      </a>
-                      
                  </div>
 
                  
                  <div class="mb-4">
-                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Sistem</p>
-                     <a href="<?php echo e(route('admin.laporan.pengaturan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.laporan.pengaturan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
+                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Laporan & Sistem</p>
+                     <a href="<?php echo e(route('admin.laporan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.laporan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
+                        <i class="fa-solid fa-file-invoice w-5"></i> Laporan
+                    </a>
+                     <a href="<?php echo e(route('admin.pengaturan.index')); ?>" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 <?php echo e(request()->routeIs('admin.pengaturan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent'); ?>">
                          <i class="fa-solid fa-gear w-5"></i> Pengaturan Sistem
                      </a>
                  </div>

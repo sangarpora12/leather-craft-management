@@ -14,42 +14,6 @@
         </div>
     </div>
 
-    {{-- 1. REKOMENDASI HARGA TERMURAH --}}
-    @if($rekomendasiTermurah->count() > 0)
-    <div class="bg-gradient-to-r from-green-900/30 to-emerald-900/30 rounded-2xl border border-green-800/50 p-6">
-        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <i class="fa-solid fa-trophy text-yellow-500"></i>
-            Rekomendasi Harga Termurah
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            @foreach($rekomendasiTermurah as $item)
-            <div class="bg-[#0f1115] rounded-xl p-4 border border-green-800/30 hover:border-green-600/50 transition">
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <p class="text-xs text-gray-500 uppercase tracking-wider">Material</p>
-                        <p class="text-white font-bold">{{ $item->nama_material }}</p>
-                    </div>
-                    <span class="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full">Termurah</span>
-                </div>
-                <div class="mt-3 pt-3 border-t border-gray-800">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-xs text-gray-500">Toko</p>
-                            <p class="text-blue-400 font-medium">{{ $item->supplier }}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-xs text-gray-500">Harga</p>
-                            <p class="text-green-400 font-bold text-lg">Rp {{ number_format($item->harga_satuan, 0, ',', '.') }}</p>
-                            <p class="text-xs text-gray-500">/{{ $item->satuan }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            @endforeach
-        </div>
-    </div>
-    @endif
-
     {{-- 2. DAFTAR SUPPLIER (CARD GRID) --}}
     @if($suppliers->count() > 0)
     <div class="bg-[#111111] rounded-2xl border border-white/5 p-6">

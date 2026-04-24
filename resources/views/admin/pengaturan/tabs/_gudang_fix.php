@@ -21,7 +21,7 @@
 </div>
 @endif
 
-<form action="{{ route('admin.laporan.pengaturan.store') }}" method="POST" class="space-y-6" id="form-konfigurasi">
+<form action="{{ route('admin.pengaturan.store') }}" method="POST" class="space-y-6" id="form-konfigurasi">
     @csrf
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -61,7 +61,7 @@
 
 <!-- Tombol Sinkronkan Data Lama -->
 <div class="mt-4 pt-4 border-t border-zinc-800">
-    <form action="{{ route('admin.laporan.pengaturan.updateAllCodes') }}" method="POST" id="form-sinkronkan">
+    <form action="{{ route('admin.pengaturan.updateAllCodes') }}" method="POST" id="form-sinkronkan">
         @csrf
         <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2" id="btn-sinkronkan">
             <i class="fa-solid fa-sync"></i> Sinkronkan Data Lama

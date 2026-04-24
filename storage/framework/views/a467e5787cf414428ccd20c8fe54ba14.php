@@ -12,7 +12,7 @@
 </div>
 <?php endif; ?>
 
-<form action="<?php echo e(route('admin.laporan.pengaturan.store')); ?>" method="POST">
+<form action="<?php echo e(route('admin.pengaturan.store')); ?>" method="POST">
     <?php echo csrf_field(); ?>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -76,5 +76,4 @@
             Simpan Format Laporan
         </button>
     </div>
-</form>
-<?php /**PATH C:\xampp\htdocs\berliano_leather\berliano-leather\resources\views/admin/pengaturan/tabs/_laporan.blade.php ENDPATH**/ ?>
+</form><?php /**PATH C:\xampp\htdocs\berliano_leather\berliano-leather\resources\views/admin/pengaturan/tabs/_laporan.blade.php ENDPATH**/ ?>

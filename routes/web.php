@@ -114,17 +114,18 @@ Route::middleware(['auth'])->group(function () {
 
         // --- DATA MASTER (BAHAN BAKU) ---
         Route::resource('bahan', BahanBakuController::class)->names('bahan');
-        Route::get('/api/bahan/search', [BahanBakuController::class, 'searchApi'])->name('bahan.search.api');
         Route::get('/bahan/{id}/stock-layers', [BahanBakuController::class, 'getStockLayers'])->name('bahan.stock-layers');
+        Route::get('/api/bahan/search', [BahanBakuController::class, 'searchApi'])->name('bahan.search.api');
         
         // Produk Jadi
         Route::resource('produk-jadi', ProdukJadiController::class)->names('produk-jadi');
         Route::post('/produk-jadi/{id}/copy', [ProdukJadiController::class, 'copy'])->name('produk-jadi.copy');
         Route::post('/produk-jadi/{id}/adjust', [ProdukJadiController::class, 'adjustStock'])->name('produk-jadi.adjust');
 
-        // --- MANAJEMEN USER ---
+        // --- MANAJEMEN USER & SUPPLIER ---
         Route::resource('pekerja-master', WorkerMasterController::class)->names('pekerja-master');
         Route::resource('operator', OperatorController::class)->names('operator');
+        Route::resource('suppliers', SupplierController::class)->names('suppliers');
         Route::patch('/operator/{id}/toggle-status', [OperatorController::class, 'toggleStatus'])->name('operator.toggle-status');
         Route::post('/operator/{id}/resend-verification', [OperatorController::class, 'resendVerification'])->name('operator.resend-verification');
 
@@ -176,20 +177,6 @@ Route::middleware(['auth'])->group(function () {
             // mode options: lengkap (all data), produk (production only), bahan (materials only)
             Route::get('/', [LaporanController::class, 'index'])->name('index');
             
-            // Menu Pengaturan (Settings)
-            Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan.index');
-            Route::post('/pengaturan', [PengaturanController::class, 'store'])->name('pengaturan.store');
-            Route::post('/pengaturan/password', [PengaturanController::class, 'updatePassword'])->name('pengaturan.password');
-            
-            // Reset Data Transaksi
-            Route::post('/pengaturan/reset-transaksi', [PengaturanController::class, 'resetDataTransaksi'])->name('pengaturan.reset-transaksi');
-            
-            // Reset Database Pilihan (Checkbox-based selective reset)
-            Route::post('/pengaturan/reset-data', [PengaturanController::class, 'resetData'])->name('pengaturan.resetData');
-            
-            // Super Reset - Tombol Kiamat (Direct access via browser)
-            Route::get('/super-reset', [PengaturanController::class, 'superReset'])->name('super-reset');
-            
             Route::get('/analisis', [LaporanController::class, 'analisis'])->name('analisis');
             // Export PDF untuk halaman laporan produksi (admin.laporan.index)
             // Dipakai oleh tombol di resources/views/admin/laporan/index.blade.php
@@ -202,15 +189,27 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/harian/export/pdf', [LaporanController::class, 'exportHarianPdf'])->name('harian.export.pdf');
             Route::post('/fast-complete', [LaporanController::class, 'fastComplete'])->name('fast-complete');
             
-            // Menu Supplier / Katalog Harga
-            Route::get('/supplier', [SupplierController::class, 'index'])->name('supplier.index');
-            Route::post('/supplier', [SupplierController::class, 'store'])->name('supplier.store');
-            Route::put('/supplier/{id}', [SupplierController::class, 'update'])->name('supplier.update');
-            Route::delete('/supplier/{id}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
-            
             // AJAX routes for dynamic content
             Route::get('/supplier/materials/{namaToko}', [SupplierController::class, 'getMaterials'])->name('supplier.materials');
             Route::get('/supplier/price-comparison', [SupplierController::class, 'getPriceComparison'])->name('supplier.price-comparison');
+        });
+
+        // --- PENGATURAN (Settings) ---
+        Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
+            Route::get('/', [PengaturanController::class, 'index'])->name('index');
+            Route::post('/', [PengaturanController::class, 'store'])->name('store');
+            Route::post('/password', [PengaturanController::class, 'updatePassword'])->name('password');
+            
+            // Reset Data Transaksi
+            Route::post('/reset-transaksi', [PengaturanController::class, 'resetDataTransaksi'])->name('reset-transaksi');
+            
+            // Reset Database Pilihan (Checkbox-based selective reset)
+            Route::post('/reset-data', [PengaturanController::class, 'resetData'])->name('resetData');
+            
+            // Super Reset - Tombol Kiamat (Direct access via browser)
+            Route::get('/super-reset', [PengaturanController::class, 'superReset'])->name('super-reset');
+
+            Route::post('/update-all-codes', [PengaturanController::class, 'updateAllCodes'])->name('updateAllCodes');
         });
 
         // --- HAK AKSES (Access Rights Management) ---

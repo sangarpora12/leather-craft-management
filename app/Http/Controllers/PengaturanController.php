@@ -126,7 +126,7 @@ class PengaturanController extends Controller
             $msg .= " ✅ Margin diperbarui dan {$syncCount} produk otomatis dihitung ulang harganya.";
         }
         
-        return redirect()->route('admin.laporan.pengaturan.index')->with('success', $msg);
+        return redirect()->route('admin.pengaturan.index')->with('success', $msg);
     }
 
     /**
