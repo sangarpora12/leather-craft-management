@@ -24,90 +24,65 @@ class ProdukJadiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ProdukJadi::query();
-        
-        // Filter hanya produk yang sudah memiliki stok (sudah selesai diproduksi)
-        $query->where('stok', '>', 0);
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where('nama_produk', 'LIKE', "%{$search}%")
-                ->orWhere('kode_produk', 'LIKE', "%{$search}%");
-        }
-
-        $produkJadis = $query->orderBy('nama_produk')->paginate(15)->withQueryString();
-        $satuans = \App\Models\Satuan::all();
-        $kategories = \App\Models\Kategori::where('tipe', 'produk')->get();
-        $warnas = \App\Models\Warna::all();
-        $motifs = \App\Models\Motif::all();
-
-        // Ambil ID produk yang sudah pernah selesai diproduksi
-        $produkSelesaiIds = Produksi::where('status', 'SELESAI')
-            ->whereNotNull('produk_jadi_id')
-            ->pluck('produk_jadi_id')
-            ->unique();
-
-        // Ambil SEMUA kategori produk dari master data Pengaturan
-        $kategoriList = Kategori::where('tipe', 'produk')
-            ->orderBy('nama_kategori')
-            ->get(['id', 'nama_kategori']);
-
-        // Ambil daftar warna unik untuk filter (otomatis dari database)
+        // 1. Ambil data master untuk dropdown filter
         $warnaList = ProdukJadi::query()
             ->select('warna')
-            ->whereIn('id', $produkSelesaiIds)
-            ->has('boms')
             ->whereNotNull('warna')
             ->where('warna', '!=', '')
             ->distinct()
             ->orderBy('warna')
             ->pluck('warna');
 
-        // 2. Logika Filter Kategori (JSON Search)
-        $query->when($request->filled('kategori'), function ($q) use ($request) {
-            $kategori = Kategori::find($request->kategori);
-            if ($kategori) {
-                $q->whereRaw('JSON_CONTAINS(kategori, ?)', ['"' . $kategori->nama_kategori . '"']);
-            }
+        // 2. Mulai query builder
+        $query = ProdukJadi::query();
+
+        // ATURAN BARU: Hanya tampilkan produk yang relevan (punya stok / pernah diproduksi)
+        $query->where(function ($q) {
+            $q->where('stok', '>', 0)
+              ->orWhereHas('produksi'); // Cek apakah ada relasi/riwayat di tabel produksi
         });
 
-        // Filter warna
+        // 3. Terapkan semua filter SECARA BERURUTAN
+
+        // Filter berdasarkan status produksi (jika ada)
+        $query->when($request->filled('status_produksi'), function ($q) use ($request) {
+            $status = $request->string('status_produksi');
+            // Filter melalui relasi produksi
+            $q->whereHas('produksi', function ($subQuery) use ($status) {
+                $subQuery->where('status', $status);
+            });
+        });
+
+        // Filter Pencarian (nama, kode, deskripsi)
+        $query->when($request->filled('search'), function ($q) use ($request) {
+            $search = $request->string('search')->trim();
+            $q->where(function ($sub) use ($search) {
+                $sub->where('nama_produk', 'like', "%{$search}%")
+                    ->orWhere('kode_produk', 'like', "%{$search}%")
+                    ->orWhere('deskripsi', 'like', "%{$search}%");
+            });
+        });
+
+        // Filter Warna
         $query->when($request->filled('warna'), function ($q) use ($request) {
             $q->where('warna', $request->warna);
         });
 
-        // 3. Logika Pencarian (Berdasarkan nama atau kode)
-        $query->when($request->filled('search'), function ($q) use ($request) {
-            $search = $request->string('search')->toString();
-            $q->where(function ($q) use ($search) {
-                $q->where('nama_produk', 'like', "%{$search}%")
-                  ->orWhere('kode_produk', 'like', "%{$search}%");
-            });
-        });
-
-        // 4. Filter Status Stok - SEHARUSNYA LOGIKA:
+        // Filter Status Stok
         $stokMinimum = Pengaturan::where('nama_pengaturan', 'stok_minimum_produk')->value('nilai') ?? 2;
-        
         $query->when($request->filled('status_stok'), function ($q) use ($request, $stokMinimum) {
             if ($request->status_stok == 'tersedia') {
-                // ✅ Stok Tersedia = SEMUA YANG LEBIH DARI 0 (semua yang tidak habis)
                 $q->where('stok', '>', 0);
             } elseif ($request->status_stok == 'menipis') {
-                // ✅ Stok Menipis = SEMUA YANG <= Stok Minimum GLOBAL DARI PENGATURAN
                 $q->whereBetween('stok', [1, $stokMinimum]);
             } elseif ($request->status_stok == 'habis') {
-                // ✅ Stok Habis = HANYA YANG STOK = 0
                 $q->where('stok', '=', 0);
             }
-            // 'semua' = tidak filter
         });
 
-        // 5. Sorting / Urutkan
+        // 4. Terapkan Urutan (Sorting)
         $query->when($request->filled('sort_by'), function ($q) use ($request) {
             switch ($request->sort_by) {
-                case 'nama_az':
-                    $q->orderBy('nama_produk', 'asc');
-                    break;
                 case 'harga_termahal':
                     $q->orderBy('harga_jual', 'desc');
                     break;
@@ -120,20 +95,20 @@ class ProdukJadiController extends Controller
                 case 'stok_terkecil':
                     $q->orderBy('stok', 'asc');
                     break;
-                case 'terbaru':
                 default:
-                    $q->orderByDesc('id');
+                    $q->orderByDesc('id'); // Default: terbaru
                     break;
             }
         }, function ($q) {
-            // Default sorting: terbaru
+            // Default sorting jika tidak ada parameter: terbaru
             $q->orderByDesc('id');
         });
 
-        // 6. Eksekusi Query dengan Pagination
+        // 5. EKSEKUSI QUERY (PAGINATE) SETELAH SEMUA FILTER DITERAPKAN
         $produk_jadi = $query->paginate(12)->withQueryString();
 
-        return view('admin.produk-jadi.index', compact('produk_jadi', 'kategoriList', 'warnaList'));
+        // 6. Kirim data ke view
+        return view('admin.produk-jadi.index', compact('produk_jadi', 'warnaList'));
     }
 
     /**
@@ -174,10 +149,25 @@ class ProdukJadiController extends Controller
      */
     public function create()
     {
-$kategories = Kategori::where('tipe', 'produk')->get(['id', 'nama_kategori']);
-$warnas = Warna::all(['id', 'nama_warna']);
-$motifs = Motif::all(['id', 'nama_motif']);
-        return view('admin.produk-jadi.create', compact('kategories', 'warnas', 'motifs'));
+        // Logika Definitif: Menemukan nomor tertinggi dari kode produk,
+        // tidak peduli format/prefix (PROD- vs PR0D-).
+        $lastProduct = ProdukJadi::select('kode_produk')
+            ->orderByRaw("CAST(REGEXP_REPLACE(kode_produk, '[^0-9]+', '') AS UNSIGNED) DESC")
+            ->first();
+
+        $newCode = 'PROD-0001'; // Default jika tidak ada produk sama sekali
+
+        if ($lastProduct) {
+            // Ekstrak nomor dari kode tertinggi yang ditemukan
+            $lastNumber = (int) preg_replace('/[^0-9]/', '', $lastProduct->kode_produk);
+            $newNumber = $lastNumber + 1;
+            $newCode = 'PROD-' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+        }
+
+        $kategories = Kategori::where('tipe', 'produk')->get(['id', 'nama_kategori']);
+        $warnas = Warna::all(['id', 'nama_warna']);
+        $motifs = Motif::all(['id', 'nama_motif']);
+        return view('admin.produk-jadi.create', compact('newCode', 'kategories', 'warnas', 'motifs'));
     }
 
     /**
@@ -187,44 +177,31 @@ $motifs = Motif::all(['id', 'nama_motif']);
     {
         $validated = $request->validate([
             'nama_produk'  => ['required', 'string', 'max:255'],
-            'kategori'     => ['nullable', 'array'],
+            'kategori'     => ['required', 'array', 'min:1'],
             'kategori.*'   => ['string', 'max:100'],
-            'warna'        => ['nullable', 'array'],
+            'warna'        => ['required', 'array', 'min:1'],
             'warna.*'      => ['string', 'max:100'],
-            'jenis_motif'  => ['nullable', 'array'],
+            'jenis_motif'  => ['required', 'array', 'min:1'],
             'jenis_motif.*'=> ['string', 'max:100'],
-            'harga_jual'   => ['required', 'string', 'min:1'],
+            'harga_jual'   => ['nullable', 'string', 'required_if:tipe_harga,manual'],
             'deskripsi'    => ['nullable', 'string'],
             'keterangan'   => ['nullable', 'string'],
             'foto'         => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:10240'],
-            'panjang'      => ['nullable', 'numeric', 'min:0'],
-            'lebar'        => ['nullable', 'numeric', 'min:0'],
-            'tinggi'       => ['nullable', 'numeric', 'min:0'],
-            'detail_pola'  => ['nullable', 'string'],
-            'sketsa'       => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
             'tipe_harga'   => ['nullable', 'string', 'in:manual,otomatis'],
+            'kode_produk'  => ['required', 'string', 'unique:produk_jadis,kode_produk'],
         ]);
 
         // ✅ FIX FINAL - PARSING HARGA JUAL
         $hargaJual = 0;
         $hargaInput = $request->input('harga_jual');
         
-        if (!empty($hargaInput) && $hargaInput !== '0' && $hargaInput !== 'Rp 0') {
+        if ($request->tipe_harga == 'manual' && !empty($hargaInput) && $hargaInput !== '0' && $hargaInput !== 'Rp 0') {
             // Bersihkan SEMUA karakter non numerik
             $hargaJual = preg_replace('/[^0-9]/', '', $hargaInput);
             $hargaJual = (int) $hargaJual;
         }
         
-        // Validasi harga tidak boleh 0
-        if ($hargaJual < 1) {
-            throw ValidationException::withMessages([
-                'harga_jual' => 'Harga jual wajib diisi dan tidak boleh Rp 0!'
-            ]);
-        }
-
         return DB::transaction(function () use ($validated, $request, $hargaJual) {
-            $kode = $this->generateKodeProduk();
-
             $pathFoto = null;
             if ($request->hasFile('foto')) {
                 $pathFoto = $request->file('foto')->store('produk-jadi', 'public');
@@ -236,7 +213,7 @@ $motifs = Motif::all(['id', 'nama_motif']);
             }
 
             $product = ProdukJadi::create([
-                'kode_produk'  => $kode,
+                'kode_produk'  => $validated['kode_produk'],
                 'nama_produk'  => $validated['nama_produk'],
                 'kategori'     => isset($validated['kategori']) ? json_encode($validated['kategori']) : null,
                 'warna'        => isset($validated['warna']) ? json_encode($validated['warna']) : null,
@@ -251,11 +228,11 @@ $motifs = Motif::all(['id', 'nama_motif']);
                 'tinggi'       => $validated['tinggi'] ?? null,
                 'detail_pola'  => $validated['detail_pola'] ?? null,
                 'sketsa'       => $pathSketsa,
-                'tipe_harga'   => $validated['tipe_harga'] ?? 'manual',
+                'tipe_harga'   => $validated['tipe_harga'] ?? 'otomatis',
             ]);
 
-            return redirect()->route('admin.bom.create', $product->id)
-                ->with('success', 'Produk ' . $kode . ' berhasil dibuat. Sekarang, silakan isi resep BOM-nya.');
+            return redirect()->route('admin.bom.edit', $product->id)
+                ->with('success', 'Produk ' . $validated['kode_produk'] . ' berhasil dibuat. Sekarang, silakan isi resep BOM-nya.');
         });
     }
 
@@ -264,7 +241,7 @@ $motifs = Motif::all(['id', 'nama_motif']);
      */
     public function show($id)
     {
-        $product = ProdukJadi::with(['boms.material', 'produkKeluars'])->findOrFail($id);
+        $product = ProdukJadi::with(['boms.bahanBaku', 'produkKeluars'])->findOrFail($id);
         $margin = (float) (Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->value('nilai') ?? 50);
         return view('admin.produk-jadi.show', compact('product', 'margin'));
     }
@@ -305,11 +282,11 @@ $motifs = Motif::all(['id', 'nama_motif']);
 
         $validated = $request->validate([
             'nama_produk'  => ['required', 'string', 'max:255'],
-            'kategori'     => ['nullable', 'array'],
+            'kategori'     => ['required', 'array', 'min:1'],
             'kategori.*'   => ['string', 'max:100'],
-            'warna'        => ['nullable', 'array'],
+            'warna'        => ['required', 'array', 'min:1'],
             'warna.*'      => ['string', 'max:100'],
-            'jenis_motif'  => ['nullable', 'array'],
+            'jenis_motif'  => ['required', 'array', 'min:1'],
             'jenis_motif.*'=> ['string', 'max:100'],
             'harga_jual'   => ['required', 'string', 'min:1'],
             'deskripsi'    => ['nullable', 'string'],

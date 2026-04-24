@@ -7,13 +7,10 @@
 {{-- JUDUL HALAMAN --}}
     {{-- Header --}}
     <div class="mb-6">
-    <h1 class="text-2xl font-bold text-white">Detail Produk</h1>
+
     <p class="text-xs text-gray-500">Informasi lengkap produk & pengelolaan stok</p>
 </div>
-    <div class="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
-        <div>
-            <h2 class="text-2xl font-bold text-white">{{ $product->nama_produk }}</h2>
-        </div>
+    <div class="flex justify-end items-center mb-8 border-b border-white/10 pb-6">
         <div class="flex gap-3" x-data="{ showModal:false }">
 
     <a href="{{ route('admin.produk-jadi.edit', $product->id) }}"
@@ -21,7 +18,7 @@
         Edit Data
     </a>
 
-    <a href="{{ route('admin.bom.create', $product->id) }}"
+    <a href="{{ route('admin.bom.edit', $product->id) }}"
        class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition">
         Kelola Resep (BOM)
     </a>
@@ -47,9 +44,50 @@
                         <div>
                             <h1 class="text-2xl font-bold text-white mb-1">{{ $product->nama_produk }}</h1>
                             <p class="text-sm text-gray-500 mb-4">
-                                SKU: <span class="font-mono text-orange-400">{{ $product->kode_produk }}</span> • 
-                                Warna: {{ is_array($product->warna) ? implode(', ', $product->warna) : ($product->warna ?? '-') }}
+                                SKU: <span class="font-mono text-orange-400">{{ $product->kode_produk }}</span>
                             </p>
+                            
+                            {{-- ATRIBUT PRODUK (KATEGORI, WARNA, MOTIF) --}}
+                            <div class="flex flex-col gap-3">
+                                @php
+                                    $kategori = is_string($product->kategori) ? json_decode($product->kategori, true) : $product->kategori;
+                                    $warna = is_string($product->warna) ? json_decode($product->warna, true) : $product->warna;
+                                    $motif = is_string($product->jenis_motif) ? json_decode($product->jenis_motif, true) : $product->jenis_motif;
+                                @endphp
+
+                                @if(!empty($kategori))
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-bold uppercase text-gray-500 w-16 flex-shrink-0">Kategori</span>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach($kategori as $cat)
+                                        <span class="px-2 py-0.5 bg-gray-700/50 border border-gray-600/60 text-gray-300 rounded-full text-[10px] font-semibold">{{ $cat }}</span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                @endif
+
+                                @if(!empty($warna))
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-bold uppercase text-gray-500 w-16 flex-shrink-0">Warna</span>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach($warna as $w)
+                                        <span class="px-2 py-0.5 bg-blue-900/50 border border-blue-700/60 text-blue-300 rounded-full text-[10px] font-semibold">{{ $w }}</span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                @endif
+
+                                @if(!empty($motif))
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-bold uppercase text-gray-500 w-16 flex-shrink-0">Motif</span>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach($motif as $m)
+                                        <span class="px-2 py-0.5 bg-purple-900/50 border border-purple-700/60 text-purple-300 rounded-full text-[10px] font-semibold">{{ $m }}</span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
                         </div>
                         @if($product->stok <= ($product->stok_minimum ?? 10))
                             <span class="bg-red-500/10 border border-red-500/20 text-red-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase">Stok Kritis</span>
@@ -85,118 +123,60 @@
                         </div>
                     </div>
 
-                    <p class="text-xs text-gray-400 leading-relaxed">
+                    <p class="text-xs text-gray-400 leading-relaxed mt-6 pt-6 border-t border-white/5">
                         {{ $product->deskripsi ?? 'Tidak ada deskripsi.' }}
                     </p>
                 </div>
             </div>
+        </div>
 
-            <div class="mt-6 pt-6 border-t border-white/5 space-y-6">
-                {{-- Dimensi & Detail Pola --}}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-4">
-                        <div>
-                            <h4 class="text-xs text-gray-500 uppercase font-bold">Dimensi Pola</h4>
-                            @if($product->panjang || $product->lebar || $product->tinggi)
-                                <p class="text-white font-semibold">
-                                    {{ $product->panjang + 0 ?? 'N/A' }} x {{ $product->lebar + 0 ?? 'N/A' }} x {{ $product->tinggi + 0 ?? 'N/A' }} cm
-                                </p>
-                            @else
-                                <p class="text-sm text-gray-500 italic">Tidak ada data dimensi.</p>
-                            @endif
-                        </div>
-                        <div>
-                            <h4 class="text-xs text-gray-500 uppercase font-bold">Detail Pola / Catatan Potong</h4>
-                            @if($product->detail_pola)
-                                <p class="text-sm text-gray-300 whitespace-pre-wrap">{{ $product->detail_pola }}</p>
-                            @else
-                                <p class="text-sm text-gray-500 italic">Tidak ada catatan.</p>
-                            @endif
-                        </div>
-                    </div>
-
-                    {{-- Sketsa Gallery --}}
-                    <div class="space-y-2">
-                        <h4 class="text-xs text-gray-500 uppercase font-bold">Sketsa Produksi</h4>
-                        @php $sketsas = $product->sketsa ?? []; @endphp
-                        @if(count($sketsas) > 0)
-                            <div class="grid grid-cols-2 gap-3">
-                                @foreach(array_slice($sketsas, 0, 4) as $index => $sketsaPath)
-                                    <div class="aspect-square bg-[#111] rounded-xl overflow-hidden border border-white/5 cursor-pointer hover:border-orange-500/50 transition"
-                                         onclick="openSketsaLightbox('{{ asset('storage/' . $sketsaPath) }}')">
-                                        <img src="{{ asset('storage/' . $sketsaPath) }}" class="w-full h-full object-cover" alt="Sketsa {{ $index + 1 }}">
-                                    </div>
-                                @endforeach
-                            </div>
+        {{-- Kartu Spesifikasi Teknis --}}
+        <div class="bg-[#1A1A1A] border border-white/5 rounded-2xl p-6 space-y-6">
+            <div>
+                <h3 class="text-sm font-bold text-white mb-4">Spesifikasi Teknis</h3>
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="text-xs text-gray-500 uppercase font-bold">Dimensi Pola</h4>
+                        @if($product->panjang || $product->lebar || $product->tinggi)
+                            <p class="text-white font-semibold">
+                                {{ $product->panjang + 0 ?? 'N/A' }} x {{ $product->lebar + 0 ?? 'N/A' }} x {{ $product->tinggi + 0 ?? 'N/A' }} cm
+                            </p>
                         @else
-                            <div class="w-full h-40 bg-[#111] rounded-xl flex items-center justify-center border border-dashed border-white/10">
-                                <div class="text-center">
-                                    <svg class="w-10 h-10 text-gray-700 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                    <p class="text-xs text-gray-600">Tidak ada sketsa</p>
-                                </div>
-                            </div>
+                            <p class="text-sm text-gray-500 italic">Tidak ada data dimensi.</p>
+                        @endif
+                    </div>
+                    <div>
+                        <h4 class="text-xs text-gray-500 uppercase font-bold">Detail Pola / Catatan Potong</h4>
+                        @if($product->detail_pola)
+                            <p class="text-sm text-gray-300 whitespace-pre-wrap">{{ $product->detail_pola }}</p>
+                        @else
+                            <p class="text-sm text-gray-500 italic">Tidak ada catatan.</p>
                         @endif
                     </div>
                 </div>
             </div>
-        </div>
 
-        {{-- Kartu Manajemen Stok --}}
-        <div class="bg-[#1A1A1A] border border-white/5 rounded-2xl p-6 flex flex-col justify-center" x-data="{ showModal: false, actionType: 'add' }">
-            <div class="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
-                <div class="p-2 bg-gray-800 rounded-lg text-white">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                </div>
-                <h3 class="font-bold text-sm text-white">Manajemen Stok</h3>
-            </div>
-
-            <div class="flex justify-between items-end mb-2">
-                <span class="text-xs text-gray-500">Stok Saat Ini</span>
-                <span class="text-4xl font-bold {{ $product->stok <= ($product->stok_minimum ?? 10) ? 'text-red-500' : 'text-white' }}">{{ $product->stok }}</span>
-            </div>
-
-            <div class="w-full h-2 bg-gray-800 rounded-full mb-6 overflow-hidden">
-                <div class="h-full {{ $product->stok <= ($product->stok_minimum ?? 10) ? 'bg-red-500' : 'bg-green-500' }}" style="width: {{ min(100, ($product->stok / 50) * 100) }}%"></div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <button @click="showModal = true; actionType = 'reduce'" class="py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
-                    Kurangi
-                </button>
-            </div>
-
-            {{-- MODAL ADJUST STOCK --}}
-            <div x-show="showModal" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" x-transition>
-                <div @click.away="showModal = false" class="bg-[#222] border border-white/10 rounded-xl w-full max-w-sm shadow-2xl">
-                    <form action="{{ route('admin.produk-jadi.adjust', $product->id) }}" method="POST" class="p-6">
-                        @csrf
-                        <input type="hidden" name="type" :value="actionType">
-                        
-                        <h3 class="text-lg font-bold text-white mb-1" x-text="actionType == 'add' ? 'Tambah Stok Manual' : 'Kurangi Stok Manual'"></h3>
-                        <p class="text-xs text-gray-400 mb-4">Perubahan akan tercatat di sistem.</p>
-
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Jumlah</label>
-                                <input type="number" name="amount" min="1" required class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-white focus:border-orange-500 outline-none text-center font-bold text-lg">
+            <div class="space-y-2 pt-6 border-t border-white/5">
+                <h4 class="text-xs text-gray-500 uppercase font-bold">Sketsa Produksi</h4>
+                @php $sketsas = is_string($product->sketsa) ? json_decode($product->sketsa, true) : ($product->sketsa ?? []); @endphp
+                @if(is_array($sketsas) && count($sketsas) > 0)
+                    <div class="grid grid-cols-3 gap-3">
+                        @foreach(array_slice($sketsas, 0, 6) as $index => $sketsaPath)
+                            <div class="aspect-square bg-[#111] rounded-xl overflow-hidden border border-white/5 cursor-pointer hover:border-orange-500/50 transition"
+                                 onclick="openSketsaLightbox('{{ asset('storage/' . $sketsaPath) }}')">
+                                <img src="{{ asset('storage/' . $sketsaPath) }}" class="w-full h-full object-cover" alt="Sketsa {{ $index + 1 }}">
                             </div>
-                            <div>
-                                <label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Catatan (Opsional)</label>
-                                <textarea name="note" rows="2" class="w-full bg-black border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-orange-500 outline-none" placeholder="Contoh: Retur barang, Bonus, dll"></textarea>
-                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="w-full h-40 bg-[#111] rounded-xl flex items-center justify-center border border-dashed border-white/10">
+                        <div class="text-center">
+                            <svg class="w-10 h-10 text-gray-700 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <p class="text-xs text-gray-600">Tidak ada sketsa</p>
                         </div>
-
-                        <div class="flex gap-3 mt-6">
-                            <button type="button" @click="showModal = false" class="flex-1 py-2.5 border border-white/10 rounded-lg text-gray-400 hover:text-white text-sm font-bold">Batal</button>
-                            <button type="submit" class="flex-1 py-2.5 rounded-lg text-white text-sm font-bold shadow-lg transition" :class="actionType == 'add' ? 'bg-green-600 hover:bg-green-500' : 'bg-red-600 hover:bg-red-500'">
-                                Simpan
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    </div>
+                @endif
             </div>
-
         </div>
     </div>
 
