@@ -74,6 +74,15 @@ class ProdukJadi extends Model
     }
 
     /**
+     * Relasi ke model Produksi.
+     * Satu produk jadi bisa memiliki banyak riwayat produksi.
+     */
+    public function produksi(): HasMany
+    {
+        return $this->hasMany(Produksi::class, 'produk_jadi_id');
+    }
+
+    /**
      * Mengurangi stok produk jadi dan mencatat riwayatnya.
      *
      * @param int $kuantitas Jumlah yang akan dikurangi.

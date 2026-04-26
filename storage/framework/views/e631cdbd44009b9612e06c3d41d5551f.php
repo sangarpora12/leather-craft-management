@@ -1,5 +1,3 @@
-
-
 <?php $__env->startSection('page_title', 'Perintah Produksi'); ?>
 
 <?php $__env->startSection('content'); ?>
@@ -119,21 +117,21 @@
                                             <div class="text-[10px] text-gray-300">
                                                 <i class="fa-solid fa-tags text-xs mr-1"></i>
                                                 <span class="text-capitalize">
-                                                <?php echo e($spk->produk_jadi && is_array(json_decode($spk->produk_jadi->kategori, true)) ? implode(', ', json_decode($spk->produk_jadi->kategori, true)) : ($spk->produk_jadi->kategori ?? '-')); ?>
+                                                    <?php echo e($spk->produk_jadi ? (is_array($spk->produk_jadi->kategori) ? implode(', ', $spk->produk_jadi->kategori) : $spk->produk_jadi->kategori) : '-'); ?>
 
                                                 </span>
                                             </div>
                                             <div class="text-[10px] text-gray-300">
                                                 <i class="fa-solid fa-palette text-xs mr-1"></i>
                                                 <span class="text-capitalize">
-                                                <?php echo e($spk->produk_jadi && is_array(json_decode($spk->produk_jadi->warna, true)) ? implode(', ', json_decode($spk->produk_jadi->warna, true)) : ($spk->produk_jadi->warna ?? '-')); ?>
+                                                    <?php echo e($spk->produk_jadi ? (is_array($spk->produk_jadi->warna) ? implode(', ', $spk->produk_jadi->warna) : $spk->produk_jadi->warna) : '-'); ?>
 
                                                 </span>
                                             </div>
                                             <div class="text-[10px] text-gray-300">
                                                 <i class="fa-solid fa-brush text-xs mr-1"></i>
                                                 <span class="text-capitalize">
-                                                <?php echo e($spk->produk_jadi && is_array(json_decode($spk->produk_jadi->jenis_motif, true)) ? implode(', ', json_decode($spk->produk_jadi->jenis_motif, true)) : ($spk->produk_jadi->jenis_motif ?? '-')); ?>
+                                                    <?php echo e($spk->produk_jadi ? (is_array($spk->produk_jadi->jenis_motif) ? implode(', ', $spk->produk_jadi->jenis_motif) : $spk->produk_jadi->jenis_motif) : '-'); ?>
 
                                                 </span>
                                             </div>

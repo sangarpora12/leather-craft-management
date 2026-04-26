@@ -202,7 +202,7 @@ class BahanBakuController extends Controller
             if ($isInventory) {
                 DB::table('log_stok')->insert([
                     'bahan_baku_id' => $bahan->id,
-                    'jenis_transaksi' => 'RESTOCK',
+                    'jenis_transaksi' => 'MASUK_STOK',
                     'jumlah' => $request->stok,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -247,7 +247,7 @@ class BahanBakuController extends Controller
             if ($isInventory) {
                 DB::table('log_stok')->insert([
                     'bahan_baku_id' => $bahan->id,
-                    'jenis_transaksi' => 'TAMBAH BAHAN BARU',
+                    'jenis_transaksi' => 'MASUK_STOK',
                     'jumlah' => $request->stok,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -442,7 +442,7 @@ class BahanBakuController extends Controller
         if ($selisih != 0) {
             DB::table('log_stok')->insert([
                 'bahan_baku_id' => $bahan->id,
-                'jenis_transaksi' => $selisih > 0 ? 'UPDATE OPERATOR (TAMBAH)' : 'UPDATE OPERATOR (KURANG)',
+                'jenis_transaksi' => $selisih > 0 ? 'MASUK_STOK' : 'KELUAR_PRODUKSI',
                 'jumlah' => abs($selisih),
                 'created_at' => now(),
                 'updated_at' => now(),

@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
         // (mengikuti struktur tabel `produk_jadis` dan `bom` di project ini)
         $this->call([
             ProdukJadiSeeder::class,
+            GrafikSimulatorSeeder::class,
         ]);
     }
 }

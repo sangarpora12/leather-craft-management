@@ -295,8 +295,7 @@
         try {
             const res = await fetch(`{{ route('admin.dashboard.chart-data') }}?period=${period}`);
             serverData = await res.json();
-            const type = document.getElementById('dataType').value;
-            renderChart(serverData.labels, serverData[type].masuk, serverData[type].keluar);
+            refreshChartData();
         } finally {
             document.getElementById('chartLoader').classList.add('hidden');
         }
@@ -304,7 +303,14 @@
 
     function refreshChartData() {
         const type = document.getElementById('dataType').value;
-        if (serverData[type]) renderChart(serverData.labels, serverData[type].masuk, serverData[type].keluar);
+        const labels = serverData.labels ?? [];
+        const dataForType = serverData[type] ?? { masuk: [], keluar: [] };
+
+        // Fallback: if data is empty, create an array of zeros with the same length as labels
+        const masukData = (dataForType.masuk && dataForType.masuk.length > 0) ? dataForType.masuk : new Array(labels.length).fill(0);
+        const keluarData = (dataForType.keluar && dataForType.keluar.length > 0) ? dataForType.keluar : new Array(labels.length).fill(0);
+
+        renderChart(labels, masukData, keluarData);
     }
 
     document.addEventListener('DOMContentLoaded', () => changePeriod('daily', document.querySelector('.period-btn')));

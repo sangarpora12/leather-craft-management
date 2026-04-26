@@ -69,8 +69,8 @@
                             data-max="<?php echo e($produk->max_production ?? 0); ?>"
                             data-max="<?php echo e($produk->max_production ?? 0); ?>"
                             data-foto="<?php echo e(e($foto ?? '')); ?>"
-                            data-warna="<?php echo e(e(strtolower($produk->warna ?? ''))); ?>"
-                            data-motif="<?php echo e(e(strtolower($produk->jenis_motif ?? ''))); ?>"
+                            data-warna="<?php echo e(e(is_array($produk->warna) ? strtolower(implode(', ', $produk->warna)) : strtolower($produk->warna ?? ''))); ?>"
+                            data-motif="<?php echo e(e(is_array($produk->jenis_motif) ? strtolower(implode(', ', $produk->jenis_motif)) : strtolower($produk->jenis_motif ?? ''))); ?>"
                             data-is-ready="<?php echo e($isReady ? 'true' : 'false'); ?>"
                             data-reason="<?php echo e(e($reason)); ?>"
                         >
@@ -120,7 +120,7 @@
                                                     <span class="font-semibold text-gray-500 flex-shrink-0 text-xs block mb-1">Warna:</span>
                                                      <div class="flex flex-wrap gap-1">
                                                          <span class="px-1.5 py-0.5 bg-gray-700/50 rounded text-[10px] text-gray-200 text-capitalize">
-                                                         <?php echo e(is_array(json_decode($produk->warna, true)) ? implode(', ', json_decode($produk->warna, true)) : ($produk->warna ?? '-')); ?>
+                                                            <?php echo e(is_array($produk->warna) ? implode(', ', $produk->warna) : ($produk->warna ?? '-')); ?>
 
                                                          </span>
                                                      </div>
@@ -129,7 +129,7 @@
                                                      <span class="font-semibold text-gray-500 flex-shrink-0 text-xs block mb-1">Motif:</span>
                                                      <div class="flex flex-wrap gap-1">
                                                          <span class="px-1.5 py-0.5 bg-gray-700/50 rounded text-[10px] text-gray-200 text-capitalize">
-                                                         <?php echo e(is_array(json_decode($produk->jenis_motif, true)) ? implode(', ', json_decode($produk->jenis_motif, true)) : ($produk->jenis_motif ?? '-')); ?>
+                                                            <?php echo e(is_array($produk->jenis_motif) ? implode(', ', $produk->jenis_motif) : ($produk->jenis_motif ?? '-')); ?>
 
                                                          </span>
                                                      </div>
@@ -429,5 +429,4 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 <?php $__env->stopPush(); ?>
 <?php $__env->stopSection(); ?>
-
 <?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\xampp\htdocs\berliano_leather\berliano-leather\resources\views/admin/produksi/perintah_produksi.blade.php ENDPATH**/ ?>

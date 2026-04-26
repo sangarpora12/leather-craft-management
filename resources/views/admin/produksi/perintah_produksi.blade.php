@@ -71,8 +71,8 @@
                             data-max="{{ $produk->max_production ?? 0 }}"
                             data-max="{{ $produk->max_production ?? 0 }}"
                             data-foto="{{ e($foto ?? '') }}"
-                            data-warna="{{ e(strtolower($produk->warna ?? '')) }}"
-                            data-motif="{{ e(strtolower($produk->jenis_motif ?? '')) }}"
+                            data-warna="{{ e(is_array($produk->warna) ? strtolower(implode(', ', $produk->warna)) : strtolower($produk->warna ?? '')) }}"
+                            data-motif="{{ e(is_array($produk->jenis_motif) ? strtolower(implode(', ', $produk->jenis_motif)) : strtolower($produk->jenis_motif ?? '')) }}"
                             data-is-ready="{{ $isReady ? 'true' : 'false' }}"
                             data-reason="{{ e($reason) }}"
                         >
@@ -122,7 +122,7 @@
                                                     <span class="font-semibold text-gray-500 flex-shrink-0 text-xs block mb-1">Warna:</span>
                                                      <div class="flex flex-wrap gap-1">
                                                          <span class="px-1.5 py-0.5 bg-gray-700/50 rounded text-[10px] text-gray-200 text-capitalize">
-                                                         {{ is_array(json_decode($produk->warna, true)) ? implode(', ', json_decode($produk->warna, true)) : ($produk->warna ?? '-') }}
+                                                            {{ is_array($produk->warna) ? implode(', ', $produk->warna) : ($produk->warna ?? '-') }}
                                                          </span>
                                                      </div>
                                                  </div>
@@ -130,7 +130,7 @@
                                                      <span class="font-semibold text-gray-500 flex-shrink-0 text-xs block mb-1">Motif:</span>
                                                      <div class="flex flex-wrap gap-1">
                                                          <span class="px-1.5 py-0.5 bg-gray-700/50 rounded text-[10px] text-gray-200 text-capitalize">
-                                                         {{ is_array(json_decode($produk->jenis_motif, true)) ? implode(', ', json_decode($produk->jenis_motif, true)) : ($produk->jenis_motif ?? '-') }}
+                                                            {{ is_array($produk->jenis_motif) ? implode(', ', $produk->jenis_motif) : ($produk->jenis_motif ?? '-') }}
                                                          </span>
                                                      </div>
                                                  </div>
