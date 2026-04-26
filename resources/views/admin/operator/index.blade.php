@@ -169,7 +169,7 @@
                                class="flex-1 h-9 border border-zinc-600 rounded-lg flex items-center justify-center text-gray-300 text-xs font-semibold hover:bg-zinc-700 hover:text-white transition-colors">
                                 <i class="fa-solid fa-pen mr-1.5 text-[10px]"></i> Edit Akun
                             </a>
-                            <a href="#"
+                            <a href="#" onclick="alert('Halaman kinerja sedang dalam pengembangan')"
                                class="flex-1 h-9 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg text-white text-xs font-semibold flex items-center justify-center transition-all shadow-lg shadow-purple-900/20">
                                 <i class="fa-solid fa-chart-line mr-1.5 text-[10px]"></i> Lihat Kinerja
                             </a>

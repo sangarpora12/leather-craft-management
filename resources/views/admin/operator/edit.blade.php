@@ -30,12 +30,14 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 mb-1">Role</label>
-                    <select name="sub_role" class="w-full bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition">
-                        <option value="pekerja" {{ old('sub_role', $operator->sub_role) === 'pekerja' ? 'selected' : '' }}>Pekerja (Tidak Bisa Login)</option>
-                        <option value="kepala_gudang" {{ old('sub_role', $operator->sub_role) === 'kepala_gudang' ? 'selected' : '' }}>Kepala Gudang (Bisa Login)</option>
+                    <label class="block text-xs font-bold text-gray-400 mb-1">Posisi / Jabatan</label>
+                    <select name="jabatan" class="w-full bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition">
+                        <option value="Operator Jahit" {{ old('jabatan', $operator->jabatan) === 'Operator Jahit' ? 'selected' : '' }}>Operator Jahit</option>
+                        <option value="Operator Potong" {{ old('jabatan', $operator->jabatan) === 'Operator Potong' ? 'selected' : '' }}>Operator Potong</option>
+                        <option value="Operator Finishing" {{ old('jabatan', $operator->jabatan) === 'Operator Finishing' ? 'selected' : '' }}>Operator Finishing</option>
+                        <option value="Kepala Gudang" {{ old('jabatan', $operator->jabatan) === 'Kepala Gudang' ? 'selected' : '' }}>Kepala Gudang</option>
                     </select>
-                    @error('sub_role') <p class="text-red-500 text-[10px] mt-1">{{ $message }}</p> @enderror
+                    @error('jabatan') <p class="text-red-500 text-[10px] mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-400 mb-1">Foto (Opsional)</label>
@@ -51,10 +53,12 @@
                 <p class="text-[10px] text-yellow-500 font-bold mb-2">Ganti Password (Opsional)</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">Password Baru</label>
                         <input type="password" name="password" class="w-full bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition" placeholder="Password Baru">
                         @error('password') <p class="text-red-500 text-[10px] mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">Konfirmasi Password</label>
                         <input type="password" name="password_confirmation" class="w-full bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition" placeholder="Konfirmasi Password">
                     </div>
                 </div>
@@ -62,10 +66,10 @@
             </div>
 
             <div class="pt-4 flex items-center gap-3">
-                <button type="submit" class="bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold py-2.5 px-6 rounded-xl transition shadow-lg shadow-teal-900/20">
+                <button type="submit" class="bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold py-2.5 px-6 rounded-xl transition shadow-lg shadow-orange-900/20">
                     Simpan Perubahan
                 </button>
-                <a href="{{ route('admin.operator.index') }}" class="text-gray-500 hover:text-white text-sm font-bold py-2.5 px-4 transition">
+                <a href="{{ route('admin.pekerja-master.index') }}" class="bg-gray-600 hover:bg-gray-500 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition">
                     Batal
                 </a>
             </div>

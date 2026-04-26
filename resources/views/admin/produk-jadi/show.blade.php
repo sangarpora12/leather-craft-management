@@ -47,46 +47,19 @@
                                 SKU: <span class="font-mono text-orange-400">{{ $product->kode_produk }}</span>
                             </p>
                             
-                            {{-- ATRIBUT PRODUK (KATEGORI, WARNA, MOTIF) --}}
-                            <div class="flex flex-col gap-3">
-                                @php
-                                    $kategori = is_string($product->kategori) ? json_decode($product->kategori, true) : $product->kategori;
-                                    $warna = is_string($product->warna) ? json_decode($product->warna, true) : $product->warna;
-                                    $motif = is_string($product->jenis_motif) ? json_decode($product->jenis_motif, true) : $product->jenis_motif;
-                                @endphp
-
-                                @if(!empty($kategori))
+                            <div class="flex flex-col gap-3 text-xs">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-[10px] font-bold uppercase text-gray-500 w-16 flex-shrink-0">Kategori</span>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        @foreach($kategori as $cat)
-                                        <span class="px-2 py-0.5 bg-gray-700/50 border border-gray-600/60 text-gray-300 rounded-full text-[10px] font-semibold">{{ $cat }}</span>
-                                        @endforeach
-                                    </div>
+                                    <span class="font-bold uppercase text-gray-500 w-16 flex-shrink-0">Kategori</span>
+                                    <span class="text-gray-300">{{ is_array($product->kategori) ? implode(', ', $product->kategori) : $product->kategori }}</span>
                                 </div>
-                                @endif
-
-                                @if(!empty($warna))
                                 <div class="flex items-center gap-2">
-                                    <span class="text-[10px] font-bold uppercase text-gray-500 w-16 flex-shrink-0">Warna</span>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        @foreach($warna as $w)
-                                        <span class="px-2 py-0.5 bg-blue-900/50 border border-blue-700/60 text-blue-300 rounded-full text-[10px] font-semibold">{{ $w }}</span>
-                                        @endforeach
-                                    </div>
+                                    <span class="font-bold uppercase text-gray-500 w-16 flex-shrink-0">Warna</span>
+                                    <span class="text-gray-300">{{ is_array($product->warna) ? implode(', ', $product->warna) : $product->warna }}</span>
                                 </div>
-                                @endif
-
-                                @if(!empty($motif))
                                 <div class="flex items-center gap-2">
-                                    <span class="text-[10px] font-bold uppercase text-gray-500 w-16 flex-shrink-0">Motif</span>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        @foreach($motif as $m)
-                                        <span class="px-2 py-0.5 bg-purple-900/50 border border-purple-700/60 text-purple-300 rounded-full text-[10px] font-semibold">{{ $m }}</span>
-                                        @endforeach
-                                    </div>
+                                    <span class="font-bold uppercase text-gray-500 w-16 flex-shrink-0">Motif</span>
+                                    <span class="text-gray-300">{{ is_array($product->jenis_motif) ? implode(', ', $product->jenis_motif) : $product->jenis_motif }}</span>
                                 </div>
-                                @endif
                             </div>
                         </div>
                         @if($product->stok <= ($product->stok_minimum ?? 10))

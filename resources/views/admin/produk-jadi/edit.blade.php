@@ -130,11 +130,16 @@
                                         class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-4 text-white outline-none">
                                         @foreach($kategories as $kategori)
                                             <option value="{{ $kategori->nama_kategori }}"
-                                                {{ in_array($kategori->nama_kategori, $product->kategori) ? 'selected' : '' }}>
+                                                {{ in_array($kategori->nama_kategori, $product->kategori ?? []) ? 'selected' : '' }}>
                                                 {{ $kategori->nama_kategori }}
                                             </option>
                                         @endforeach
                                     </select>
+                                    @if(!empty($product->kategori))
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            Terpilih: <span class="text-amber-400">{{ is_array($product->kategori) ? implode(', ', $product->kategori) : $product->kategori }}</span>
+                                        </p>
+                                    @endif
                                 </div>
                             </div>
                         </div>

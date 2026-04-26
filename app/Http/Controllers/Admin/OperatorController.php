@@ -33,50 +33,53 @@ class OperatorController extends Controller
     /**
      * Menampilkan daftar operator.
      */
-    public function index()
-    {
-        $operators = User::where('role', 'operator')
-            ->withCount(['bahanBakus as total_input_bahan'])
-            ->withSum(['produksis as total_produk_dibuat' => function($q) {
-                $q->where('status', 'SELESAI');
-            }], 'jumlah_produksi')
-            ->latest()
-            ->paginate(12);
+   public function index()
+{
+    $operators = User::where('role', 'operator')
+        ->where('is_active', true) // ✅ Filter aktif
+        ->withCount(['bahanBakus as total_input_bahan'])
+        ->withSum(['produksis as total_produk_dibuat' => function($q) {
+            $q->where('status', 'SELESAI');
+        }], 'jumlah_produksi')
+        ->latest()
+        ->paginate(12);
 
-        // Load statistik detail per operator
-        foreach ($operators as $op) {
-            // Bahan terbanyak yang diinput operator
-            $bahanTerbanyak = \DB::table('bahan_bakus')
-                ->where('user_id', $op->id)
-                ->select('nama_material', \DB::raw('COUNT(*) as total'))
-                ->groupBy('nama_material')
-                ->orderByDesc('total')
-                ->first();
-            $op->bahan_terbanyak = $bahanTerbanyak ? (object)[
-                'nama' => $bahanTerbanyak->nama_material,
-                'total' => $bahanTerbanyak->total,
-                'satuan' => 'Lembar'
-            ] : null;
+    foreach ($operators as $op) {
+        // ✅ PERBAIKAN: Query bahan_terbanyak dengan JOIN
+        $bahanTerbanyak = \DB::table('log_stok')
+            ->join('bahan_bakus', 'log_stok.bahan_baku_id', '=', 'bahan_bakus.id')
+            ->where('bahan_bakus.user_id', $op->id) // ✅ Filter user via relasi
+            ->where('log_stok.jenis_transaksi', 'masuk') // ✅ Field benar
+            ->select('bahan_bakus.nama_material', \DB::raw('SUM(log_stok.jumlah) as total'))
+            ->groupBy('bahan_bakus.nama_material')
+            ->orderByDesc('total')
+            ->first();
+        
+        $op->bahan_terbanyak = $bahanTerbanyak ? (object)[
+            'nama' => $bahanTerbanyak->nama_material,
+            'total' => (int)$bahanTerbanyak->total,
+            'satuan' => 'Lembar'
+        ] : null;
 
-            // Produk terbanyak yang dikerjakan operator (status SELESAI)
-            $produkTerbanyak = \DB::table('produksis')
-                ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
-                ->where('produksis.operator_id', $op->id)
-                ->where('produksis.status', 'SELESAI')
-                ->select('produk_jadis.nama_produk as nama', \DB::raw('SUM(produksis.jumlah_produksi) as total'))
-                ->groupBy('produk_jadis.nama_produk')
-                ->orderByDesc('total')
-                ->first();
-            $op->produk_terbanyak = $produkTerbanyak ? (object)[
-                'nama' => $produkTerbanyak->nama,
-                'total' => $produkTerbanyak->total,
-                'satuan' => 'Pcs'
-            ] : null;
-        }
-
-        return view('admin.operator.index', compact('operators'));
+        // ✅ Query produk_terbanyak sudah benar
+        $produkTerbanyak = \DB::table('produksis')
+            ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
+            ->where('produksis.operator_id', $op->id)
+            ->where('produksis.status', 'SELESAI')
+            ->select('produk_jadis.nama_produk as nama', \DB::raw('SUM(produksis.jumlah_produksi) as total'))
+            ->groupBy('produk_jadis.nama_produk')
+            ->orderByDesc('total')
+            ->first();
+        
+        $op->produk_terbanyak = $produkTerbanyak ? (object)[
+            'nama' => $produkTerbanyak->nama,
+            'total' => (int)$produkTerbanyak->total,
+            'satuan' => 'Pcs'
+        ] : null;
     }
 
+    return view('admin.pekerja-master.index', compact('operators'));
+}
     /**
      * Menampilkan form tambah operator.
      */
@@ -123,7 +126,7 @@ class OperatorController extends Controller
             $msg = 'Akun dibuat, tapi email GAGAL dikirim. Cek konfigurasi email.';
         }
 
-        return redirect()->route('admin.operator.index')->with('success', $msg);
+        return redirect()->route('admin.pekerja-master.index')->with('success', $msg);
     }
 
     /**
@@ -145,14 +148,14 @@ class OperatorController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:users,name,' . $id,
             'email' => 'required|email|unique:users,email,' . $id,
-            'sub_role' => 'required|in:kepala_gudang,pekerja',
+            'jabatan' => 'required|string|max:255',
             'password' => 'nullable|string|min:6|confirmed',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $operator->name = $validated['name'];
         $operator->email = $validated['email'];
-        $operator->sub_role = $validated['sub_role'];
+        $operator->jabatan = $validated['jabatan'];
 
         if ($request->filled('password')) {
             $operator->password = Hash::make($validated['password']);
@@ -168,14 +171,14 @@ class OperatorController extends Controller
 
         $operator->save();
 
-        return redirect()->route('admin.operator.index')->with('success', 'Data Operator berhasil diperbarui.');
+        return redirect()->route('admin.pekerja-master.index')->with('success', 'Data Operator berhasil diperbarui.');
     }
 
     public function destroy($id)
     {
         $operator = User::where('role', 'operator')->findOrFail($id);
         $operator->delete();
-        return redirect()->route('admin.operator.index')->with('success', 'Akun Operator berhasil dihapus.');
+        return redirect()->route('admin.pekerja-master.index')->with('success', 'Akun Operator berhasil dihapus.');
     }
 
     /**
