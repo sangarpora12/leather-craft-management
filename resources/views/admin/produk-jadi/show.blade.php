@@ -30,15 +30,56 @@
 
         {{-- Kartu Informasi Produk --}}
         <div class="lg:col-span-2 bg-[#1A1A1A] border border-white/5 rounded-2xl p-6 relative">
-            <div class="flex gap-6">
-                <div class="w-48 h-48 bg-[#222] rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-white/5">
-                    @if($product->foto)
-                        <img src="{{ asset('storage/' . $product->foto) }}" class="w-full h-full object-cover">
-                    @else
-                        <svg class="w-16 h-16 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    @endif
+            <div class="flex flex-col md:flex-row gap-6">
+                
+                <!-- Left Column: Image & Prices -->
+                <div class="w-48 flex-shrink-0">
+                    <div class="w-48 h-48 bg-[#222] rounded-xl flex items-center justify-center overflow-hidden border border-white/5 mb-4">
+                        @if($product->foto)
+                            <img src="{{ asset('storage/' . $product->foto) }}" class="w-full h-full object-cover">
+                        @else
+                            <svg class="w-16 h-16 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        @endif
+                    </div>
+                    
+                    <div class="space-y-2">
+                        @php
+                            $hpp = $product->boms->sum(function($bom) {
+                                return ($bom->jumlah_kebutuhan ?? 0) * ($bom->material->harga_satuan ?? 0);
+                            });
+
+                            if ($product->tipe_harga == 'otomatis') {
+                                $harga_jual_final = $hpp * (1 + ($margin / 100));
+                                $untung_final = $harga_jual_final - $hpp;
+                            } else { // manual
+                                $harga_jual_final = $product->harga_jual;
+                                $untung_final = $harga_jual_final - $hpp;
+                            }
+                        @endphp
+
+                        <div class="p-2.5 bg-[#111] rounded-lg border border-white/5">
+                            <p class="text-[9px] text-gray-500 uppercase font-bold">Harga Jual <span class="text-gray-400 normal-case">({{ $product->tipe_harga == 'otomatis' ? 'Otomatis' : 'Manual' }})</span></p>
+                            <p class="text-base font-bold text-white flex flex-wrap gap-x-1"><span class="flex-shrink-0">Rp</span> <span class="break-all">{{ number_format($harga_jual_final, 0, ',', '.') }}</span></p>
+                        </div>
+                        <div class="p-2.5 bg-[#111] rounded-lg border border-white/5">
+                            <p class="text-[9px] text-gray-500 uppercase font-bold">Estimasi HPP</p>
+                            <p class="text-base font-bold text-teal-500 flex flex-wrap gap-x-1"><span class="flex-shrink-0">Rp</span> <span class="break-all">{{ number_format($hpp, 0, ',', '.') }}</span></p>
+                        </div>
+                        <div class="p-2.5 bg-[#111] rounded-lg border border-white/5">
+                            <p class="text-[9px] text-gray-500 uppercase font-bold">Estimasi Untung</p>
+                            <div class="text-base font-bold {{ $untung_final >= 0 ? 'text-green-500' : 'text-red-500' }}">
+                                <div class="flex flex-wrap gap-x-1"><span class="flex-shrink-0">Rp</span> <span class="break-all">{{ number_format(abs($untung_final), 0, ',', '.') }}</span></div>
+                                @if($product->tipe_harga == 'otomatis')
+                                <div class="text-[11px] {{ $untung_final >= 0 ? 'text-green-400' : 'text-red-400' }} mt-0.5">
+                                    (Margin {{ $margin }}%)
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
+                <!-- Right Column: Details -->
                 <div class="flex-1">
                     <div class="flex justify-between items-start">
                         <div>
@@ -48,52 +89,70 @@
                             </p>
                             
                             <div class="flex flex-col gap-3 text-xs">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-bold uppercase text-gray-500 w-16 flex-shrink-0">Kategori</span>
-                                    <span class="text-gray-300">{{ is_array($product->kategori) ? implode(', ', $product->kategori) : $product->kategori }}</span>
+                                <div class="flex items-start gap-2">
+                                    <span class="font-bold uppercase text-gray-500 w-16 flex-shrink-0 mt-1">Kategori</span>
+                                    <div class="flex flex-wrap gap-1">
+                                        @php
+                                            $items_source = $product->kategori;
+                                            if (is_string($items_source)) {
+                                                $decoded = json_decode($items_source, true);
+                                                if (json_last_error() === JSON_ERROR_NONE) { $items_source = $decoded; } 
+                                                else { $items_source = explode(',', str_replace(['[', ']', "'", '"'], '', $items_source)); }
+                                            }
+                                            $items = is_array($items_source) ? $items_source : [$items_source];
+                                        @endphp
+                                        @foreach($items as $item)
+                                            @if(trim($item))
+                                                <span class="bg-blue-900/50 text-blue-300 border border-blue-800/50 px-2 py-0.5 rounded-full text-[10px] font-medium">{{ trim($item) }}</span>
+                                            @endif
+                                        @endforeach
+                                    </div>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <span class="font-bold uppercase text-gray-500 w-16 flex-shrink-0">Warna</span>
-                                    <span class="text-gray-300">{{ is_array($product->warna) ? implode(', ', $product->warna) : $product->warna }}</span>
+                                <div class="flex items-start gap-2">
+                                    <span class="font-bold uppercase text-gray-500 w-16 flex-shrink-0 mt-1">Warna</span>
+                                    <div class="flex flex-wrap gap-1">
+                                        @php
+                                            $items_source = $product->warna;
+                                            if (is_string($items_source)) {
+                                                $decoded = json_decode($items_source, true);
+                                                if (json_last_error() === JSON_ERROR_NONE) { $items_source = $decoded; }
+                                                else { $items_source = explode(',', str_replace(['[', ']', "'", '"'], '', $items_source)); }
+                                            }
+                                            $items = is_array($items_source) ? $items_source : [$items_source];
+                                        @endphp
+                                        @foreach($items as $item)
+                                            @if(trim($item))
+                                                <span class="bg-purple-900/50 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-full text-[10px] font-medium">{{ trim($item) }}</span>
+                                            @endif
+                                        @endforeach
+                                    </div>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <span class="font-bold uppercase text-gray-500 w-16 flex-shrink-0">Motif</span>
-                                    <span class="text-gray-300">{{ is_array($product->jenis_motif) ? implode(', ', $product->jenis_motif) : $product->jenis_motif }}</span>
+                                <div class="flex items-start gap-2">
+                                    <span class="font-bold uppercase text-gray-500 w-16 flex-shrink-0 mt-1">Motif</span>
+                                    <div class="flex flex-wrap gap-1">
+                                        @php
+                                            $items_source = $product->jenis_motif;
+                                            if (is_string($items_source)) {
+                                                $decoded = json_decode($items_source, true);
+                                                if (json_last_error() === JSON_ERROR_NONE) { $items_source = $decoded; }
+                                                else { $items_source = explode(',', str_replace(['[', ']', "'", '"'], '', $items_source)); }
+                                            }
+                                            $items = is_array($items_source) ? $items_source : [$items_source];
+                                        @endphp
+                                        @foreach($items as $item)
+                                            @if(trim($item))
+                                                <span class="bg-amber-900/50 text-amber-300 border border-amber-800/50 px-2 py-0.5 rounded-full text-[10px] font-medium">{{ trim($item) }}</span>
+                                            @endif
+                                        @endforeach
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        @if($product->stok <= ($product->stok_minimum ?? 10))
-                            <span class="bg-red-500/10 border border-red-500/20 text-red-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase">Stok Kritis</span>
-                        @else
-                            <span class="bg-green-500/10 border border-green-500/20 text-green-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase">Stok Aman</span>
-                        @endif
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-4 mb-6">
-                        <div class="p-3 bg-[#111] rounded-lg border border-white/5">
-                            <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Harga Jual</p>
-                            <p class="text-lg font-bold text-white">Rp {{ number_format($product->harga_jual, 0, ',', '.') }}</p>
-                        </div>
-                        <div class="p-3 bg-[#111] rounded-lg border border-white/5">
-                            <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Estimasi HPP</p>
-                            @php
-                                $hpp = $product->boms->sum(function($bom) {
-                                    return $bom->jumlah_kebutuhan * ($bom->material->harga_satuan ?? 0);
-                                });
-                                $untung = $product->harga_jual - $hpp;
-                                $persenUntung = $hpp > 0 ? ($untung / $hpp) * 100 : 0;
-                            @endphp
-                            <p class="text-lg font-bold text-teal-500">Rp {{ number_format($hpp, 0, ',', '.') }}</p>
-                        </div>
-                        <div class="p-3 bg-[#111] rounded-lg border border-white/5">
-                            <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Estimasi {{ $untung >= 0 ? 'Untung' : 'Rugi' }}</p>
-                            <p class="text-lg font-bold {{ $untung >= 0 ? 'text-green-500' : 'text-red-500' }}">
-                                Rp {{ number_format(abs($untung), 0, ',', '.') }}
-                                <span class="text-xs {{ $untung >= 0 ? 'text-green-400' : 'text-red-400' }}">
-                                    ({{ number_format(abs($persenUntung), 1) }}%)
-                                </span>
-                            </p>
-                        </div>
+                        @if($product->tipe_harga == 'otomatis')
+                    <span class="bg-green-500/10 border border-green-500/20 text-green-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase self-start">Harga Otomatis</span>
+                @else
+                    <span class="bg-blue-500/10 border border-blue-500/20 text-blue-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase self-start">Harga Manual</span>
+                @endif
                     </div>
 
                     <p class="text-xs text-gray-400 leading-relaxed mt-6 pt-6 border-t border-white/5">
@@ -109,11 +168,45 @@
                 <h3 class="text-sm font-bold text-white mb-4">Spesifikasi Teknis</h3>
                 <div class="space-y-4">
                     <div>
-                        <h4 class="text-xs text-gray-500 uppercase font-bold">Dimensi Pola</h4>
+                        <h4 class="text-xs text-gray-500 uppercase font-bold">Stok Tersedia</h4>
+                        <div class="flex items-baseline gap-2 mt-1">
+                            <p class="text-white font-bold text-2xl">{{ $product->stok }}</p>
+                            <p class="text-gray-400 text-sm">Unit</p>
+                            @php
+                                $stokMinimumProduk = \App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_produk')->value('nilai') ?? 10;
+                            @endphp
+                            @if($product->stok <= 0)
+                                <span class="text-gray-400 font-bold text-xs ml-2">(Habis)</span>
+                            @elseif($product->stok <= $stokMinimumProduk)
+                                <span class="text-red-500 font-bold text-xs ml-2">(Kritis)</span>
+                            @else
+                                <span class="text-green-500 font-bold text-xs ml-2">(Aman)</span>
+                            @endif
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-xs text-gray-500 uppercase font-bold mb-2">Dimensi Pola</h4>
                         @if($product->panjang || $product->lebar || $product->tinggi)
-                            <p class="text-white font-semibold">
-                                {{ $product->panjang + 0 ?? 'N/A' }} x {{ $product->lebar + 0 ?? 'N/A' }} x {{ $product->tinggi + 0 ?? 'N/A' }} cm
-                            </p>
+                            <div class="flex items-center gap-3 text-center">
+                                @if($product->panjang)
+                                <div class="bg-[#111] border border-white/5 rounded-lg px-3 py-1.5 flex-1">
+                                    <p class="text-sm font-bold text-white">{{ $product->panjang + 0 }} <span class="text-xs text-gray-400">cm</span></p>
+                                    <p class="text-[9px] text-gray-500 uppercase">Panjang</p>
+                                </div>
+                                @endif
+                                @if($product->lebar)
+                                <div class="bg-[#111] border border-white/5 rounded-lg px-3 py-1.5 flex-1">
+                                    <p class="text-sm font-bold text-white">{{ $product->lebar + 0 }} <span class="text-xs text-gray-400">cm</span></p>
+                                    <p class="text-[9px] text-gray-500 uppercase">Lebar</p>
+                                </div>
+                                @endif
+                                @if($product->tinggi)
+                                <div class="bg-[#111] border border-white/5 rounded-lg px-3 py-1.5 flex-1">
+                                    <p class="text-sm font-bold text-white">{{ $product->tinggi + 0 }} <span class="text-xs text-gray-400">cm</span></p>
+                                    <p class="text-[9px] text-gray-500 uppercase">Tinggi</p>
+                                </div>
+                                @endif
+                            </div>
                         @else
                             <p class="text-sm text-gray-500 italic">Tidak ada data dimensi.</p>
                         @endif
@@ -178,7 +271,7 @@
                             <div class="text-[9px] text-gray-500">{{ $bom->material->kode_material ?? '-' }}</div>
                         </td>
                         <td class="p-3 text-center text-gray-400">{{ $bom->jumlah_kebutuhan + 0 }} {{ $bom->satuan }}</td>
-                        <td class="p-3 text-center text-white">{{ $bom->material->stok ?? 0 }} {{ $bom->material->satuan ?? '' }}</td>
+                        <td class="p-3 text-center text-white">{{ ($bom->material->stok ?? 0) + 0 }} {{ $bom->material->satuan ?? '' }}</td>
                         <td class="p-3 text-right pr-4">
                             @if(($bom->material->stok ?? 0) < $bom->jumlah_kebutuhan)
                                 <span class="text-red-500 font-bold">Kurang</span>

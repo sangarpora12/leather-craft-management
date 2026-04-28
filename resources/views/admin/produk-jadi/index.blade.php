@@ -178,6 +178,5 @@
     @endforelse
 
     </div>
-
 </div>
 @endsection

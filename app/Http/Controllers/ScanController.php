@@ -578,6 +578,8 @@ class ScanController extends Controller
     public function verify(Request $request, $id)
     {
         $request->validate([
+            'jumlah' => 'required|numeric|min:0',
+            'harga_satuan' => 'required|numeric|min:0',
             'notes' => 'nullable|string',
         ]);
 
@@ -591,19 +593,43 @@ class ScanController extends Controller
         try {
             DB::beginTransaction();
 
+            // Update data bahan masuk dengan data terverifikasi
             $bahanMasuk->update([
                 'status' => 'verified',
                 'verified_by' => auth()->id(),
                 'verified_at' => now(),
+                'jumlah' => $request->jumlah,
+                'harga_satuan' => $request->harga_satuan,
                 'notes' => $request->notes,
             ]);
 
-            // TODO: Add logic to update stock in bahan_baku table
-            // This would typically update the stock of the material
+            // Cari atau buat bahan baku
+            $bahanBaku = \App\Models\BahanBaku::firstOrCreate(
+                ['nama' => $bahanMasuk->nama_material],
+                [
+                    'kategori_id' => optional(\App\Models\Kategori::where('nama', $bahanMasuk->kategori)->first())->id,
+                    'satuan_id' => optional(\App\Models\Satuan::where('nama', $bahanMasuk->satuan)->first())->id,
+                    'stok' => 0,
+                ]
+            );
+
+            // Tambah stok
+            $bahanBaku->stok += $request->jumlah;
+            $bahanBaku->save();
+
+            // Catat ke log stok
+            \App\Models\LogStok::create([
+                'bahan_baku_id' => $bahanBaku->id,
+                'bahan_masuk_id' => $bahanMasuk->id,
+                'operator_id' => $bahanMasuk->operator_id,
+                'jenis_transaksi' => 'TAMBAH_STOK',
+                'jumlah' => $request->jumlah,
+                'keterangan' => 'Verifikasi dari nota ' . $bahanMasuk->no_transaksi,
+            ]);
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Data berhasil diverifikasi');
+            return redirect()->back()->with('success', 'Data berhasil diverifikasi dan stok diperbarui');
 
         } catch (\Exception $e) {
             DB::rollBack();

@@ -40,9 +40,6 @@ class BahanBakuController extends Controller
             } elseif ($request->status_stok == 'habis') {
                 // Stok Habis: stok = 0
                 $q->where('stok', 0);
-            } elseif ($request->status_stok == 'aman') {
-                // Stok Aman: stok > min_stok
-                $q->where('stok', '>', $batasStokGlobal);
             }
             // 'semua' = tidak filter
         });
@@ -92,6 +89,18 @@ class BahanBakuController extends Controller
         $totalKritis = BahanBaku::where('stok', '>', 0)->where('stok', '<=', $batasStokGlobal)->count();
     
         return view('admin.bahan.index', compact('bahans', 'satuans', 'kategories', 'totalAsetBahan', 'totalKritis', 'batasStokGlobal'));
+    }
+
+    public function search(Request $request)
+    {
+        $query = $request->get('query');
+        $bahanBaku = \App\Models\BahanBaku::where('nama_material', 'LIKE', "{$query}%")
+            ->orWhere('kode_material', 'LIKE', "{$query}%")
+            ->with('supplier', 'kategori', 'satuan') // Eager load relasi
+            ->take(10)
+            ->get();
+
+        return response()->json($bahanBaku);
     }
 
     /**
@@ -202,8 +211,9 @@ class BahanBakuController extends Controller
             if ($isInventory) {
                 DB::table('log_stok')->insert([
                     'bahan_baku_id' => $bahan->id,
-                    'jenis_transaksi' => 'MASUK_STOK',
-                    'jumlah' => $request->stok,
+                    'operator_id' => Auth::id(),
+                    'jenis_transaksi' => 'RESTOCK',
+                    'jumlah' => $qty,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -247,7 +257,8 @@ class BahanBakuController extends Controller
             if ($isInventory) {
                 DB::table('log_stok')->insert([
                     'bahan_baku_id' => $bahan->id,
-                    'jenis_transaksi' => 'MASUK_STOK',
+                    'operator_id' => Auth::id(),
+                    'jenis_transaksi' => 'INPUT_BAHAN_BARU',
                     'jumlah' => $request->stok,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -377,10 +388,13 @@ class BahanBakuController extends Controller
 
         $bahanBakus = $query->paginate(12)->withQueryString();
 
-        $totalSKU = (clone $query)->count();
+        // TOTAL SKU DAN KRITIS DIHITUNG DARI SEMUA DATA BAHAN, BUKAN HANYA YANG ADA DI PAGE INI
+        $allBahanQuery = BahanBaku::where('is_inventory', 1);
+        
+        $totalSKU = $allBahanQuery->count();
         // Stok kritis bahan baku (IKUTI Pengaturan Gudang: stok_minimum_global)
         $batasStokGlobal = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5);
-        $totalKritis = (clone $query)->where('stok', '<=', $batasStokGlobal)->count();
+        $totalKritis = (clone $allBahanQuery)->where('stok', '<=', $batasStokGlobal)->where('stok', '>', 0)->count();
 
         $unreadCount = Auth::user()->unreadNotifications()->where(function($q) {
             $q->where('data->target', 'operator')->orWhere('data->target', 'all');
@@ -442,7 +456,8 @@ class BahanBakuController extends Controller
         if ($selisih != 0) {
             DB::table('log_stok')->insert([
                 'bahan_baku_id' => $bahan->id,
-                'jenis_transaksi' => $selisih > 0 ? 'MASUK_STOK' : 'KELUAR_PRODUKSI',
+                'operator_id' => Auth::id(),
+                'jenis_transaksi' => $selisih > 0 ? 'TAMBAH_STOK' : 'KELUAR_PRODUKSI',
                 'jumlah' => abs($selisih),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -499,9 +514,14 @@ class BahanBakuController extends Controller
             $kodeMaterial = $validated['kode_material'] ?: $this->generateKodeMaterial();
 
             // Cari berdasarkan nama_material (case insensitive)
-            $bahan = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$validated['nama_material']])
-                ->lockForUpdate()
-                ->first();
+            // KHUSUS: BAHAN PELENGKAP (is_inventory = 0) SELALU BUAT BARU, TIDAK PERNAH UPDATE YANG LAMA
+            $bahan = null;
+            if ($isInventory) {
+                // Hanya untuk bahan inventory saja yang cek apakah sudah ada
+                $bahan = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$validated['nama_material']])
+                    ->lockForUpdate()
+                    ->first();
+            }
 
             if ($bahan) {
                 // Jika nama sama, update info dan mungkin tambah stok
@@ -579,9 +599,16 @@ class BahanBakuController extends Controller
             }
 
             // Log transaksi bahan masuk ke log_stok (untuk laporan)
+            // SEKARANG SEMUA BAHAN MASUK (TERMASUK BAHAN PELENGKAP) DICATAT KE LAPORAN
+            // Tentukan jenis transaksi otomatis berdasarkan apakah bahan baru atau sudah ada
+            $jenisTransaksi = $isInventory 
+                ? ($bahan->wasRecentlyCreated ? 'Bahan Baru' : 'Tambah Stok')
+                : 'Bahan Pelengkap';
+            
             DB::table('log_stok')->insert([
                 'bahan_baku_id' => $bahan->id,
-                'jenis_transaksi' => 'INPUT MANUAL OPERATOR',
+                'operator_id' => Auth::id(),
+                'jenis_transaksi' => $jenisTransaksi,
                 'jumlah' => $validated['stok'],
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -727,21 +754,28 @@ class BahanBakuController extends Controller
     public function adjustStock(Request $request, $id)
     {
         $bahan = BahanBaku::findOrFail($id);
-        $difference = $request->stok - $bahan->stok;
+        $stokLama = $bahan->stok;
+        $stokBaru = $request->stok;
+        $selisih = $stokBaru - $stokLama;
 
-        $bahan->update(['stok' => $request->stok]);
+        if ($selisih == 0) {
+            return back()->with('info', 'Tidak ada perubahan stok.');
+        }
 
-        // Catat log stok
+        $bahan->update(['stok' => $stokBaru]);
+
+        // Log the stock adjustment
         DB::table('log_stok')->insert([
             'bahan_baku_id' => $bahan->id,
-            'jenis_transaksi' => $difference > 0 ? 'PENAMBAHAN_STOK' : 'PENGURANGAN_STOK',
-            'jumlah' => abs($difference),
+            'operator_id' => Auth::id(),
+            'jenis_transaksi' => $selisih > 0 ? 'PENYESUAIAN_MASUK' : 'PENYESUAIAN_KELUAR',
+            'jumlah' => abs($selisih),
             'keterangan' => 'Penyesuaian stok manual',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', 'Stok berhasil diperbarui.');
+        return back()->with('success', 'Stok berhasil disesuaikan.');
     }
     
     /**

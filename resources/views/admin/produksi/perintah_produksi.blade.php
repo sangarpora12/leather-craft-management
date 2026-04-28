@@ -30,6 +30,30 @@
                 </div>
 
 <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    @php
+                        // Helper function to parse data consistently
+                        if (!function_exists('parseAttribute')) {
+                            function parseAttribute($attribute) {
+                                if (is_array($attribute)) {
+                                    return $attribute;
+                                }
+                                if (is_string($attribute)) {
+                                    $decoded = json_decode($attribute, true);
+                                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                        return $decoded;
+                                    }
+                                    return array_filter(array_map('trim', explode(',', $attribute)));
+                                }
+                                return [];
+                            }
+                        }
+                        $warnaMapping = [
+                            'merah' => 'bg-red-500/20 text-red-300 border border-red-500/40', 'hitam' => 'bg-gray-800/80 text-gray-200 border border-gray-600/40', 'coklat' => 'bg-amber-900/40 text-amber-300 border border-amber-600/40', 'brown' => 'bg-amber-900/40 text-amber-300 border border-amber-600/40', 'cream' => 'bg-yellow-100/20 text-yellow-200 border border-yellow-500/40', 'putih' => 'bg-white/10 text-white border border-white/30', 'hijau' => 'bg-green-500/20 text-green-300 border border-green-500/40', 'biru' => 'bg-blue-500/20 text-blue-300 border border-blue-500/40', 'kuning' => 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40', 'pink' => 'bg-pink-500/20 text-pink-300 border border-pink-500/40', 'orange' => 'bg-orange-500/20 text-orange-300 border border-orange-500/40', 'ungu' => 'bg-purple-500/20 text-purple-300 border border-purple-500/40', 'abu' => 'bg-gray-500/20 text-gray-300 border border-gray-500/40', 'black' => 'bg-gray-800/80 text-gray-200 border border-gray-600/40', 'dark brown' => 'bg-amber-900/50 text-amber-200 border border-amber-600/50', 'peach' => 'bg-orange-300/20 text-orange-200 border border-orange-400/40',
+                        ];
+                        $motifMapping = [
+                            'polos' => 'bg-slate-500/20 text-slate-200 border border-slate-500/40', 'croco' => 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40', 'kulit buaya' => 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40', 'lizard' => 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40', 'jeruk' => 'bg-orange-500/20 text-orange-300 border border-orange-500/40', 'kulit jeruk' => 'bg-orange-500/20 text-orange-300 border border-orange-500/40', 'suede' => 'bg-amber-500/20 text-amber-300 border border-amber-500/40', 'nappa' => 'bg-violet-500/20 text-violet-300 border border-violet-500/40', 'crazy horse' => 'bg-rose-500/20 text-rose-300 border border-rose-500/40',
+                        ];
+                    @endphp
                     @foreach($boms as $produk)
                         @php
                             $bom = $produk->boms->first();
@@ -116,88 +140,49 @@
                                 <div class="flex-1 flex flex-col justify-end opacity-0 max-h-0 group-hover:opacity-100 group-hover:max-h-screen transition-all duration-300 overflow-hidden w-full">
                                     <div class="pt-2 mt-2 border-t border-gray-700/50 w-full">
                                         <p class="text-xs text-gray-500 italic truncate mb-2" title="{{ $produk->keterangan }}">{{ $produk->keterangan ?? 'Tidak ada keterangan.' }}</p>
-                                        <div class="text-xs text-gray-300 space-y-1 w-full">
-                                            <div class="space-y-2">
-                                                 <div>
-                                                     <span class="flex items-center gap-1 font-semibold text-gray-500 flex-shrink-0 text-xs block mb-1">
-                                                         <span>🎨</span>
-                                                         <span class="font-bold">Warna:</span>
-                                                     </span>
-                                                      <div class="flex flex-wrap gap-1">
-                                                          @php
-                                                              $warnaList = [];
-                                                              if (is_array($produk->warna)) {
-                                                                  $warnaList = $produk->warna;
-                                                              } elseif (is_string($produk->warna)) {
-                                                                  $decoded = json_decode($produk->warna, true);
-                                                                  $warnaList = is_array($decoded) ? $decoded : (trim($produk->warna) ? explode(',', $produk->warna) : []);
-                                                              }
-                                                              $warnaMapping = [
-                                                                  'merah' => 'bg-red-500/20 text-red-300 border border-red-500/40',
-                                                                  'hitam' => 'bg-gray-800/80 text-gray-200 border border-gray-600/40',
-                                                                  'coklat' => 'bg-amber-900/40 text-amber-300 border border-amber-600/40',
-                                                                  'brown' => 'bg-amber-900/40 text-amber-300 border border-amber-600/40',
-                                                                  'cream' => 'bg-yellow-100/20 text-yellow-200 border border-yellow-500/40',
-                                                                  'putih' => 'bg-white/10 text-white border border-white/30',
-                                                                  'hijau' => 'bg-green-500/20 text-green-300 border border-green-500/40',
-                                                                  'biru' => 'bg-blue-500/20 text-blue-300 border border-blue-500/40',
-                                                                  'kuning' => 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40',
-                                                                  'pink' => 'bg-pink-500/20 text-pink-300 border border-pink-500/40',
-                                                                  'orange' => 'bg-orange-500/20 text-orange-300 border border-orange-500/40',
-                                                                  'ungu' => 'bg-purple-500/20 text-purple-300 border border-purple-500/40',
-                                                                  'abu' => 'bg-gray-500/20 text-gray-300 border border-gray-500/40',
-                                                                  'black' => 'bg-gray-800/80 text-gray-200 border border-gray-600/40',
-                                                                  'dark brown' => 'bg-amber-900/50 text-amber-200 border border-amber-600/50',
-                                                                  'peach' => 'bg-orange-300/20 text-orange-200 border border-orange-400/40',
-                                                              ];
-                                                          @endphp
-                                                          @forelse($warnaList as $warna)
-                                                              @php $warnaStr = is_array($warna) ? json_encode($warna) : (string) $warna; @endphp
-                                                              <span class="px-2 py-0.5 rounded text-[10px] font-medium text-capitalize {{ $warnaMapping[strtolower(trim($warnaStr))] ?? 'bg-gray-700/50 text-gray-200 border border-gray-600/30' }}">
-                                                                  {{ trim($warnaStr) }}
-                                                              </span>
-                                                          @empty
-                                                              <span class="px-2 py-0.5 bg-gray-800/50 rounded text-[10px] text-gray-500">-</span>
-                                                          @endforelse
-                                                      </div>
-                                                  </div>
-                                                  <div>
-                                                      <span class="flex items-center gap-1 font-semibold text-gray-500 flex-shrink-0 text-xs block mb-1">
-                                                          <span>✂️</span>
-                                                          <span class="font-bold">Motif:</span>
-                                                      </span>
-                                                      <div class="flex flex-wrap gap-1">
-                                                          @php
-                                                              $motifList = [];
-                                                              if (is_array($produk->jenis_motif)) {
-                                                                  $motifList = $produk->jenis_motif;
-                                                              } elseif (is_string($produk->jenis_motif)) {
-                                                                  $decoded = json_decode($produk->jenis_motif, true);
-                                                                  $motifList = is_array($decoded) ? $decoded : (trim($produk->jenis_motif) ? explode(',', $produk->jenis_motif) : []);
-                                                              }
-                                                              $motifMapping = [
-                                                                  'polos' => 'bg-slate-500/20 text-slate-200 border border-slate-500/40',
-                                                                  'croco' => 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
-                                                                  'kulit buaya' => 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
-                                                                  'lizard' => 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40',
-                                                                  'jeruk' => 'bg-orange-500/20 text-orange-300 border border-orange-500/40',
-                                                                  'kulit jeruk' => 'bg-orange-500/20 text-orange-300 border border-orange-500/40',
-                                                                  'suede' => 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
-                                                                  'nappa' => 'bg-violet-500/20 text-violet-300 border border-violet-500/40',
-                                                                  'crazy horse' => 'bg-rose-500/20 text-rose-300 border border-rose-500/40',
-                                                              ];
-                                                          @endphp
-                                                          @forelse($motifList as $motif)
-                                                              @php $motifStr = is_array($motif) ? json_encode($motif) : (string) $motif; @endphp
-                                                              <span class="px-2 py-0.5 rounded text-[10px] font-medium text-capitalize {{ $motifMapping[strtolower(trim($motifStr))] ?? 'bg-indigo-700/40 text-indigo-200 border border-indigo-500/40' }}">
-                                                                  {{ trim($motifStr) }}
-                                                              </span>
-                                                          @empty
-                                                              <span class="px-2 py-0.5 bg-gray-800/50 rounded text-[10px] text-gray-500">-</span>
-                                                          @endforelse
-                                                      </div>
-                                                  </div>
+                                        
+                                        <div class="text-xs text-gray-300 space-y-1.5 w-full">
+                                            @php
+                                                $kategoriList = parseAttribute($produk->kategori);
+                                                $warnaList = parseAttribute($produk->warna);
+                                                $motifList = parseAttribute($produk->jenis_motif);
+                                            @endphp
+
+                                            @if(!empty($kategoriList))
+                                            <div class="flex flex-wrap gap-1 items-center">
+                                                <span class="text-[10px] font-semibold text-gray-500 uppercase flex-shrink-0">Kategori:</span>
+                                                @foreach($kategoriList as $kategori)
+                                                    <span class="px-2 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/40 rounded text-[10px] font-medium capitalize">
+                                                        {{ $kategori }}
+                                                    </span>
+                                                @endforeach
                                             </div>
+                                            @endif
+
+                                            @if(!empty($warnaList))
+                                            <div class="flex flex-wrap gap-1 items-center">
+                                                <span class="text-[10px] font-semibold text-gray-500 uppercase flex-shrink-0">Warna:</span>
+                                                @foreach($warnaList as $warna)
+                                                    <span class="px-2 py-0.5 rounded text-[10px] font-medium capitalize {{ $warnaMapping[strtolower($warna)] ?? 'bg-gray-700/50 text-gray-200 border border-gray-600/30' }}">
+                                                        {{ $warna }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                            @endif
+
+                                            @if(!empty($motifList))
+                                            <div class="flex flex-wrap gap-1 items-center">
+                                                <span class="text-[10px] font-semibold text-gray-500 uppercase flex-shrink-0">Motif:</span>
+                                                @foreach($motifList as $motif)
+                                                    <span class="px-2 py-0.5 rounded text-[10px] font-medium capitalize {{ $motifMapping[strtolower($motif)] ?? 'bg-indigo-700/40 text-indigo-200 border border-indigo-500/40' }}">
+                                                        {{ $motif }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                            @endif
+                                        </div>
+
+                                        <div class="mt-3 pt-2 border-t border-gray-700/50 text-xs text-gray-300 space-y-1 w-full">
                                             <div class="flex justify-between">
                                                 <span class="font-semibold text-gray-500">Stok Jadi:</span>
                                                 <span class="font-bold">{{ (int) ($produk->stok ?? 0) }}</span>

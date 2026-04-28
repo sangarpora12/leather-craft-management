@@ -208,20 +208,6 @@
                         </div>
 
                         
-                        <div class="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 mb-8">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="text-amber-400 font-bold">⚙️ Detail Produksi</h4>
-                                    <p class="text-zinc-400 text-sm mt-1">Dimensi, Pola, Sketsa, dan Resep BOM ada di halaman khusus Produksi</p>
-                                </div>
-                                <a href="<?php echo e(route('admin.bom.edit', $product->id)); ?>"
-                                   class="px-5 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold transition flex items-center gap-2">
-                                    <i class="fa-solid fa-gears"></i> Ke Halaman Produksi
-                                </a>
-                            </div>
-                        </div>
-
-                        
                         <div class="space-y-6 mb-10">
                             <div class="pt-1 pb-4 border-b border-white/10">
                                 <h3 class="text-lg font-bold text-white flex items-center gap-2">
@@ -326,14 +312,6 @@
                             <textarea name="deskripsi" rows="5"
                                 class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-5 py-5 text-white placeholder-gray-500 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50 resize-vertical text-base"
                                 placeholder="Jelaskan detail produk, bahan, ukuran, atau spesifikasi khusus..."><?php echo e(old('deskripsi', $product->deskripsi)); ?></textarea>
-                        </div>
-
-                        
-                        <div class="space-y-3">
-                            <label class="block text-sm font-semibold text-gray-300">Keterangan (Internal)</label>
-                            <textarea name="keterangan" rows="3"
-                                class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-5 py-5 text-white placeholder-gray-500 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50 resize-vertical text-base"
-                                placeholder="Catatan internal..."><?php echo e(old('keterangan', $product->keterangan)); ?></textarea>
                         </div>
 
                     </div>

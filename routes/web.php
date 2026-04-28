@@ -123,6 +123,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/produk-jadi/{id}/adjust', [ProdukJadiController::class, 'adjustStock'])->name('produk-jadi.adjust');
 
         // --- MANAJEMEN USER & SUPPLIER ---
+        Route::get('/pekerja-master/kinerja/{id}', [WorkerMasterController::class, 'kinerja'])->name('pekerja-master.kinerja');
+        Route::get('/admin/pekerja-master/{id}/kinerja', [WorkerMasterController::class, 'kinerja'])->name('admin.pekerja-master.kinerja');
         Route::resource('pekerja-master', WorkerMasterController::class)->names('pekerja-master');
         Route::resource('operator', OperatorController::class)->names('operator');
         Route::resource('suppliers', SupplierController::class)->names('suppliers');
@@ -317,6 +319,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/bahan/{id}', [BahanBakuController::class, 'showOperator'])->name('bahan.show');
         Route::get('/bahan/{id}/edit', [BahanBakuController::class, 'editOperator'])->name('bahan.edit');
         Route::put('/bahan/{id}', [BahanBakuController::class, 'updateOperator'])->name('bahan.update');
+        Route::get('/api/bahan-baku/search', [BahanBakuController::class, 'search'])->name('bahan-baku.search');
         
         // Pengadaan / Penerimaan Bahan
         Route::get('/pengadaan-bahan', [PengadaanController::class, 'indexOperator'])->name('pengadaan');

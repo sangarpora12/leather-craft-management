@@ -43,6 +43,15 @@ class BomController extends Controller
         return view('admin.bom.index', compact('products'));
     }
 
+    public function create($produk_jadi_id)
+    {
+        $product = ProdukJadi::findOrFail($produk_jadi_id);
+        $materials = BahanBaku::select('id', 'nama_material', 'satuan', 'harga_satuan', 'stok', 'is_inventory')
+                        ->orderBy('nama_material', 'asc')->get();
+        
+        return view('admin.bom.create', compact('product', 'materials'));
+    }
+
     public function store(Request $request, $produk_jadi_id)
 {
     // 1. Validasi

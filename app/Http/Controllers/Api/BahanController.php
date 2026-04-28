@@ -26,8 +26,16 @@ class BahanController extends Controller
                 ]);
             }
             
-            $bahans = BahanBaku::where('nama_bahan', 'like', '%' . $query . '%')
-                    ->select('id', 'kode_bahan', 'nama_bahan', 'stok', 'satuan', 'harga_satuan', 'foto')
+            $queryBuilder = BahanBaku::where('nama_bahan', 'like', '%' . $query . '%');
+
+            if ($request->has('is_inventory')) {
+                $isInventory = $request->input('is_inventory');
+                if ($isInventory === '1' || $isInventory === '0') {
+                    $queryBuilder->where('is_inventory', $isInventory);
+                }
+            }
+
+            $bahans = $queryBuilder->select('id', 'kode_bahan', 'nama_bahan', 'stok', 'satuan', 'harga_satuan', 'foto', 'kategori')
                     ->limit(10)
                     ->get();
             

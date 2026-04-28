@@ -22,13 +22,13 @@ class LaporanController extends Controller
         // Get mode parameter
         $mode = $request->query('mode', 'lengkap');
         
-        // Get date range parameters - default to ALL TIME if not specified
+        // Get date range parameters - default to 2 years ago if not specified
         $fromDate = $request->query('from', '');
         $toDate = $request->query('to', '');
         
-        // If no date range specified, use all time
+        // If no date range specified, use last 2 years
         if (empty($fromDate) || empty($toDate)) {
-            $fromDate = '2020-01-01'; // Far past date
+            $fromDate = Carbon::now()->subYears(2)->format('Y-m-d');
             $toDate = Carbon::now()->format('Y-m-d');
         }
         
@@ -58,6 +58,10 @@ class LaporanController extends Controller
                 DB::raw('COUNT(produksis.id) as jumlah_spk'),
                 DB::raw('MIN(DATE(produksis.created_at)) as tanggal_mulai'),
                 DB::raw('MAX(DATE(produksis.created_at)) as tanggal_terakhir'),
+                DB::raw('MAX(DATE(produksis.created_at)) as tanggal_selesai'), // ✅ Jaga-jaga jika view butuh
+                DB::raw("'-' as alasan"), // ✅ Jaga-jaga
+                DB::raw("'-' as jenis_transaksi"), // ✅ FIX BUG Undefined property
+                DB::raw("'-' as keterangan"), // ✅ Jaga-jaga
                 DB::raw('"Produksi" as jenis_mutasi')
             )
             ->groupBy('produk_jadis.id', 'produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produk_jadis.harga_jual')
@@ -75,6 +79,12 @@ class LaporanController extends Controller
                 'produk_jadis.harga_jual',
                 DB::raw('SUM(produk_keluars.jumlah_keluar) as jumlah'),
                 DB::raw('COUNT(produk_keluars.id) as jumlah_transaksi'),
+                DB::raw('MIN(DATE(produk_keluars.created_at)) as tanggal_mulai'),
+                DB::raw('MAX(DATE(produk_keluars.created_at)) as tanggal_terakhir'),
+                DB::raw('MAX(DATE(produk_keluars.created_at)) as tanggal_keluar'), // ✅ Jaga-jaga
+                DB::raw("'-' as alasan"), // ✅ Jaga-jaga
+                DB::raw("'-' as jenis_transaksi"), // ✅ FIX BUG Undefined property
+                DB::raw("'-' as keterangan"), // ✅ Jaga-jaga
                 DB::raw('"Keluar" as jenis_mutasi')
             )
             ->groupBy('produk_jadis.id', 'produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produk_jadis.harga_jual')
@@ -100,6 +110,12 @@ class LaporanController extends Controller
                 'bahan_bakus.satuan',
                 DB::raw('SUM(log_stok.jumlah) as jumlah'),
                 DB::raw('COUNT(log_stok.id) as jumlah_transaksi'),
+                DB::raw('MIN(DATE(log_stok.created_at)) as tanggal_mulai'),
+                DB::raw('MAX(DATE(log_stok.created_at)) as tanggal_terakhir'),
+                DB::raw('MAX(DATE(log_stok.created_at)) as tanggal_masuk'), // ✅ Jaga-jaga
+                DB::raw("'-' as alasan"), // ✅ Jaga-jaga
+                DB::raw("'-' as jenis_transaksi"), // ✅ FIX BUG Undefined property
+                DB::raw("'-' as keterangan"), // ✅ Jaga-jaga
                 DB::raw('"Masuk" as jenis_mutasi')
             )
             ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan')
@@ -119,6 +135,11 @@ class LaporanController extends Controller
                 'bahan_bakus.kode_material',
                 'bahan_bakus.satuan',
                 DB::raw('SUM(produksis.jumlah_selesai * bom.jumlah_kebutuhan) as jumlah'),
+                DB::raw('MAX(DATE(produksis.created_at)) as tanggal_terakhir'), // ✅ Jaga-jaga
+                DB::raw('MAX(DATE(produksis.created_at)) as tanggal_keluar'), // ✅ Jaga-jaga
+                DB::raw("'-' as alasan"), // ✅ Jaga-jaga
+                DB::raw("'-' as jenis_transaksi"), // ✅ FIX BUG Undefined property
+                DB::raw("'-' as keterangan"), // ✅ Jaga-jaga
                 DB::raw('"Dipakai" as jenis_mutasi')
             )
             ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan')
@@ -270,7 +291,7 @@ class LaporanController extends Controller
     }
 
     /**
-     * Export data to Excel
+     * Export data to Excel (Styled HTML to XLS)
      */
     public function exportExcel(Request $request)
     {
@@ -279,13 +300,13 @@ class LaporanController extends Controller
         $toDate = $request->query('to', '');
         
         if (empty($fromDate) || empty($toDate)) {
-            $fromDate = '2020-01-01';
+            $fromDate = Carbon::now()->subYears(2)->format('Y-m-d');
             $toDate = Carbon::now()->format('Y-m-d');
         }
         
         $from = Carbon::parse($fromDate)->startOfDay();
         $to = Carbon::parse($toDate)->endOfDay();
-        
+
         // Get data based on mode
         $productions = DB::table('produksis')
             ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
@@ -316,15 +337,23 @@ class LaporanController extends Controller
             ->orderByDesc('jumlah')
             ->get();
         
-        $pengadaans = DB::table('pengadaans')
-            ->join('bahan_bakus', 'pengadaans.bahan_baku_id', '=', 'bahan_bakus.id')
-            ->whereBetween('pengadaans.created_at', [$from, $to])
+        $pengadaans = DB::table('log_stok')
+            ->join('bahan_bakus', 'log_stok.bahan_baku_id', '=', 'bahan_bakus.id')
+            ->whereBetween('log_stok.created_at', [$from, $to])
+            ->where(function($q) {
+                $q->where('log_stok.jenis_transaksi', 'like', '%MASUK%')
+                  ->orWhere('log_stok.jenis_transaksi', 'like', '%TAMBAH%')
+                  ->orWhere('log_stok.jenis_transaksi', 'like', '%PENGADAAN%')
+                  ->orWhere('log_stok.jenis_transaksi', 'like', '%RESTOCK%')
+                  ->orWhere('log_stok.jenis_transaksi', 'like', '%INPUT%')
+                  ->orWhere('log_stok.jenis_transaksi', 'like', '%UPDATE OPERATOR%');
+            })
             ->select(
                 'bahan_bakus.kode_material',
                 'bahan_bakus.nama_material',
                 'bahan_bakus.satuan',
-                DB::raw('SUM(pengadaans.jumlah) as jumlah'),
-                DB::raw('COUNT(pengadaans.id) as jumlah_transaksi')
+                DB::raw('SUM(log_stok.jumlah) as jumlah'),
+                DB::raw('COUNT(log_stok.id) as jumlah_transaksi')
             )
             ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan')
             ->orderByDesc('jumlah')
@@ -344,46 +373,146 @@ class LaporanController extends Controller
             ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan')
             ->orderByDesc('jumlah')
             ->get();
+
+        $namaPerusahaan = Pengaturan::where('nama_pengaturan', 'nama_perusahaan')->first()?->nilai ?? 'Berliano Leather';
         
-        // Create CSV content
-        $csv = "Laporan Operasional - Berliano Leather\n";
-        $csv .= "Periode: " . Carbon::parse($fromDate)->format('d/m/Y') . " - " . Carbon::parse($toDate)->format('d/m/Y') . "\n\n";
+        // Membangun Tabel HTML untuk diekspor ke Excel
+        $html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+        $html .= '<head><meta charset="utf-8"></head><body>';
+        $html .= '<table style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif;">';
+        
+        // HEADER UTAMA LAPORAN
+        $html .= '<tr><td colspan="6" style="font-size: 18px; font-weight: bold; text-align: center; vertical-align: middle; height: 30px;">LAPORAN OPERASIONAL - ' . strtoupper($namaPerusahaan) . '</td></tr>';
+        $html .= '<tr><td colspan="6" style="font-size: 12px; text-align: center; vertical-align: middle;">Mode: ' . ucfirst($mode) . ' | Periode: ' . Carbon::parse($fromDate)->format('d/m/Y') . ' - ' . Carbon::parse($toDate)->format('d/m/Y') . '</td></tr>';
+        $html .= '<tr><td colspan="6"></td></tr>';
+
+        // GAYA CSS INLINE UNTUK TABEL
+        $headStyle = 'background-color: #2F5597; color: #ffffff; font-weight: bold; border: 1px solid #000000; text-align: center; padding: 8px;';
+        $subHeadStyle = 'background-color: #D9E1F2; font-weight: bold; border: 1px solid #000000; text-align: left; padding: 8px; font-size: 14px;';
+        $cellStyle = 'border: 1px solid #000000; padding: 5px; vertical-align: middle;';
+        $numberStyle = 'border: 1px solid #000000; padding: 5px; vertical-align: middle; text-align: right;';
         
         if ($mode == 'lengkap' || $mode == 'produk') {
-            $csv .= "=== OUTPUT PRODUKSI ===\n";
-            $csv .= "Kode,Nama Produk,Harga Jual,Total Selesai,Jumlah SPK,Nilai Total\n";
+            // --- OUTPUT PRODUKSI ---
+            $html .= '<tr><td colspan="6" style="' . $subHeadStyle . '">📦 HASIL PRODUKSI (SELESAI)</td></tr>';
+            $html .= '<tr>';
+            $html .= '<th style="' . $headStyle . '">Kode Produk</th>';
+            $html .= '<th style="' . $headStyle . '">Nama Produk</th>';
+            $html .= '<th style="' . $headStyle . '">Harga Jual (Rp)</th>';
+            $html .= '<th style="' . $headStyle . '">Total Selesai</th>';
+            $html .= '<th style="' . $headStyle . '">Jumlah SPK</th>';
+            $html .= '<th style="' . $headStyle . '">Nilai Estimasi (Rp)</th>';
+            $html .= '</tr>';
+
+            $totalSelesai = 0;
+            $totalNilaiProduksi = 0;
+
             foreach ($productions as $prod) {
-                $csv .= "{$prod->kode_produk},{$prod->nama_produk},{$prod->harga_jual},{$prod->jumlah_selesai},{$prod->jumlah_spk}," . ($prod->jumlah_selesai * $prod->harga_jual) . "\n";
+                $nilaiTotal = $prod->jumlah_selesai * $prod->harga_jual;
+                $totalSelesai += $prod->jumlah_selesai;
+                $totalNilaiProduksi += $nilaiTotal;
+
+                $html .= '<tr>';
+                $html .= '<td style="' . $cellStyle . '">' . $prod->kode_produk . '</td>';
+                $html .= '<td style="' . $cellStyle . '">' . $prod->nama_produk . '</td>';
+                $html .= '<td style="' . $numberStyle . '">' . number_format($prod->harga_jual, 0, ',', '.') . '</td>';
+                $html .= '<td style="' . $numberStyle . '">' . number_format($prod->jumlah_selesai, 0, ',', '.') . '</td>';
+                $html .= '<td style="' . $numberStyle . '">' . number_format($prod->jumlah_spk, 0, ',', '.') . '</td>';
+                $html .= '<td style="' . $numberStyle . '">' . number_format($nilaiTotal, 0, ',', '.') . '</td>';
+                $html .= '</tr>';
             }
-            $csv .= "\n";
+            // Row Total Produksi
+            $html .= '<tr><td colspan="3" style="font-weight: bold; ' . $numberStyle . '">TOTAL PRODUKSI:</td>';
+            $html .= '<td style="font-weight: bold; ' . $numberStyle . '">' . number_format($totalSelesai, 0, ',', '.') . '</td>';
+            $html .= '<td style="' . $cellStyle . '"></td>';
+            $html .= '<td style="font-weight: bold; ' . $numberStyle . '">' . number_format($totalNilaiProduksi, 0, ',', '.') . '</td></tr>';
+            $html .= '<tr><td colspan="6"></td></tr>';
             
-            $csv .= "=== PRODUK KELUAR ===\n";
-            $csv .= "Kode,Nama Produk,Harga Jual,Total Keluar,Jumlah Transaksi,Nilai Total\n";
+            // --- PRODUK KELUAR ---
+            $html .= '<tr><td colspan="6" style="' . $subHeadStyle . '">📤 PRODUK KELUAR / TERJUAL</td></tr>';
+            $html .= '<tr>';
+            $html .= '<th style="' . $headStyle . '">Kode Produk</th>';
+            $html .= '<th style="' . $headStyle . '">Nama Produk</th>';
+            $html .= '<th style="' . $headStyle . '">Harga Jual (Rp)</th>';
+            $html .= '<th style="' . $headStyle . '">Total Keluar</th>';
+            $html .= '<th style="' . $headStyle . '">Jumlah Transaksi</th>';
+            $html .= '<th style="' . $headStyle . '">Total Pemasukan (Rp)</th>';
+            $html .= '</tr>';
+
+            $totalKeluar = 0;
+            $totalNilaiKeluar = 0;
+
             foreach ($produkKeluars as $keluar) {
-                $csv .= "{$keluar->kode_produk},{$keluar->nama_produk},{$keluar->harga_jual},{$keluar->jumlah},{$keluar->jumlah_transaksi}," . ($keluar->jumlah * $keluar->harga_jual) . "\n";
+                $nilaiTotal = $keluar->jumlah * $keluar->harga_jual;
+                $totalKeluar += $keluar->jumlah;
+                $totalNilaiKeluar += $nilaiTotal;
+
+                $html .= '<tr>';
+                $html .= '<td style="' . $cellStyle . '">' . $keluar->kode_produk . '</td>';
+                $html .= '<td style="' . $cellStyle . '">' . $keluar->nama_produk . '</td>';
+                $html .= '<td style="' . $numberStyle . '">' . number_format($keluar->harga_jual, 0, ',', '.') . '</td>';
+                $html .= '<td style="' . $numberStyle . '">' . number_format($keluar->jumlah, 0, ',', '.') . '</td>';
+                $html .= '<td style="' . $numberStyle . '">' . number_format($keluar->jumlah_transaksi, 0, ',', '.') . '</td>';
+                $html .= '<td style="' . $numberStyle . '">' . number_format($nilaiTotal, 0, ',', '.') . '</td>';
+                $html .= '</tr>';
             }
-            $csv .= "\n";
+            // Row Total Keluar
+            $html .= '<tr><td colspan="3" style="font-weight: bold; ' . $numberStyle . '">TOTAL KELUAR:</td>';
+            $html .= '<td style="font-weight: bold; ' . $numberStyle . '">' . number_format($totalKeluar, 0, ',', '.') . '</td>';
+            $html .= '<td style="' . $cellStyle . '"></td>';
+            $html .= '<td style="font-weight: bold; ' . $numberStyle . '">' . number_format($totalNilaiKeluar, 0, ',', '.') . '</td></tr>';
+            $html .= '<tr><td colspan="6"></td></tr>';
         }
         
         if ($mode == 'lengkap' || $mode == 'bahan') {
-            $csv .= "=== BAHAN MASUK ===\n";
-            $csv .= "Kode,Nama Bahan,Satuan,Total Masuk,Jumlah Transaksi\n";
+            // --- BAHAN MASUK ---
+            $html .= '<tr><td colspan="5" style="' . $subHeadStyle . '">📥 BAHAN MASUK / PENGADAAN</td><td style="border:none;"></td></tr>';
+            $html .= '<tr>';
+            $html .= '<th style="' . $headStyle . '">Kode Bahan</th>';
+            $html .= '<th colspan="2" style="' . $headStyle . '">Nama Bahan Baku</th>';
+            $html .= '<th style="' . $headStyle . '">Total Masuk</th>';
+            $html .= '<th style="' . $headStyle . '">Satuan</th>';
+            $html .= '<td style="border:none;"></td>'; // Kosongkan kolom 6
+            $html .= '</tr>';
+
             foreach ($pengadaans as $bahan) {
-                $csv .= "{$bahan->kode_material},{$bahan->nama_material},{$bahan->satuan},{$bahan->jumlah},{$bahan->jumlah_transaksi}\n";
+                $html .= '<tr>';
+                $html .= '<td style="' . $cellStyle . '">' . $bahan->kode_material . '</td>';
+                $html .= '<td colspan="2" style="' . $cellStyle . '">' . $bahan->nama_material . '</td>';
+                $html .= '<td style="' . $numberStyle . '">' . number_format($bahan->jumlah, 2, ',', '.') . '</td>';
+                $html .= '<td style="' . $cellStyle . '">' . $bahan->satuan . '</td>';
+                $html .= '<td style="border:none;"></td>';
+                $html .= '</tr>';
             }
-            $csv .= "\n";
+            $html .= '<tr><td colspan="6"></td></tr>';
             
-            $csv .= "=== BAHAN KELUAR ===\n";
-            $csv .= "Kode,Nama Bahan,Satuan,Total Dipakai\n";
+            // --- BAHAN KELUAR (DIPAKAI) ---
+            $html .= '<tr><td colspan="5" style="' . $subHeadStyle . '">🏭 BAHAN KELUAR / DIPAKAI PRODUKSI</td><td style="border:none;"></td></tr>';
+            $html .= '<tr>';
+            $html .= '<th style="' . $headStyle . '">Kode Bahan</th>';
+            $html .= '<th colspan="2" style="' . $headStyle . '">Nama Bahan Baku</th>';
+            $html .= '<th style="' . $headStyle . '">Total Dipakai</th>';
+            $html .= '<th style="' . $headStyle . '">Satuan</th>';
+            $html .= '<td style="border:none;"></td>'; // Kosongkan kolom 6
+            $html .= '</tr>';
+
             foreach ($materialUsage as $bahan) {
-                $csv .= "{$bahan->kode_material},{$bahan->nama_material},{$bahan->satuan},{$bahan->jumlah}\n";
+                $html .= '<tr>';
+                $html .= '<td style="' . $cellStyle . '">' . $bahan->kode_material . '</td>';
+                $html .= '<td colspan="2" style="' . $cellStyle . '">' . $bahan->nama_material . '</td>';
+                $html .= '<td style="' . $numberStyle . '">' . number_format($bahan->jumlah, 2, ',', '.') . '</td>';
+                $html .= '<td style="' . $cellStyle . '">' . $bahan->satuan . '</td>';
+                $html .= '<td style="border:none;"></td>';
+                $html .= '</tr>';
             }
         }
         
-        $filename = 'laporan_' . $mode . '_' . $fromDate . '_to_' . $toDate . '.csv';
+        $html .= '</table></body></html>';
         
-        return response($csv)
-            ->header('Content-Type', 'text/csv')
+        $filename = 'Laporan_' . ucfirst($mode) . '_' . Carbon::parse($fromDate)->format('dmY') . '_sd_' . Carbon::parse($toDate)->format('dmY') . '.xls';
+        
+        return response($html)
+            ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 
@@ -393,8 +522,8 @@ class LaporanController extends Controller
     public function exportPdf(Request $request)
     {
         $mode = $request->query('mode', 'lengkap');
-        $fromDate = $request->query('from', Carbon::now()->startOfMonth()->format('Y-m-d'));
-        $toDate = $request->query('to', Carbon::now()->endOfMonth()->format('Y-m-d'));
+        $fromDate = $request->query('from', Carbon::now()->subYears(2)->format('Y-m-d'));
+        $toDate = $request->query('to', Carbon::now()->format('Y-m-d'));
         
         $from = Carbon::parse($fromDate)->startOfDay();
         $to = Carbon::parse($toDate)->endOfDay();
@@ -533,7 +662,7 @@ class LaporanController extends Controller
             ->orderBy('updated_at', 'desc')
             ->paginate(10);
 
-        // ✅ DATA BAHAN BAKU YANG DITERIMA (DIBELI) OLEH OPERATOR INI
+        // DATA BAHAN BAKU YANG DITERIMA (DIBELI) OLEH OPERATOR INI
         // Grouping berdasarkan bahan_baku_id, jumlahkan total
         $bahanDiterima = DB::table('pengadaans')
             ->join('bahan_bakus', 'pengadaans.bahan_baku_id', '=', 'bahan_bakus.id')

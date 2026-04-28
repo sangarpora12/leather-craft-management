@@ -85,10 +85,10 @@ class PenguranganStokController extends Controller
                 $val = is_string($kat->kategori) ? json_decode($kat->kategori, true) : $kat->kategori;
                 if(is_array($val)) {
                     foreach($val as $v) {
-                        if(!$kategoris->contains($v)) $kategoris->push($v);
+                        if(!empty($v) && !$kategoris->contains($v)) $kategoris->push($v);
                     }
                 } else {
-                    if(!$kategoris->contains($val)) $kategoris->push($val);
+                    if(!empty($val) && !$kategoris->contains($val)) $kategoris->push($val);
                 }
             }
             

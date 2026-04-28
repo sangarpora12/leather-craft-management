@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema; // ✅ Tambahan facade Schema
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class WorkerMasterController extends Controller
 {
@@ -88,6 +90,105 @@ class WorkerMasterController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             return redirect()->back()->with('error', 'Terjadi kesalahan saat memuat data.');
+        }
+    }
+
+    /**
+     * Menampilkan detail kinerja operator.
+     */
+    public function kinerja(Request $request, $id)
+    {
+        try {
+            $operator = User::where('role', 'operator')->findOrFail($id);
+
+            // Ambil tanggal dari request
+            $tanggal = $request->input('tanggal');
+
+            // Statistik produk yang diselesaikan bulan ini
+            $produksiBulanIni = DB::table('produksis')
+                ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
+                ->where('produksis.operator_id', $id)
+                ->where(DB::raw('TRIM(produksis.status)'), 'Selesai')
+                ->whereMonth('produksis.tanggal_selesai', now()->month)
+                ->whereYear('produksis.tanggal_selesai', now()->year)
+                ->select('produk_jadis.nama_produk', DB::raw('SUM(produksis.jumlah_selesai) as total'))
+                ->groupBy('produk_jadis.nama_produk')
+                ->orderByDesc('total')
+                ->get();
+            
+            // Total produk selesai bulan ini
+            $totalProdukBulanIni = $produksiBulanIni->sum('total');
+            
+            // Statistik keseluruhan
+            $totalSemuaProduk = DB::table('produksis')
+                ->where('operator_id', $id)
+                ->where(DB::raw('TRIM(status)'), 'Selesai')
+                ->sum('jumlah_selesai');
+            
+            // ✅ Cek kolom operator_id agar aman dari error 1054
+            $totalBahanDiinput = DB::table('log_stok')
+                ->where(function($q) {
+                    $q->where('jenis_transaksi', 'like', '%MASUK%')
+                      ->orWhere('jenis_transaksi', 'like', '%TAMBAH%')
+                      ->orWhere('jenis_transaksi', 'like', '%PENGADAAN%')
+                      ->orWhere('jenis_transaksi', 'like', '%RESTOCK%')
+                      ->orWhere('jenis_transaksi', 'like', '%INPUT%');
+                })
+                ->sum('jumlah');
+
+            // --- TAMBAHAN UNTUK 10 PRODUK & BAHAN TERBARU --- //
+            
+            // 1. Ambil Produk Terbaru dengan Paginasi
+            $queryProduk = DB::table('produksis')
+                ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
+                ->where('produksis.operator_id', $id)
+                ->where(DB::raw('TRIM(produksis.status)'), 'Selesai');
+
+            // Terapkan filter tanggal jika ada
+            if ($tanggal) {
+                $queryProduk->whereDate('produksis.tanggal_selesai', $tanggal);
+            }
+
+            $produkSelesaiTerbaru = $queryProduk
+                ->orderByDesc('produksis.tanggal_selesai')
+                ->select('produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produksis.jumlah_selesai', 'produksis.tanggal_selesai as created_at')
+                ->get();
+
+            // 2. Ambil 10 Bahan Masuk Terbaru (Aman dari error 1054)
+            $queryBahan = DB::table('log_stok')
+                ->join('bahan_bakus', 'log_stok.bahan_baku_id', '=', 'bahan_bakus.id')
+                ->where(function($q) {
+                    $q->where('log_stok.jenis_transaksi', 'like', '%MASUK%')
+                        ->orWhere('log_stok.jenis_transaksi', 'like', '%TAMBAH%')
+                        ->orWhere('log_stok.jenis_transaksi', 'like', '%PENGADAAN%')
+                        ->orWhere('log_stok.jenis_transaksi', 'like', '%RESTOCK%')
+                        ->orWhere('log_stok.jenis_transaksi', 'like', '%INPUT%');
+                });
+
+            // Terapkan filter tanggal jika ada
+            if ($tanggal) {
+                $queryBahan->whereDate('log_stok.created_at', $tanggal);
+            }
+
+            $bahanTerbaru = $queryBahan
+                ->orderByDesc('log_stok.created_at')
+                ->select('bahan_bakus.nama_material', 'bahan_bakus.kode_material as kode_bahan', 'log_stok.jumlah', 'log_stok.created_at')
+                ->get();
+
+            return view('admin.pekerja-master.kinerja', compact(
+                'operator',
+                'produksiBulanIni',
+                'totalProdukBulanIni',
+                'totalSemuaProduk',
+                'totalBahanDiinput',
+                'produkSelesaiTerbaru',
+                'bahanTerbaru'
+            ));
+        } catch (ModelNotFoundException $e) {
+            return redirect()->back()->with('error', 'Data Operator tidak ditemukan.');
+        } catch (\Exception $e) {
+            Log::error('Error di WorkerMasterController@kinerja: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal memuat kinerja: ' . $e->getMessage());
         }
     }
 

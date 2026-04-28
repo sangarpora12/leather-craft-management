@@ -11,7 +11,7 @@
             <h1 class="text-2xl font-bold text-white">Manajemen Operator</h1>
             <p class="text-sm text-gray-500 mt-1">Kelola akun karyawan yang bertugas menerima perintah produksi.</p>
         </div>
-        <button onclick="openModal('modalTambahOperator')" class="bg-orange-600 hover:bg-orange-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-orange-900/20 flex items-center gap-2 transition">
+        <button onclick="openModal('modalTambahOperator')" class="bg-orange-600 hover:bg-orange-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-orange-900/20 flex items-center gap-2">
             <i class="fa-solid fa-user-plus"></i> Tambah Operator
         </button>
     </div>
@@ -26,7 +26,7 @@
                        x-model="search"
                        @input="filterOperators()"
                        placeholder="Cari operator..."
-                       class="w-full bg-[#0B0E14] border border-gray-700 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-orange-500 transition-all">
+                       class="w-full bg-[#0B0E14] border border-gray-700 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-orange-500 transition">
             </div>
 
             {{-- Filter Status --}}
@@ -47,7 +47,7 @@
                 $isActive = $op->is_active == true || $op->is_active === 1 || is_null($op->is_active);
             @endphp
 
-            <div class="bg-[#1C222D] rounded-2xl border {{ $isActive ? 'border-white/5' : 'border-red-500/30' }} overflow-hidden relative transition-all duration-300 hover:translate-y-[-2px] shadow-xl"
+            <div class="bg-[#1C222D] rounded-2xl border {{ $isActive ? 'border-white/5' : 'border-red-500/30' }} overflow-hidden relative transition-all duration-300 hover:translate-y-[-2px] shadow-lg"
                  data-name="{{ strtolower($op->name) }}"
                  data-status="{{ $isActive ? 'active' : 'inactive' }}">
 
@@ -104,7 +104,7 @@
                                  class="absolute right-0 mt-2 w-48 bg-[#1C222D] border border-gray-700 rounded-xl shadow-xl shadow-black/50 z-20 overflow-hidden"
                                  style="display: none;">
 
-                                <a href="{{ route('admin.operator.edit', $op->id) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition border-b border-gray-800/50">
+                                <a href="{{ route('admin.operator.edit', $op->id) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition">
                                     <i class="fa-solid fa-pen text-blue-400 text-xs"></i> Edit User
                                 </a>
 
@@ -112,7 +112,7 @@
                                 <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full" id="form-toggle-role-{{ $op->id }}">
                                     @csrf @method('PATCH')
                                     <input type="hidden" name="toggle_sub_role" value="1">
-                                    <button type="button" onclick="swalConfirm({title: 'Ubah Role?', text: 'Ubah {{ $op->name }} menjadi {{ $op->sub_role === 'kepala_gudang' ? 'Pekerja' : 'Kepala Gudang' }}?', icon: 'question', confirmText: 'Ya, Ubah', onConfirm: () => document.getElementById('form-toggle-role-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm {{ $op->sub_role === 'kepala_gudang' ? 'text-gray-400 hover:bg-gray-700/20' : 'text-amber-400 hover:bg-amber-900/20' }} hover:text-white transition w-full text-left border-b border-gray-800/50">
+                                    <button type="button" onclick="swalConfirm({title: 'Ubah Role?', text: 'Ubah {{ $op->name }} menjadi {{ $op->sub_role === 'kepala_gudang' ? 'Pekerja' : 'Kepala Gudang' }}?', icon: 'question', confirmText: 'Ya, Ubah'}, () => document.getElementById('form-toggle-role-{{ $op->id }}').submit())" class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition">
                                         <i class="fa-solid {{ $op->sub_role === 'kepala_gudang' ? 'fa-user' : 'fa-crown' }} text-xs"></i>
                                         {{ $op->sub_role === 'kepala_gudang' ? 'Turunkan ke Pekerja' : 'Angkat Kepala Gudang' }}
                                     </button>
@@ -121,14 +121,14 @@
                                 @if($isActive)
                                 <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full" id="form-nonaktif-{{ $op->id }}">
                                     @csrf @method('PATCH')
-                                    <button type="button" onclick="swalConfirm({title: 'Nonaktifkan Akun?', text: 'Akun {{ $op->name }} akan dinonaktifkan dan tidak bisa login.', icon: 'warning', confirmText: 'Ya, Nonaktifkan', onConfirm: () => document.getElementById('form-nonaktif-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-orange-400 hover:bg-orange-900/20 hover:text-orange-300 transition w-full text-left border-b border-gray-800/50">
+                                    <button type="button" onclick="swalConfirm({title: 'Nonaktifkan Akun?', text: 'Akun {{ $op->name }} akan dinonaktifkan dan tidak bisa login.', icon: 'warning', confirmText: 'Ya, Nonaktifkan'}, () => document.getElementById('form-nonaktif-{{ $op->id }}').submit())" class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition">
                                         <i class="fa-solid fa-ban text-xs"></i> Nonaktifkan Akun
                                     </button>
                                 </form>
                                 @else
                                 <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full" id="form-aktif-{{ $op->id }}">
                                     @csrf @method('PATCH')
-                                    <button type="button" onclick="swalConfirm({title: 'Aktifkan Akun?', text: 'Akun {{ $op->name }} akan diaktifkan kembali.', icon: 'question', confirmText: 'Ya, Aktifkan', onConfirm: () => document.getElementById('form-aktif-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-green-400 hover:bg-green-900/20 hover:text-green-300 transition w-full text-left border-b border-gray-800/50">
+                                    <button type="button" onclick="swalConfirm({title: 'Aktifkan Akun?', text: 'Akun {{ $op->name }} akan diaktifkan kembali.', icon: 'question', confirmText: 'Ya, Aktifkan'}, () => document.getElementById('form-aktif-{{ $op->id }}').submit())" class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition">
                                         <i class="fa-solid fa-check-circle text-xs"></i> Aktifkan Akun
                                     </button>
                                 </form>
@@ -136,7 +136,7 @@
 
                                 <form action="{{ route('admin.pekerja-master.destroy', $op->id) }}" method="POST" class="block w-full" id="form-hapus-{{ $op->id }}">
                                     @csrf @method('DELETE')
-                                    <button type="button" onclick="swalConfirm({title: 'Hapus Operator?', text: 'Data {{ $op->name }} tidak bisa dikembalikan!', icon: 'error', confirmText: 'Ya, Hapus', onConfirm: () => document.getElementById('form-hapus-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition w-full text-left">
+                                    <button type="button" onclick="swalConfirm({title: 'Hapus Operator?', text: 'Data {{ $op->name }} tidak bisa dikembalikan!', icon: 'error', confirmText: 'Ya, Hapus'}, () => document.getElementById('form-hapus-{{ $op->id }}').submit())" class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-red-400 transition">
                                         <i class="fa-solid fa-trash text-xs"></i> Hapus User
                                     </button>
                                 </form>
@@ -195,17 +195,19 @@
                     <div class="flex gap-3">
                         @if($isActive)
                             <a href="{{ route('admin.operator.edit', $op->id) }}"
-                               class="flex-1 h-9 bg-[#1A1D29] hover:bg-[#252836] border border-white/5 rounded-lg flex items-center justify-center text-gray-300 text-xs font-semibold transition-colors">
+                               class="flex-1 h-9 bg-[#1A1D29] hover:bg-[#252836] border border-white/5 rounded-lg flex items-center justify-center text-gray-300 text-xs font-semibold transition-colors"
+                               title="Edit akun operator">
                                 <i class="fa-solid fa-pen mr-1.5 text-[10px]"></i> Edit Akun
                             </a>
-                            <a href="#"
-                               class="flex-1 h-9 bg-[#1A1D29] hover:bg-[#252836] border border-white/5 rounded-lg text-white text-xs font-semibold flex items-center justify-center transition-colors">
+                            <a href="{{ route('admin.pekerja-master.kinerja', $op->id) }}"
+                               class="flex-1 h-9 bg-[#1A1D29] hover:bg-[#252836] border border-white/5 rounded-lg text-white text-xs font-semibold flex items-center justify-center transition-colors"
+                               title="Lihat detail kinerja operator">
                                 <i class="fa-solid fa-chart-simple mr-1.5 text-[10px]"></i> Lihat Kinerja
                             </a>
                         @else
                             <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="w-full" id="form-aktifkan-{{ $op->id }}">
                                 @csrf @method('PATCH')
-                                <button type="button" onclick="swalConfirm({title: 'Aktifkan Kembali?', text: 'Akun {{ $op->name }} akan diaktifkan kembali.', icon: 'question', confirmText: 'Ya, Aktifkan', onConfirm: () => document.getElementById('form-aktifkan-{{ $op->id }}').submit()})"
+                                <button type="button" onclick="swalConfirm({title: 'Aktifkan Kembali?', text: 'Akun {{ $op->name }} akan diaktifkan kembali.', icon: 'question', confirmText: 'Ya, Aktifkan'}, () => document.getElementById('form-aktifkan-{{ $op->id }}').submit())"
                                         class="w-full h-9 bg-[#1A1D29] hover:bg-[#252836] border border-white/5 rounded-lg text-white text-xs font-semibold flex items-center justify-center transition-colors">
                                     <i class="fa-solid fa-power-off mr-1.5 text-[10px]"></i> Aktifkan Kembali
                                 </button>

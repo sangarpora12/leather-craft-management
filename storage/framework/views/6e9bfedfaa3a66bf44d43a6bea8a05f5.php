@@ -99,52 +99,89 @@
                         $badgeClass = 'bg-green-600 text-white';
                     }
                 ?>
-                <div class="bg-[#1A1C24] border border-[#343842] rounded-2xl shadow-xl overflow-hidden flex flex-col">
+                <div class="bg-[#1f242c] border border-gray-800 rounded-xl shadow-lg overflow-hidden flex flex-col transition-all duration-300 hover:border-orange-500/50 hover:shadow-orange-500/10">
                     <div class="relative">
                         <?php if($produk->foto): ?>
-                            <img src="<?php echo e(asset('storage/'.$produk->foto)); ?>" alt="<?php echo e($produk->nama_produk); ?>" class="w-full h-48 object-cover">
+                            <img src="<?php echo e(asset('storage/'.$produk->foto)); ?>" alt="<?php echo e($produk->nama_produk); ?>" class="w-full h-40 object-cover">
                         <?php else: ?>
-                            <div class="w-full h-48 bg-gray-900 flex items-center justify-center">
-                                <i class="fa-solid fa-image text-gray-700 text-4xl"></i>
+                            <div class="w-full h-40 bg-[#16181d] flex items-center justify-center">
+                                <i class="fa-solid fa-image text-gray-700 text-3xl"></i>
                             </div>
                         <?php endif; ?>
-                        <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs rounded">
-                            <?php echo e($produk->kode_produk); ?>
-
-                        </div>
-                        <div class="absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-full <?php echo e($badgeClass); ?>">
-                            Stok: <?php echo e($stok); ?>
-
-                        </div>
                     </div>
-                    <div class="p-4 flex flex-col flex-grow">
-                        <h3 class="text-lg font-bold text-white mb-2"><?php echo e(ucwords(strtolower($produk->nama_produk))); ?></h3>
+                    <div class="p-3 flex flex-col flex-grow">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-mono text-white font-bold text-[10px]"><?php echo e($produk->kode_produk); ?></span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full <?php echo e($badgeClass); ?>">
+                                Stok: <?php echo e($stok); ?>
+
+                            </span>
+                        </div>
+
+                        <h3 class="text-xs font-bold text-white mb-1 leading-tight truncate" title="<?php echo e(ucwords(strtolower($produk->nama_produk))); ?>"><?php echo e(ucwords(strtolower($produk->nama_produk))); ?></h3>
                         
-                        <div class="text-xs text-gray-400 mb-3 space-y-1 flex-grow">
-                            <?php if($produk->kategori): ?>
-                                <?php $kategori = is_string($produk->kategori) ? json_decode($produk->kategori, true) : $produk->kategori; ?>
-                                <p><strong class="text-gray-300">Kategori:</strong> <?php echo e(is_array($kategori) ? implode(', ', $kategori) : $kategori); ?></p>
+                        <div class="mb-2">
+                            <span class="text-base font-bold text-orange-400">Rp <?php echo e(number_format($produk->harga_jual, 0, ',', '.')); ?></span>
+                        </div>
+
+                        <div class="text-xs text-gray-400 mb-3 space-y-1.5 flex-grow">
+                            <?php
+                                if (!function_exists('parseAttribute')) {
+                                    function parseAttribute($attribute) {
+                                        if (is_array($attribute)) return $attribute;
+                                        if (is_string($attribute)) {
+                                            $decoded = json_decode($attribute, true);
+                                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) return $decoded;
+                                            return array_filter(array_map('trim', explode(',', $attribute)));
+                                        }
+                                        return [];
+                                    }
+                                }
+                                $kategoriList = parseAttribute($produk->kategori);
+                                $warnaList = parseAttribute($produk->warna);
+                                $motifList = parseAttribute($produk->jenis_motif);
+                                $warnaMapping = ['merah' => 'bg-red-500/20 text-red-300', 'hitam' => 'bg-gray-400/20 text-gray-200', 'coklat' => 'bg-amber-800/30 text-amber-300', 'brown' => 'bg-amber-800/30 text-amber-300', 'putih' => 'bg-white/10 text-white', 'hijau' => 'bg-green-500/20 text-green-300', 'biru' => 'bg-blue-500/20 text-blue-300', 'kuning' => 'bg-yellow-500/20 text-yellow-300', 'pink' => 'bg-pink-500/20 text-pink-300', 'orange' => 'bg-orange-500/20 text-orange-300', 'ungu' => 'bg-purple-500/20 text-purple-300', 'abu' => 'bg-gray-500/20 text-gray-300', 'black' => 'bg-gray-400/20 text-gray-200'];
+                                $motifMapping = ['polos' => 'bg-slate-500/20 text-slate-200', 'croco' => 'bg-emerald-500/20 text-emerald-300', 'kulit buaya' => 'bg-emerald-500/20 text-emerald-300', 'lizard' => 'bg-cyan-500/20 text-cyan-300', 'jeruk' => 'bg-orange-500/20 text-orange-300', 'kulit jeruk' => 'bg-orange-500/20 text-orange-300', 'suede' => 'bg-amber-500/20 text-amber-300', 'nappa' => 'bg-violet-500/20 text-violet-300', 'crazy horse' => 'bg-rose-500/20 text-rose-300'];
+                            ?>
+                            
+                            <?php if(!empty($kategoriList)): ?>
+                            <div class="flex flex-wrap gap-1 items-center">
+                                <span class="text-[10px] font-semibold text-gray-500 uppercase flex-shrink-0">Kategori:</span>
+                                <?php $__currentLoopData = $kategoriList; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kategori): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <span class="px-1.5 py-0.5 bg-sky-500/20 text-sky-300 rounded text-[9px] font-medium capitalize"><?php echo e($kategori); ?></span>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                            </div>
                             <?php endif; ?>
-                            <?php if($produk->warna): ?>
-                                <?php $warna = is_string($produk->warna) ? json_decode($produk->warna, true) : $produk->warna; ?>
-                                <p><strong class="text-gray-300">Warna:</strong> <?php echo e(is_array($warna) ? implode(', ', $warna) : $warna); ?></p>
+
+                            <?php if(!empty($warnaList)): ?>
+                            <div class="flex flex-wrap gap-1 items-center">
+                                <span class="text-[10px] font-semibold text-gray-500 uppercase flex-shrink-0">Warna:</span>
+                                <?php $__currentLoopData = $warnaList; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $warna): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-medium capitalize <?php echo e($warnaMapping[strtolower($warna)] ?? 'bg-gray-700/50 text-gray-200'); ?>"><?php echo e($warna); ?></span>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                            </div>
                             <?php endif; ?>
-                            <?php if($produk->jenis_motif): ?>
-                                <?php $motif = is_string($produk->jenis_motif) ? json_decode($produk->jenis_motif, true) : $produk->jenis_motif; ?>
-                                <p><strong class="text-gray-300">Motif:</strong> <?php echo e(is_array($motif) ? implode(', ', $motif) : $motif); ?></p>
+
+                            <?php if(!empty($motifList)): ?>
+                            <div class="flex flex-wrap gap-1 items-center">
+                                <span class="text-[10px] font-semibold text-gray-500 uppercase flex-shrink-0">Motif:</span>
+                                <?php $__currentLoopData = $motifList; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $motif): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-medium capitalize <?php echo e($motifMapping[strtolower($motif)] ?? 'bg-indigo-700/40 text-indigo-200'); ?>"><?php echo e($motif); ?></span>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                            </div>
                             <?php endif; ?>
                         </div>
 
                         <?php if(!$stokHabis): ?>
                             <button
                                 onclick="openModal('<?php echo e($produk->id); ?>', '<?php echo e(e(ucwords(strtolower($produk->nama_produk)))); ?>', '<?php echo e($stok); ?>')"
-                                class="w-full text-white font-bold py-2 px-4 rounded-lg transition mt-2 bg-[#FD730D] hover:bg-[#E6670B]">
-                                <i class="fa-solid fa-box-minus mr-2"></i>
-                                Pakai / Kurangi Stok
+                                class="w-full text-white font-bold py-2 px-3 rounded-lg transition mt-2 bg-[#FD730D] hover:bg-[#E6670B] text-xs">
+                                <i class="fa-solid fa-box-minus mr-1"></i>
+                                Pakai Stok
                             </button>
                         <?php else: ?>
-                            <div class="w-full text-gray-400 font-bold py-2 px-4 rounded-lg mt-2 bg-gray-700 text-center cursor-not-allowed text-sm">
-                                <i class="fa-solid fa-ban mr-2"></i>
+                            <div class="w-full text-gray-400 font-bold py-2 px-3 rounded-lg mt-2 bg-gray-700 text-center cursor-not-allowed text-xs">
+                                <i class="fa-solid fa-ban mr-1"></i>
                                 Stok Habis
                             </div>
                         <?php endif; ?>

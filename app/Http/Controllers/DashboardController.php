@@ -710,127 +710,36 @@ class DashboardController extends Controller
                  'produk' => ['masuk' => array_values($pMasukData), 'keluar' => array_values($pKeluarData)]
              ];
         } elseif ($period === 'weekly') {
-            $now = now()->timezone('Asia/Jakarta');
-
-            // 1. Buat label untuk 7 hari terakhir (e.g., Sen, Sel, Rab, ...)
+            $pMasukData = [];
+            $pKeluarData = [];
             for ($i = 6; $i >= 0; $i--) {
-                $labels[] = $now->copy()->subDays($i)->translatedFormat('D');
+                $date = Carbon::now()->subDays($i);
+                $labels[] = $date->isoFormat('dddd, D MMM');
+                $d = $date->format('Y-m-d');
+
+                $bMasuk[] = DB::table('log_stok')->whereDate('created_at', $d)
+                    ->where(function($q) {
+                        $q->where('jenis_transaksi', 'like', '%MASUK%')
+                          ->orWhere('jenis_transaksi', 'like', '%TAMBAH%')
+                          ->orWhere('jenis_transaksi', 'like', '%PENGADAAN%')
+                          ->orWhere('jenis_transaksi', 'like', '%RESTOCK%')
+                          ->orWhere('jenis_transaksi', 'like', '%INPUT%');
+                    })->sum('jumlah') ?? 0;
+                
+                $bKeluar[] = DB::table('produksis')
+                     ->join('bom', 'produksis.produk_jadi_id', '=', 'bom.id_produk')
+                     ->whereDate('produksis.updated_at', $d)
+                     ->where('produksis.status', 'SELESAI')
+                     ->sum(DB::raw('produksis.jumlah_selesai * bom.jumlah_kebutuhan')) ?? 0;
+
+                $pMasukData[] = DB::table('produksis')->whereDate('updated_at', $d)->where('status', 'SELESAI')->sum('jumlah_selesai') ?? 0;
+                $pKeluarData[] = DB::table('produk_keluars')->whereDate('created_at', $d)->sum('jumlah_keluar') ?? 0;
             }
-
-            // Inisialisasi array data dengan 0 untuk setiap hari
-            $bMasukData = array_fill(0, 7, 0);
-            $bKeluarData = array_fill(0, 7, 0);
-            $pMasukData = array_fill(0, 7, 0);
-            $pKeluarData = array_fill(0, 7, 0);
-
-            // 2. Ambil data dari DB untuk 7 hari terakhir
-            $startOfWeek = $now->copy()->subDays(6)->startOfDay();
-        $endOfWeek = $now->copy()->endOfDay();
-
-        $bahanMasukRaw = DB::table('log_stok')
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->where(function($q) {
-                $q->where('jenis_transaksi', 'like', '%MASUK%')
-                  ->orWhere('jenis_transaksi', 'like', '%TAMBAH%')
-                  ->orWhere('jenis_transaksi', 'like', '%PENGADAAN%')
-                  ->orWhere('jenis_transaksi', 'like', '%RESTOCK%')
-                  ->orWhere('jenis_transaksi', 'like', '%INPUT%')
-                  ->orWhere('jenis_transaksi', 'like', '%UPDATE OPERATOR%');
-            })
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(jumlah) as total'))
-            ->groupBy('date')
-            ->get()
-            ->keyBy('date');
-
-        $bahanKeluarRaw = DB::table('log_stok')
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->where(function($q) {
-                $q->where('jenis_transaksi', 'like', '%KELUAR%')
-                  ->orWhere('jenis_transaksi', 'like', '%KURANG%')
-                  ->orWhere('jenis_transaksi', 'like', '%PRODUKSI%')
-                  ->orWhere('jenis_transaksi', 'like', '%DIPAKAI%');
-            })
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(jumlah) as total'))
-            ->groupBy('date')
-            ->get()
-            ->keyBy('date');
-
-        $produkMasukRaw = DB::table('transaksi_stok')
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->where('jenis_transaksi', 'PRODUK_MASUK')
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(jumlah) as total'))
-            ->groupBy('date')
-            ->get()
-            ->keyBy('date');
-
-        $produkKeluarRaw = DB::table('transaksi_stok')
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->where('jenis_transaksi', 'PRODUK_KELUAR')
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(jumlah) as total'))
-            ->groupBy('date')
-            ->get()
-            ->keyBy('date');
-
-        // 3. Map data ke array harian
-        for ($i = 0; $i < 7; $i++) {
-            $date = $now->copy()->subDays(6 - $i)->format('Y-m-d');
-            $bMasukData[$i] = $bahanMasukRaw->has($date) ? (float) $bahanMasukRaw->get($date)->total : 0;
-            $bKeluarData[$i] = $bahanKeluarRaw->has($date) ? (float) $bahanKeluarRaw->get($date)->total : 0;
-            $pMasukData[$i] = $produkMasukRaw->has($date) ? (float) $produkMasukRaw->get($date)->total : 0;
-            $pKeluarData[$i] = $produkKeluarRaw->has($date) ? (float) $produkKeluarRaw->get($date)->total : 0;
-        }
-
-            $bMasuk = $bMasukData;
-            $bKeluar = $bKeluarData;
             $pMasuk = $pMasukData;
             $pKeluar = $pKeluarData;
-        } elseif ($period === 'monthly') {
-            $now = now()->timezone('Asia/Jakarta');
-
-            // Tampilan tahunan dengan total per bulan
-            $labels = [];
-            for ($m = 1; $m <= 12; $m++) {
-                $labels[] = Carbon::create(null, $m, 1)->translatedFormat('F');
-            }
-
-            $bMasukData = array_fill(0, 12, 0);
-            $bKeluarData = array_fill(0, 12, 0);
-            $pMasukData = array_fill(0, 12, 0);
-            $pKeluarData = array_fill(0, 12, 0);
-
-            $startOfYear = $now->copy()->startOfYear();
-            $endOfYear = $now->copy()->endOfYear();
-
-            $bahanMasukRaw = DB::table('log_stok')->whereBetween('created_at', [$startOfYear, $endOfYear])
-                ->where(function($q) {
-                    $q->where('jenis_transaksi', 'like', '%MASUK%')->orWhere('jenis_transaksi', 'like', '%TAMBAH%')->orWhere('jenis_transaksi', 'like', '%PENGADAAN%')->orWhere('jenis_transaksi', 'like', '%RESTOCK%')->orWhere('jenis_transaksi', 'like', '%INPUT%')->orWhere('jenis_transaksi', 'like', '%UPDATE OPERATOR%');
-                })
-                ->select(DB::raw('MONTH(created_at) as month'), DB::raw('SUM(jumlah) as total'))->groupBy('month')->get();
-
-            $bahanKeluarRaw = DB::table('log_stok')->whereBetween('created_at', [$startOfYear, $endOfYear])
-                ->where(function($q) {
-                    $q->where('jenis_transaksi', 'like', '%KELUAR%')->orWhere('jenis_transaksi', 'like', '%KURANG%')->orWhere('jenis_transaksi', 'like', '%PRODUKSI%')->orWhere('jenis_transaksi', 'like', '%DIPAKAI%');
-                })
-                ->select(DB::raw('MONTH(created_at) as month'), DB::raw('SUM(jumlah) as total'))->groupBy('month')->get();
-
-            $produkMasukRaw = DB::table('transaksi_stok')->whereBetween('created_at', [$startOfYear, $endOfYear])
-                ->where('jenis_transaksi', 'PRODUK_MASUK')
-                ->select(DB::raw('MONTH(created_at) as month'), DB::raw('SUM(jumlah) as total'))->groupBy('month')->get();
-
-            $produkKeluarRaw = DB::table('transaksi_stok')->whereBetween('created_at', [$startOfYear, $endOfYear])
-                ->where('jenis_transaksi', 'PRODUK_KELUAR')
-                ->select(DB::raw('MONTH(created_at) as month'), DB::raw('SUM(jumlah) as total'))->groupBy('month')->get();
-
-            foreach ($bahanMasukRaw as $data) { $bMasukData[$data->month - 1] = (float) $data->total; }
-            foreach ($bahanKeluarRaw as $data) { $bKeluarData[$data->month - 1] = (float) $data->total; }
-            foreach ($produkMasukRaw as $data) { $pMasukData[$data->month - 1] = (float) $data->total; }
-            foreach ($produkKeluarRaw as $data) { $pKeluarData[$data->month - 1] = (float) $data->total; }
-
-            $bMasuk = $bMasukData;
-            $bKeluar = $bKeluarData;
-            $pMasuk = $pMasukData;
-            $pKeluar = $pKeluarData;
-        } else { // Yearly view for the current year (Jan-Dec)
+        } else { // monthly
+            $pMasukData = [];
+            $pKeluarData = [];
             $currentYear = Carbon::now()->year;
             for ($month = 1; $month <= 12; $month++) {
                 $date = Carbon::createFromDate($currentYear, $month, 1);
@@ -839,23 +748,26 @@ class DashboardController extends Controller
                 $start = $date->copy()->startOfMonth();
                 $end = $date->copy()->endOfMonth();
 
-                $bMasuk[] = DB::table('log_stok')->whereBetween('created_at', [$start, $end])->where(function ($q) {
-                     $q->where('jenis_transaksi', 'like', '%MASUK%')
-                       ->orWhere('jenis_transaksi', 'like', '%TAMBAH%')
-                       ->orWhere('jenis_transaksi', 'like', '%PENGADAAN%')
-                       ->orWhere('jenis_transaksi', 'like', '%RESTOCK%')
-                       ->orWhere('jenis_transaksi', 'like', '%INPUT%')
-                       ->orWhere('jenis_transaksi', 'like', '%UPDATE OPERATOR%');
-                 })->sum('jumlah') ?? 0;
-                 $bKeluar[] = DB::table('log_stok')->whereBetween('created_at', [$start, $end])->where(function ($q) {
-                     $q->where('jenis_transaksi', 'like', '%KELUAR%')
-                       ->orWhere('jenis_transaksi', 'like', '%KURANG%')
-                       ->orWhere('jenis_transaksi', 'like', '%PRODUKSI%')
-                       ->orWhere('jenis_transaksi', 'like', '%DIPAKAI%');
-                 })->sum('jumlah') ?? 0;
-                $pMasuk[] = DB::table('transaksi_stok')->whereBetween('created_at', [$start, $end])->where('jenis_transaksi', 'PRODUK_MASUK')->sum('jumlah') ?? 0;
-                $pKeluar[] = DB::table('transaksi_stok')->whereBetween('created_at', [$start, $end])->where('jenis_transaksi', 'PRODUK_KELUAR')->sum('jumlah') ?? 0;
+                $bMasuk[] = DB::table('log_stok')->whereBetween('created_at', [$start, $end])
+                    ->where(function($q) {
+                        $q->where('jenis_transaksi', 'like', '%MASUK%')
+                          ->orWhere('jenis_transaksi', 'like', '%TAMBAH%')
+                          ->orWhere('jenis_transaksi', 'like', '%PENGADAAN%')
+                          ->orWhere('jenis_transaksi', 'like', '%RESTOCK%')
+                          ->orWhere('jenis_transaksi', 'like', '%INPUT%');
+                    })->sum('jumlah') ?? 0;
+
+                $bKeluar[] = DB::table('produksis')
+                     ->join('bom', 'produksis.produk_jadi_id', '=', 'bom.id_produk')
+                     ->whereBetween('produksis.updated_at', [$start, $end])
+                     ->where('produksis.status', 'SELESAI')
+                     ->sum(DB::raw('produksis.jumlah_selesai * bom.jumlah_kebutuhan')) ?? 0;
+
+                $pMasukData[] = DB::table('produksis')->whereBetween('updated_at', [$start, $end])->where('status', 'SELESAI')->sum('jumlah_selesai') ?? 0;
+                $pKeluarData[] = DB::table('produk_keluars')->whereBetween('created_at', [$start, $end])->sum('jumlah_keluar') ?? 0;
             }
+            $pMasuk = $pMasukData;
+            $pKeluar = $pKeluarData;
         }
 
         return [
