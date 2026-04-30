@@ -65,6 +65,16 @@
                     </div>
                 </div>
 
+                    <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Warna <span class="text-orange-400">*</span></label>
+                    <select name="warna_id" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-orange-500 outline-none" required>
+                        <option value="">Pilih Warna</option>
+                        @foreach(\App\Models\Warna::all() as $w)
+                            <option value="{{ $w->id }}">{{ $w->nama_warna }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <div class="mt-4">
                     <label class="flex items-center gap-3 cursor-pointer">
                         <input type="checkbox" name="is_inventory" value="1" class="w-5 h-5 rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" checked>
@@ -75,6 +85,11 @@
                     <p class="text-xs text-gray-500 mt-1 ml-8">
                         Uncheck jika bahan ini adalah aksesoris/non-stok (seperti jaring, DLL) yang tidak perlu dihitung stok/harganya
                     </p>
+                </div>
+
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Deskripsi Bahan <span class="text-purple-400">*</span></label>
+                    <textarea name="detail" rows="3" placeholder="Detail spesifikasi bahan, ketebalan, grade, ukuran, kondisi, dll..." class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none resize-vertical" required></textarea>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 mt-4">
@@ -156,6 +171,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         itemDiv.dataset.satuan = item.satuan || '';
                         itemDiv.dataset.supplier = item.supplier || '';
                         itemDiv.dataset.refNo = item.ref_no || '';
+                        itemDiv.dataset.warna = item.warna || '';
+                        itemDiv.dataset.detail = item.detail || '';
                         itemDiv.addEventListener('click', function() {
                             input.value = this.dataset.nama;
                             document.querySelector('input[name="kode_material"]').value = this.dataset.kode;
@@ -163,6 +180,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             document.querySelector('select[name="satuan"]').value = this.dataset.satuan;
                             document.querySelector('input[name="supplier"]').value = this.dataset.supplier;
                             document.querySelector('input[name="ref_no"]').value = this.dataset.refNo;
+                            document.querySelector('input[name="warna"]').value = this.dataset.warna;
+                            document.querySelector('textarea[name="detail"]').value = this.dataset.detail;
                             suggestions.classList.add('hidden');
                             suggestions.innerHTML = '';
                         });

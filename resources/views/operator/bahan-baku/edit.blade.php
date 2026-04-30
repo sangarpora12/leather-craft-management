@@ -2,157 +2,271 @@
 
 @section('title', 'Edit Bahan Baku')
 
+@push('styles')
+<style>
+.dd-wrap{position:relative;width:100%}
+.dd-trigger{
+    width:100%;min-height:48px;background:#1f2937;border:1px solid #4b5563;
+    border-radius:12px;padding:6px 36px 6px 10px;display:flex;flex-wrap:wrap;
+    gap:6px;align-items:center;cursor:pointer;color:#fff
+}
+.dd-placeholder{color:#9ca3af;font-size:12px}
+.dd-chip{
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(16,185,129,.2);border:1px solid #10b981;color:#fff;
+    border-radius:6px;padding:2px 6px;font-size:11px
+}
+.dd-panel{
+    display:none;position:absolute;top:100%;left:0;right:0;margin-top:6px;
+    background:#111827;border:1px solid #4b5563;border-radius:12px;
+    z-index:9999;overflow:hidden
+}
+.dd-panel.open{display:block}
+.dd-search{
+    width:100%;padding:8px;background:#1f2937;color:#fff;border:none;outline:none
+}
+.dd-list{max-height:180px;overflow-y:auto}
+.dd-item{
+    padding:10px;color:#e5e7eb;cursor:pointer
+}
+.dd-item:hover{background:#10b981;color:#fff}
+.dd-item.sel{background:#065f46;color:#fff}
+</style>
+@endpush
+
 @section('content')
+
+@php
+$selectedKategori = old('kategori', is_array($bahan->kategori)
+    ? $bahan->kategori : json_decode($bahan->kategori, true) ?? []);
+
+$selectedWarna = old('warna', is_array($bahan->warna)
+    ? $bahan->warna : json_decode($bahan->warna, true) ?? []);
+@endphp
+
 <div class="w-full max-w-md mx-auto bg-gray-900 text-white min-h-screen">
-    <!-- Header -->
-    <header class="py-4 sticky top-0 z-40 flex items-center gap-4 bg-gray-900/95 backdrop-blur border-b border-gray-700 px-5">
-        <a href="{{ route('operator.bahan.index') }}" class="w-8 h-8 flex items-center justify-center bg-gray-800 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        </a>
-        <div>
-            <h1 class="text-lg font-bold text-white">Edit Bahan</h1>
-            <p class="text-xs text-gray-400 font-mono">{{ $bahan->kode_material }}</p>
-        </div>
-    </header>
 
-    <main class="pb-40 pt-6 px-5">
-        <!-- ✅ FOTO MASTER + PREVIEW -->
-        <div class="mb-8 text-center">
-            <div class="mx-auto w-36 h-36 overflow-hidden rounded-2xl border-4 border-gray-700 shadow-xl bg-gray-700">
-                <img id="previewFoto" 
-                     src="{{ $bahan->foto ? asset('storage/' . $bahan->foto) : '' }}" 
-                     class="w-full h-full object-cover"
-                     onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=&#34;w-full h-full flex items-center justify-center bg-gray-700&#34;><i class=&#34;fa-solid fa-box text-gray-500 text-4xl&#34;></i></div>'">
-            </div>
-            
-            <input type="file" id="fotoBahan" name="foto" form="editForm" accept="image/*" class="hidden">
-            <button type="button" onclick="document.getElementById('fotoBahan').click()" class="mt-4 bg-gray-800 hover:bg-gray-700 text-white px-5 py-2.5 rounded-xl text-sm transition">
-                <i class="fas fa-camera mr-2"></i>Ubah Foto
-            </button>
-        </div>
+<!-- HEADER -->
+<header class="py-4 sticky top-0 z-40 flex items-center gap-4 bg-gray-900/95 border-b border-gray-700 px-5">
+    <a href="{{ route('operator.bahan.index') }}" class="w-8 h-8 flex items-center justify-center bg-gray-800 rounded-lg">
+        ←
+    </a>
+    <div>
+        <h1 class="text-lg font-bold">Edit Bahan</h1>
+        <p class="text-xs text-gray-400">{{ $bahan->kode_material }}</p>
+    </div>
+</header>
 
-        <!-- FORM -->
-        <form id="editForm" action="{{ route('operator.bahan.update', $bahan->id) }}" method="POST" enctype="multipart/form-data" class="space-y-5">
-            @csrf
-            @method('PUT')
+<main class="pb-40 pt-6 px-5">
+<form id="editForm" action="{{ route('operator.bahan.update', $bahan->id) }}" method="POST" enctype="multipart/form-data">
+    @csrf
+    @method('PUT')
 
-            <!-- ✅ KODE BAHAN (READONLY) -->
-            <div class="space-y-2">
-                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">Kode Bahan</label>
-                <input type="text" value="{{ $bahan->kode_material }}" readonly
-                       class="w-full bg-gray-800/40 border border-gray-700/30 rounded-xl px-4 py-3.5 text-sm text-gray-400 font-mono cursor-not-allowed">
-            </div>
-
-            <!-- ✅ NAMA MATERIAL -->
-            <div class="space-y-2">
-                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">Nama Material</label>
-                <input type="text" name="nama_material" value="{{ old('nama_material', $bahan->nama_material) }}" required
-                       class="w-full bg-gray-800 border border-gray-700/50 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition">
-            </div>
-
-            <!-- ✅ STOK & HARGA BERDAMPINGAN -->
-            <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
-                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">Stok Fisik</label>
-                    <input type="number" name="stok" value="{{ old('stok', number_format($bahan->stok, 0, '', '')) }}" required
-                           class="w-full bg-gray-800 border border-gray-700/50 rounded-xl px-4 py-3 text-sm text-white font-bold text-center focus:outline-none focus:border-emerald-500 transition">
-                </div>
-                <div class="space-y-2">
-                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">Harga Beli</label>
-                    <input type="text" name="harga_satuan" id="harga_satuan" 
-                           value="{{ old('harga_satuan', number_format($bahan->harga_satuan, 0, ',', '.')) }}" required
-                           class="w-full bg-gray-800 border border-gray-700/50 rounded-xl px-4 py-3 text-sm text-white text-right font-mono focus:outline-none focus:border-emerald-500 transition">
-                </div>
-            </div>
-
-            <!-- ✅ KATEGORI & SATUAN -->
-            <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
-                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">Kategori</label>
-                    <select name="kategori" class="w-full bg-gray-800 border border-gray-700/50 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 appearance-none">
-                        <option value="">Pilih</option>
-                        @foreach($kategories as $k)
-                            <option value="{{ $k->nama_kategori }}" {{ old('kategori', $bahan->kategori) == $k->nama_kategori ? 'selected' : '' }}>{{ $k->nama_kategori }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="space-y-2">
-                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">Satuan</label>
-                    <select name="satuan" class="w-full bg-gray-800 border border-gray-700/50 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 appearance-none">
-                        <option value="">Pilih</option>
-                        @foreach($satuans as $s)
-                            <option value="{{ $s->nama_satuan }}" {{ old('satuan', $bahan->satuan) == $s->nama_satuan ? 'selected' : '' }}>{{ $s->nama_satuan }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-
-            <!-- ✅ SUPPLIER -->
-            <div class="space-y-2">
-                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">Supplier</label>
-                <input type="text" name="supplier" value="{{ old('supplier', $bahan->supplier) }}" placeholder="Nama Toko / Supplier"
-                       class="w-full bg-gray-800 border border-gray-700/50 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition">
-            </div>
-
-            <!-- ✅ NO REFERENSI -->
-            <div class="space-y-2">
-                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">No. Referensi</label>
-                <input type="text" name="ref_no" value="{{ old('ref_no', $bahan->ref_no) }}" placeholder="Nomor Nota / Invoice"
-                       class="w-full bg-gray-800 border border-gray-700/50 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition">
-            </div>
-        </form>
-
-        <!-- ✅ TOMBOL AKSI -->
-        <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-5 bg-gray-900/95 backdrop-blur border-t border-gray-700 z-50 safe-bottom">
-            <div class="space-y-3">
-                <button type="submit" form="editForm" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-900/30 transition active:scale-[0.98]">
-                    <i class="fas fa-check mr-2"></i>Simpan Perubahan
-                </button>
-                <a href="{{ route('operator.bahan.index') }}" class="block w-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-3 rounded-xl transition active:scale-[0.98] text-center">
-                    Batal
-                </a>
-            </div>
-        </div>
-    </main>
+<!-- NAMA -->
+<div class="mb-4">
+<label class="text-xs text-gray-400">Nama Material</label>
+<input type="text" name="nama_material"
+value="{{ old('nama_material',$bahan->nama_material) }}"
+class="w-full bg-gray-800 rounded-xl px-4 py-3 text-white">
 </div>
 
-<script>
-    // ✅ INSTANT PREVIEW FOTO BARU
-    const fotoInput = document.getElementById('fotoBahan');
-    const previewFoto = document.getElementById('previewFoto');
+<!-- KATEGORI -->
+<div class="mb-4">
+<label class="text-xs text-gray-400">Kategori</label>
 
-    fotoInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
+<select name="kategori"
+class="w-full bg-gray-800 rounded-xl px-4 py-3 text-white">
 
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            previewFoto.style.display = 'block';
-            previewFoto.src = event.target.result;
-            previewFoto.onerror = null;
-        };
-        reader.readAsDataURL(file);
-    });
+@foreach($kategories as $k)
+<option value="{{ $k->nama_kategori }}"
+{{ old('kategori', $selectedKategori[0] ?? '') == $k->nama_kategori ? 'selected' : '' }}>
+{{ $k->nama_kategori }}
+</option>
+@endforeach
 
-    // ✅ FORMAT RUPIAH OTOMATIS
-    const hargaInput = document.getElementById('harga_satuan');
-    hargaInput.addEventListener('input', function(e) {
-        hargaInput.value = formatRupiah(this.value);
-    });
+</select>
+</div>
 
-    function formatRupiah(angka) {
-        var number_string = angka.replace(/[^,\d]/g, '').toString(),
-            split    = number_string.split(','),
-            sisa     = split[0].length % 3,
-            rupiah   = split[0].substr(0, sisa),
-            ribuan   = split[0].substr(sisa).match(/\d{3}/gi);
+<!-- WARNA -->
+<div class="mb-4">
+<label class="text-xs text-gray-400">Warna</label>
 
-        if (ribuan) {
-            separator = sisa ? '.' : '';
-            rupiah += separator + ribuan.join('.');
-        }
-        return split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
-    }
-</script>
+<select name="warna"
+class="w-full bg-gray-800 rounded-xl px-4 py-3 text-white">
 
+@foreach($warnas as $w)
+<option value="{{ $w->nama_warna }}"
+{{ old('warna', $selectedWarna[0] ?? '') == $w->nama_warna ? 'selected' : '' }}>
+{{ $w->nama_warna }}
+</option>
+@endforeach
+
+</select>
+</div>
+
+<!-- SATUAN -->
+<div class="mb-4">
+<label class="text-xs text-gray-400">Satuan</label>
+<select name="satuan" class="w-full bg-gray-800 rounded-xl px-4 py-3 text-white">
+@foreach($satuans as $s)
+<option value="{{ $s->nama_satuan }}"
+{{ old('satuan',$bahan->satuan)==$s->nama_satuan?'selected':'' }}>
+{{ $s->nama_satuan }}
+</option>
+@endforeach
+</select>
+</div>
+
+<!-- STOK + HARGA -->
+<div class="grid grid-cols-2 gap-4 mb-4">
+<input type="number" name="stok"
+value="{{ old('stok',$bahan->stok) }}"
+class="bg-gray-800 rounded-xl px-4 py-3 text-center">
+
+<input type="text" id="harga_satuan" name="harga_satuan"
+value="{{ old('harga_satuan',number_format($bahan->harga_satuan,0,',','.')) }}"
+class="bg-gray-800 rounded-xl px-4 py-3 text-right">
+</div>
+<div class="mb-4">
+    <label class="text-xs text-gray-400">Keterangan</label>
+    <textarea name="keterangan" rows="3"
+        placeholder="Contoh: bahan premium, tahan air, supplier lokal, dll..."
+        class="w-full bg-gray-800 rounded-xl px-4 py-3 text-white resize-none">{{ old('keterangan', $bahan->keterangan) }}</textarea>
+</div>
+<div class="mb-4">
+    <label class="text-xs text-gray-400">Foto Material</label>
+
+    {{-- Preview Foto Lama --}}
+    @if($bahan->foto)
+        <div class="mb-2">
+            <img src="{{ asset('storage/'.$bahan->foto) }}"
+                 class="w-full h-40 object-cover rounded-xl border border-gray-700">
+        </div>
+    @endif
+
+    {{-- Input Upload --}}
+    <input type="file" name="foto" id="foto_input" accept="image/*"
+        class="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4
+               file:rounded-lg file:border-0 file:bg-gray-700 file:text-white
+               hover:file:bg-gray-600 cursor-pointer">
+</div>
+
+<div class="mt-6">
+    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl">
+        Simpan
+    </button>
+</div>
+</form>
+</main>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+document.querySelectorAll('.dd-wrap').forEach(wrap=>{
+
+let selected = JSON.parse(wrap.dataset.selected||'[]');
+let options  = JSON.parse(wrap.dataset.options||'[]');
+
+let trigger = wrap.querySelector('.dd-trigger');
+let panel   = wrap.querySelector('.dd-panel');
+let list    = wrap.querySelector('.dd-list');
+let search  = wrap.querySelector('.dd-search');
+let hidden  = document.getElementById(wrap.dataset.hidden);
+
+function renderList(filter=''){
+list.innerHTML='';
+options.filter(o=>o.toLowerCase().includes(filter.toLowerCase()))
+.forEach(opt=>{
+let div=document.createElement('div');
+div.className='dd-item'+(selected.includes(opt)?' sel':'');
+div.innerText=opt;
+
+div.onclick=()=>{
+if(selected.includes(opt)){
+selected=selected.filter(x=>x!==opt);
+}else{
+selected.push(opt);
+}
+renderAll();
+};
+
+list.appendChild(div);
+});
+}
+
+function renderTrigger(){
+trigger.innerHTML='';
+if(selected.length===0){
+trigger.innerHTML='<span class="dd-placeholder">Pilih</span>';
+}else{
+selected.forEach(v=>{
+let chip=document.createElement('span');
+chip.className='dd-chip';
+chip.innerText=v;
+trigger.appendChild(chip);
+});
+}
+}
+
+function renderHidden(){
+hidden.innerHTML='';
+selected.forEach(v=>{
+let i=document.createElement('input');
+i.type='hidden';
+i.name=wrap.dataset.name;
+i.value=v;
+hidden.appendChild(i);
+});
+}
+
+function renderAll(){
+renderTrigger();
+renderList(search.value);
+renderHidden();
+}
+
+trigger.onclick=()=>panel.classList.toggle('open');
+search.oninput=()=>renderList(search.value);
+
+renderAll();
+});
+
+// FORMAT HARGA
+const harga=document.getElementById('harga_satuan');
+harga.addEventListener('input',()=>{
+let angka=harga.value.replace(/\D/g,'');
+harga.value=angka.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+});
+
+// FIX SUBMIT
+document.getElementById('editForm').addEventListener('submit',()=>{
+harga.value=harga.value.replace(/\./g,'');
+});
+const fotoInput = document.getElementById('foto_input');
+
+if(fotoInput){
+    fotoInput.addEventListener('change', function(){
+        const file = this.files[0];
+        if(file){
+            const reader = new FileReader();
+
+            reader.onload = function(e){
+                let preview = document.querySelector('#preview-img');
+
+                if(!preview){
+                    preview = document.createElement('img');
+                    preview.id = 'preview-img';
+                    preview.className = "w-full h-40 object-cover rounded-xl mt-2";
+                    fotoInput.parentNode.appendChild(preview);
+                }
+
+                preview.src = e.target.result;
+            }
+
+            reader.readAsDataURL(file);
+        }
+    });
+}
+</script>
+@endpush

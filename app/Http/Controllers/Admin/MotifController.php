@@ -8,76 +8,46 @@ use Illuminate\Http\Request;
 
 class MotifController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        return redirect()->route('admin.pengaturan.index');
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
-            'nama_motif' => [
-                'required',
-                'string',
-                function ($attribute, $value, $fail) {
-                    if (Motif::whereRaw('LOWER(nama_motif) = ?', [strtolower($value)])->exists()) {
-                        $fail("Nama motif '{$value}' sudah ada.");
-                    }
-                },
-            ],
-        ], [
-            'nama_motif.required' => 'Nama motif tidak boleh kosong.',
+            'nama_motif' => 'required|string|max:255|unique:motifs,nama_motif',
         ]);
 
-        Motif::create(['nama_motif' => $request->nama_motif]);
+        Motif::create([
+            'nama_motif' => $request->nama_motif,
+        ]);
 
-        return back()->with('success', 'Motif berhasil ditambah!');
+        return back()->with('success', 'Motif berhasil ditambahkan.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function update(Request $request, $id)
     {
-        //
+        $request->validate([
+            'nama_motif' => 'required|string|max:255|unique:motifs,nama_motif,' . $id,
+        ]);
+
+        $data = Motif::findOrFail($id);
+        $data->update([
+            'nama_motif' => $request->nama_motif,
+        ]);
+
+        return back()->with('success', 'Motif berhasil diperbarui.');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy($id)
     {
-        Motif::findOrFail($id)->delete();
-        return back()->with('success', 'Motif Dihapus!');
+        try {
+            $data = Motif::findOrFail($id);
+            $data->delete();
+            return back()->with('success', 'Motif berhasil dihapus.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', 'Motif tidak dapat dihapus karena masih terikat dengan data lain.');
+        }
     }
 }

@@ -114,6 +114,7 @@ Route::middleware(['auth'])->group(function () {
 
         // --- DATA MASTER (BAHAN BAKU) ---
         Route::resource('bahan', BahanBakuController::class)->names('bahan');
+        Route::get('bahan/{id}/show', [BahanBakuController::class, 'show'])->name('bahan.show');
         Route::get('/bahan/{id}/stock-layers', [BahanBakuController::class, 'getStockLayers'])->name('bahan.stock-layers');
         Route::get('/api/bahan/search', [BahanBakuController::class, 'searchApi'])->name('bahan.search.api');
         
@@ -131,11 +132,45 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/operator/{id}/toggle-status', [OperatorController::class, 'toggleStatus'])->name('operator.toggle-status');
         Route::post('/operator/{id}/resend-verification', [OperatorController::class, 'resendVerification'])->name('operator.resend-verification');
 
-        // --- MASTER DATA (SATUAN & KATEGORI) ---
-        Route::resource('satuan', \App\Http\Controllers\Admin\SatuanController::class)->except(['show', 'edit', 'update', 'create', 'index']);
-        Route::resource('kategori', \App\Http\Controllers\Admin\KategoriController::class)->except(['show', 'edit', 'update', 'create', 'index']);
-        Route::resource('warna', \App\Http\Controllers\Admin\WarnaController::class)->except(['show', 'edit', 'update', 'create', 'index']);
-        Route::resource('motif', \App\Http\Controllers\Admin\MotifController::class)->except(['show', 'edit', 'update', 'create', 'index']);
+       // --- MASTER DATA (SATUAN, KATEGORI, WARNA, MOTIF) ---
+        // Kita pecah manual agar rutenya persis dan fungsi Edit (update) bisa berjalan.
+        
+        // Pastikan baris ini ada di dalam grup prefix 'admin' dan sebelum (atau bersamaan dengan) rute satuan lainnya.
+Route::get('/satuan', [\App\Http\Controllers\Admin\SatuanController::class, 'index'])->name('satuan.index');
+
+// ... rute POST, PUT, DELETE satuan yang sudah ada ...
+        Route::post('/satuan', [\App\Http\Controllers\Admin\SatuanController::class, 'store'])->name('satuan.store');
+        Route::put('/satuan/{id}', [\App\Http\Controllers\Admin\SatuanController::class, 'update'])->name('satuan.update');
+        Route::delete('/satuan/{id}', [\App\Http\Controllers\Admin\SatuanController::class, 'destroy'])->name('satuan.destroy');
+
+        // --- KATEGORI, WARNA, MOTIF HARUS DI SINI (SEJAJAR DENGAN SATUAN) ---
+        Route::post('/kategori', [\App\Http\Controllers\Admin\KategoriController::class, 'store'])->name('kategori.store');
+        Route::put('/kategori/{id}', [\App\Http\Controllers\Admin\KategoriController::class, 'update'])->name('kategori.update');
+        Route::delete('/kategori/{id}', [\App\Http\Controllers\Admin\KategoriController::class, 'destroy'])->name('kategori.destroy');
+
+        Route::post('/warna', [\App\Http\Controllers\Admin\WarnaController::class, 'store'])->name('warna.store');
+        Route::put('/warna/{id}', [\App\Http\Controllers\Admin\WarnaController::class, 'update'])->name('warna.update');
+        Route::delete('/warna/{id}', [\App\Http\Controllers\Admin\WarnaController::class, 'destroy'])->name('warna.destroy');
+
+        Route::post('/motif', [\App\Http\Controllers\Admin\MotifController::class, 'store'])->name('motif.store');
+        Route::put('/motif/{id}', [\App\Http\Controllers\Admin\MotifController::class, 'update'])->name('motif.update');
+        Route::delete('/motif/{id}', [\App\Http\Controllers\Admin\MotifController::class, 'destroy'])->name('motif.destroy');
+
+        Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
+       // Route untuk Gudang & Margin
+        Route::get('/gudang', [\App\Http\Controllers\Admin\GudangController::class, 'index'])->name('gudang.index');
+        Route::post('/gudang', [\App\Http\Controllers\Admin\GudangController::class, 'store'])->name('gudang.store');
+
+         // Route untuk Notifikasi
+        Route::post('/notifikasi', [\App\Http\Controllers\Admin\NotifikasiController::class, 'store'])->name('notifikasi.store');
+
+        // Route untuk Sistem (Danger Zone)
+        Route::prefix('sistem')->name('sistem.')->group(function () {
+            Route::post('/optimize', [\App\Http\Controllers\Admin\SistemController::class, 'clearCache'])->name('optimize');
+            Route::post('/reset', [\App\Http\Controllers\Admin\SistemController::class, 'resetData'])->name('reset');
+            Route::post('/kiamat', [\App\Http\Controllers\Admin\SistemController::class, 'superReset'])->name('kiamat');
+        }); // <-- TUTUP GRUP SISTEM DI SINI
+    });
         // --- PRODUKSI & LOGISTIK ---
         Route::get('/bom', [BomController::class, 'index'])->name('bom.index');
         Route::get('/bom/create/{produk_jadi_id}', [BomController::class, 'create'])->name('bom.create'); 
@@ -197,22 +232,33 @@ Route::middleware(['auth'])->group(function () {
         });
 
         // --- PENGATURAN (Settings) ---
-        Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
-            Route::get('/', [PengaturanController::class, 'index'])->name('index');
-            Route::post('/', [PengaturanController::class, 'store'])->name('store');
-            Route::post('/password', [PengaturanController::class, 'updatePassword'])->name('password');
-            
-            // Reset Data Transaksi
-            Route::post('/reset-transaksi', [PengaturanController::class, 'resetDataTransaksi'])->name('reset-transaksi');
-            
-            // Reset Database Pilihan (Checkbox-based selective reset)
-            Route::post('/reset-data', [PengaturanController::class, 'resetData'])->name('resetData');
-            
-            // Super Reset - Tombol Kiamat (Direct access via browser)
-            Route::get('/super-reset', [PengaturanController::class, 'superReset'])->name('super-reset');
 
-            Route::post('/update-all-codes', [PengaturanController::class, 'updateAllCodes'])->name('updateAllCodes');
-        });
+Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
+    Route::get('/', [PengaturanController::class, 'index'])->name('index');
+    Route::post('/', [PengaturanController::class, 'store'])->name('store');
+    Route::post('/password', [PengaturanController::class, 'updatePassword'])->name('password');
+    
+    // Notifikasi
+    Route::get('/notifikasi', [NotifikasiController::class, 'index'])->name('notifikasi');
+    Route::post('/notifikasi', [NotifikasiController::class, 'store'])->name('notifikasi.store');
+    
+    // Danger Zone
+    Route::get('/danger-zone', [DangerZoneController::class, 'index'])->name('danger-zone');
+    Route::post('/danger-zone/reset', [DangerZoneController::class, 'resetData'])->name('danger-zone.reset');
+    Route::post('/danger-zone/super-reset', [DangerZoneController::class, 'superReset'])->name('danger-zone.super-reset');
+    
+    // Reset Data Transaksi (legacy)
+    Route::post('/reset-transaksi', [PengaturanController::class, 'resetDataTransaksi'])->name('reset-transaksi');
+    
+    // Reset Database Pilihan (Checkbox-based selective reset)
+    Route::post('/reset-data', [PengaturanController::class, 'resetData'])->name('resetData');
+    
+    // Super Reset - Tombol Kiamat (legacy)
+    Route::get('/super-reset', [PengaturanController::class, 'superReset'])->name('super-reset');
+
+    Route::post('/update-all-codes', [PengaturanController::class, 'updateAllCodes'])->name('updateAllCodes');
+});
+
 
         // --- HAK AKSES (Access Rights Management) ---
         Route::get('/hak-akses', [HakAksesController::class, 'index'])->name('hak-akses.index');
@@ -250,6 +296,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/notifications/mark-all-read', [DashboardController::class, 'markAllOperatorNotificationsRead'])->name('notifications.mark-all-read');
         Route::get('/notifications/{id}/read', [DashboardController::class, 'markOperatorNotificationReadAndRedirect'])->name('notifications.read');
 
+        Route::get('/bahan/{id}/edit', [BahanBakuController::class, 'editOperator'])->name('bahan.edit');
+        Route::put('/bahan/{id}', [BahanBakuController::class, 'updateOperator'])->name('bahan.update');
+
         // Laporan operator (ringkasan + riwayat)
         Route::get('/laporan', [DashboardController::class, 'operatorLaporan'])->name('laporan.index');
         Route::get('/laporan/export-pdf', [DashboardController::class, 'exportPdf'])->name('laporan.export-pdf');
@@ -262,7 +311,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/tugas/{id}', [ProduksiController::class, 'operatorDetail'])->name('tugas.detail');
         // Halaman baru setelah klik "Lanjut" (ringkasan pekerjaan + tombol selesai)
         Route::get('/tugas/{id}/lanjut', [ProduksiController::class, 'operatorLanjut'])->name('tugas.lanjut');
-        // Route::post('/tugas/{id}/selesai', [ProduksiController::class, 'operatorSelesai'])->name('tugas.selesai');
+        Route::post('/tugas/{id}/selesai', [ProduksiController::class, 'operatorSelesai'])->name('tugas.selesai');
         Route::get('/tugas/{id}/detail-ajax', [ProduksiController::class, 'getDetailAjax'])->name('tugas.detail_ajax');
          Route::get('/produksi/{id}', [ProduksiController::class, 'show'])->name('produksi.show');
         Route::post('/produksi/{id}/ambil', [ProduksiController::class, 'ambilTugas'])->name('produksi.ambil');

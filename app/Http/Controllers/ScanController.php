@@ -20,11 +20,12 @@ class ScanController extends Controller
     /**
      * Display scan page for operator
      */
-    public function index()
+public function index()
     {
         $satuans = Satuan::all();
         $kategories = Kategori::where('tipe', 'bahan')->get();
-        return view('operator.scan-nota', compact('satuans', 'kategories'));
+        $warnas = \App\Models\Warna::all();
+        return view('operator.scan-nota', compact('satuans', 'kategories', 'warnas'));
     }
 
     /**

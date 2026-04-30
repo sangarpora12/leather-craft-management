@@ -53,58 +53,68 @@
     </div>
 
     {{-- SEARCH & FILTER BAR --}}
-    <form action="{{ route('admin.bahan.index') }}" method="GET" class="flex flex-col md:flex-row gap-3 mb-2">
-        {{-- Kolom Pencarian --}}
-        <div class="flex items-center bg-[#1A1C24] border border-[#2D3139] rounded-xl px-4 py-2.5 md:w-64 shadow-lg">
-            <i class="fa-solid fa-search text-gray-500 text-sm"></i>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari Kode, Nama..." class="bg-transparent border-none outline-none text-xs text-white placeholder-gray-500 ml-3 w-full">
-        </div>
+    <form action="{{ route('admin.bahan.index') }}" method="GET" class="mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {{-- Kolom Pencarian --}}
+            <div class="lg:col-span-2">
+                <div class="relative">
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari Kode atau Nama Material..." class="w-full bg-[#1A1C24] border border-[#2D3139] rounded-lg px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all shadow-sm">
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <i class="fa-solid fa-search text-gray-500 text-sm"></i>
+                    </div>
+                </div>
+            </div>
 
-        {{-- Filter Kategori --}}
-        <div class="flex items-center bg-[#1A1C24] border border-[#2D3139] rounded-xl px-4 py-2.5 shadow-lg">
-            <i class="fa-solid fa-folder text-gray-400 text-xs mr-2"></i>
-            <select name="kategori" onchange="this.form.submit()" class="bg-transparent border-none outline-none text-xs font-bold text-gray-300 w-32 cursor-pointer appearance-none">
-                <option value="" class="bg-[#1A1C24]">Semua Kategori</option>
-                @forelse($kategories as $kategori)
-                <option value="{{ $kategori->nama_kategori }}" class="bg-[#1A1C24]" {{ request('kategori') == $kategori->nama_kategori ? 'selected' : '' }}>{{ $kategori->nama_kategori }}</option>
-                @empty
-                <option value="" disabled class="bg-[#1A1C24] text-gray-500">Data kategori kosong</option>
-                @endforelse
-            </select>
-            <i class="fa-solid fa-chevron-down text-gray-500 text-[10px] ml-2 pointer-events-none"></i>
-        </div>
+            {{-- Filter Kategori --}}
+            <div>
+                <select name="kategori" onchange="this.form.submit()" class="w-full bg-[#1A1C24] border border-[#2D3139] rounded-lg px-4 py-2.5 text-xs font-medium text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all shadow-sm appearance-none">
+                    <option value="">Semua Kategori</option>
+                    @foreach($kategories as $kategori)
+                        <option value="{{ $kategori->nama_kategori }}" {{ request('kategori') == $kategori->nama_kategori ? 'selected' : '' }}>{{ $kategori->nama_kategori }}</option>
+                    @endforeach
+                </select>
+            </div>
 
-        {{-- Filter Status Stok --}}
-        <div class="flex items-center bg-[#1A1C24] border border-[#2D3139] rounded-xl px-4 py-2.5 shadow-lg">
-            <i class="fa-solid fa-layer-group text-gray-400 text-xs mr-2"></i>
-            <select name="status_stok" onchange="this.form.submit()" class="bg-transparent border-none outline-none text-xs font-bold text-gray-300 w-32 cursor-pointer appearance-none">
-                <option value="" class="bg-[#1A1C24]">Semua Status</option>
-                <option value="aman" class="bg-[#1A1C24]" {{ request('status_stok') == 'aman' ? 'selected' : '' }}>Stok Aman</option>
-                <option value="kritis" class="bg-[#1A1C24]" {{ request('status_stok') == 'kritis' ? 'selected' : '' }}>Stok Kritis</option>
-                <option value="habis" class="bg-[#1A1C24]" {{ request('status_stok') == 'habis' ? 'selected' : '' }}>Habis</option>
-            </select>
-            <i class="fa-solid fa-chevron-down text-gray-500 text-[10px] ml-2 pointer-events-none"></i>
-        </div>
+            {{-- Filter Warna --}}
+            <div>
+                <select name="warna" onchange="this.form.submit()" class="w-full bg-[#1A1C24] border border-[#2D3139] rounded-lg px-4 py-2.5 text-xs font-medium text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all shadow-sm appearance-none">
+                    <option value="">Semua Warna</option>
+                    @foreach($warnas as $warna)
+                        <option value="{{ $warna->nama_warna }}" {{ request('warna') == $warna->nama_warna ? 'selected' : '' }}>{{ $warna->nama_warna }}</option>
+                    @endforeach
+                </select>
+            </div>
 
-        {{-- Dropdown Urutkan --}}
-        <div class="flex items-center bg-[#1A1C24] border border-[#2D3139] rounded-xl px-4 py-2.5 shadow-lg">
-            <i class="fa-solid fa-arrow-down-wide-short text-gray-400 text-xs mr-2"></i>
-            <select name="sort_by" onchange="this.form.submit()" class="bg-transparent border-none outline-none text-xs font-bold text-gray-300 w-36 cursor-pointer appearance-none">
-                <option value="terbaru" class="bg-[#1A1C24]" {{ request('sort_by') == 'terbaru' || !request('sort_by') ? 'selected' : '' }}>Terbaru</option>
-                <option value="stok_terbanyak" class="bg-[#1A1C24]" {{ request('sort_by') == 'stok_terbanyak' ? 'selected' : '' }}>Stok Terbanyak</option>
-                <option value="stok_sedikit" class="bg-[#1A1C24]" {{ request('sort_by') == 'stok_sedikit' ? 'selected' : '' }}>Stok Sedikit</option>
-                <option value="harga_termahal" class="bg-[#1A1C24]" {{ request('sort_by') == 'harga_termahal' ? 'selected' : '' }}>Harga Termahal</option>
-                <option value="harga_termurah" class="bg-[#1A1C24]" {{ request('sort_by') == 'harga_termurah' ? 'selected' : '' }}>Harga Termurah</option>
-            </select>
-            <i class="fa-solid fa-chevron-down text-gray-500 text-[10px] ml-2 pointer-events-none"></i>
+            {{-- Filter Status Stok --}}
+            <div>
+                <select name="status_stok" onchange="this.form.submit()" class="w-full bg-[#1A1C24] border border-[#2D3139] rounded-lg px-4 py-2.5 text-xs font-medium text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all shadow-sm appearance-none">
+                    <option value="">Semua Status</option>
+                    <option value="aman" {{ request('status_stok') == 'aman' ? 'selected' : '' }}>Stok Aman</option>
+                    <option value="kritis" {{ request('status_stok') == 'kritis' ? 'selected' : '' }}>Stok Kritis</option>
+                    <option value="habis" {{ request('status_stok') == 'habis' ? 'selected' : '' }}>Habis</option>
+                </select>
+            </div>
         </div>
+        
+        <div class="flex justify-between items-center mt-4">
+            {{-- Dropdown Urutkan --}}
+            <div>
+                <select name="sort_by" onchange="this.form.submit()" class="bg-[#1A1C24] border border-[#2D3139] rounded-lg px-4 py-2.5 text-xs font-medium text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all shadow-sm appearance-none">
+                    <option value="terbaru" {{ request('sort_by') == 'terbaru' || !request('sort_by') ? 'selected' : '' }}>Urutkan: Terbaru</option>
+                    <option value="stok_terbanyak" {{ request('sort_by') == 'stok_terbanyak' ? 'selected' : '' }}>Urutkan: Stok Terbanyak</option>
+                    <option value="stok_sedikit" {{ request('sort_by') == 'stok_sedikit' ? 'selected' : '' }}>Urutkan: Stok Sedikit</option>
+                    <option value="harga_termahal" {{ request('sort_by') == 'harga_termahal' ? 'selected' : '' }}>Urutkan: Harga Termahal</option>
+                    <option value="harga_termurah" {{ request('sort_by') == 'harga_termurah' ? 'selected' : '' }}>Urutkan: Harga Termurah</option>
+                </select>
+            </div>
 
-        {{-- Tombol Reset Filter --}}
-        @if(request('search') || request('kategori') || request('status_stok') || (request('sort_by') && request('sort_by') != 'terbaru'))
-            <a href="{{ route('admin.bahan.index') }}" class="bg-[#2D3139] hover:bg-gray-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg flex items-center transition">
-                <i class="fa-solid fa-rotate-left mr-2"></i>Reset
-            </a>
-        @endif
+            {{-- Tombol Reset Filter --}}
+            @if(request()->hasAny(['search', 'kategori', 'warna', 'status_stok', 'sort_by']))
+                <a href="{{ route('admin.bahan.index') }}" class="bg-red-500/20 hover:bg-red-500/40 text-red-400 px-4 py-2.5 rounded-lg text-xs font-bold shadow-sm flex items-center transition">
+                    <i class="fa-solid fa-xmark mr-2"></i>Reset Filter
+                </a>
+            @endif
+        </div>
     </form>
 
     {{-- MAIN TABLE CONTAINER --}}
@@ -126,7 +136,6 @@
                         <th class="px-6 py-4 font-bold text-center">Satuan (Unit)</th>
                         <th class="px-6 py-4 font-bold text-center">Min. Stok</th>
                         <th class="px-6 py-4 font-bold text-right">Harga Beli</th>
-                        <th class="px-6 py-4 font-bold text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-[#2D3139] text-sm">
@@ -138,7 +147,8 @@
                         $batasStokItem = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5);
                         $isKritis = ((float) $b->stok) <= $batasStokItem;
                     @endphp
-                    <tr class="hover:bg-[#20232A]/80 transition-colors {{ $isKritis ? 'bg-[#FF5252]/5' : '' }}">
+                    <tr class="hover:bg-[#20232A]/80 transition-colors cursor-pointer {{ $isKritis ? 'bg-[#FF5252]/5' : '' }}"
+    data-href="{{ route('admin.bahan.show', $b->id) }}">
                         
                         <td class="px-6 py-4">
                             @if($b->foto)
@@ -175,20 +185,6 @@
                             Rp {{ number_format($b->harga_satuan, 0, ',', '.') }}
                         </td>
                         
-                        <td class="px-6 py-4 text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                <button onclick='openEditModal(@json($b))' class="w-8 h-8 rounded-lg bg-[#2D3139] text-gray-400 hover:text-white hover:bg-gray-600 transition border border-gray-700/50 flex items-center justify-center" title="Edit">
-                                    <i class="fa-solid fa-pen text-xs"></i>
-                                </button>
-                                <button onclick="viewStockLayers({{ $b->id }}, '{{ $b->nama_material }}')" class="w-8 h-8 rounded-lg bg-[#2D3139] text-gray-400 hover:text-white hover:bg-gray-600 transition border border-gray-700/50 flex items-center justify-center" title="View Detail / Layer">
-                                    <i class="fa-solid fa-eye text-xs"></i>
-                                </button>
-                            </div>
-                            <form id="delete-form-{{ $b->id }}" action="{{ route('admin.bahan.destroy', $b->id) }}" method="POST" style="display: none;">
-                                @csrf
-                                @method('DELETE')
-                            </form>
-                        </td>
                     </tr>
                     @empty
                     <tr>
@@ -209,102 +205,118 @@
 
 @include('admin.bahan._stock-layers-modal')
 
-<div id="modalEdit" style="display: none; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center;">
-    <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.8);" onclick="closeModal('modalEdit')"></div>
-    <div style="position: relative; background: #1A1C24; width: 100%; max-width: 32rem; border-radius: 1.5rem; border: 1px solid #2D3139; padding: 1.5rem; margin: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <div>
-                <h2 style="font-size: 1.25rem; font-weight: bold; color: white;">Edit Data Bahan</h2>
-                <p style="font-size: 0.625rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.1em; mt-1">Perbarui detail material</p>
-            </div>
-            <button onclick="closeModal('modalEdit')" style="color: #9ca3af; background: #2D3139; width: 2.5rem; height: 2.5rem; border-radius: 50%; border: 1px solid #374151; display:flex; align-items:center; justify-content:center; cursor:pointer;">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-        
-        <form id="editForm" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 1.25rem;">
-            @csrf
-            @method('PUT')
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Kode Material</label>
-                    <input type="text" id="edit-kode_material" name="kode_material" readonly style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: #9ca3af; font-size: 0.875rem;">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Nama Material</label>
-                    <input type="text" id="edit-nama_material" name="nama_material" required style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-                </div>
-            </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Kategori</label>
-                    <select id="edit-kategori" name="kategori" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-                        <option value="">-- Pilih Kategori --</option>
-                        @foreach($kategories as $kategori)
-                            <option value="{{ $kategori->nama_kategori }}">{{ $kategori->nama_kategori }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Satuan</label>
-                    <select id="edit-satuan" name="satuan" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-                        <option value="">-- Pilih Satuan --</option>
-                        @foreach($satuans as $satuan)
-                            <option value="{{ $satuan->nama_satuan }}">{{ $satuan->nama_satuan }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
 
-            <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem;">Foto Bahan <span class="text-gray-500">(Opsional, biarkan kosong jika tidak ingin ganti)</span></label>
-                <input type="file" name="foto" accept="image/*" style="width: 100%; background: #0D1117; border: 1px solid #2D3139; border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.875rem;">
-            </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
-                <button type="button" onclick="closeModal('modalEdit')" style="background: #2D3139; color: white; padding: 0.6rem 1.25rem; border-radius: 0.75rem; font-size: 0.75rem; font-weight: bold; border: 1px solid #374151;">Batal</button>
-                <button type="submit" style="background: #FD730D; color: white; padding: 0.6rem 1.25rem; border-radius: 0.75rem; font-size: 0.75rem; font-weight: bold;">Simpan Perubahan</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 @endsection
 
+
+
 @push('scripts')
 <script>
-    function openEditModal(bahan) {
-        document.getElementById('editForm').action = '/admin/bahan/' + bahan.id;
-        document.getElementById('edit-kode_material').value = bahan.kode_material;
-        document.getElementById('edit-nama_material').value = bahan.nama_material;
-        document.getElementById('edit-kategori').value = bahan.kategori;
-        document.getElementById('edit-satuan').value = bahan.satuan;
-        document.getElementById('modalEdit').style.display = 'flex';
-    }
+    document.addEventListener('DOMContentLoaded', function() {
+        // Make table rows clickable
+        const rows = document.querySelectorAll('tr[data-href]');
+        rows.forEach(row => {
+            row.addEventListener('click', function(event) {
+                // Prevent click from triggering on interactive elements inside the row (like buttons or links in cells)
+                if (event.target.closest('a, button')) {
+                    return;
+                }
+                window.location.href = this.dataset.href;
+            });
+        });
+    });
 
-    function closeModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
-    }
-
-    function confirmDelete(id, name) {
+    function confirmDelete(id) {
+        // This function is called by a button, so we need to stop event propagation
+        event.stopPropagation();
         Swal.fire({
-            title: 'Anda yakin?',
-            html: `Anda akan menghapus material <strong>${name}</strong> secara permanen. Tindakan ini tidak dapat dibatalkan.`,
+            title: 'Anda Yakin?',
+            text: "Tindakan ini tidak dapat dibatalkan!",
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, hapus!',
+            confirmButtonColor: '#FF5252',
+            cancelButtonColor: '#4A5568',
+            confirmButtonText: 'Ya, Hapus!',
             cancelButtonText: 'Batal',
             background: '#1A1C24',
-            color: '#ffffff'
+            color: '#FFFFFF'
         }).then((result) => {
             if (result.isConfirmed) {
                 document.getElementById('delete-form-' + id).submit();
             }
         })
+    }
+
+    function viewStockLayers(bahanId, bahanNama) {
+        // This function is called by a button, so we need to stop event propagation
+        event.stopPropagation();
+        const url = `/admin/bahan/${bahanId}/stock-layers`;
+
+        Swal.fire({
+            title: `<i class="fa-solid fa-layer-group text-orange-400"></i> Detail Stok: ${bahanNama}`,
+            html: '<div class="text-center text-gray-400">Memuat data...</div>',
+            showConfirmButton: false,
+            background: '#1A1C24',
+            color: '#FFFFFF',
+            didOpen: () => {
+                Swal.showLoading();
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.layers && data.layers.length > 0) {
+                            let tableHtml = `
+                                <div class="overflow-x-auto custom-scrollbar mt-4 border border-gray-700 rounded-lg">
+                                    <table class="w-full text-sm text-left">
+                                        <thead class="bg-gray-800 text-xs text-gray-400 uppercase">
+                                            <tr>
+                                                <th class="px-4 py-2">Tgl. Masuk</th>
+                                                <th class="px-4 py-2 text-right">Jml. Awal</th>
+                                                <th class="px-4 py-2 text-right">Sisa Stok</th>
+                                                <th class="px-4 py-2 text-right">Harga Beli</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-700">`;
+                            data.layers.forEach(layer => {
+                                tableHtml += `
+                                    <tr class="hover:bg-gray-700/50">
+                                        <td class="px-4 py-2">${new Date(layer.created_at).toLocaleDateString('id-ID')}</td>
+                                        <td class="px-4 py-2 text-right">${parseFloat(layer.jumlah_awal)}</td>
+                                        <td class="px-4 py-2 text-right font-bold text-orange-400">${parseFloat(layer.sisa_stok)}</td>
+                                        <td class="px-4 py-2 text-right">Rp ${new Intl.NumberFormat('id-ID').format(layer.harga_satuan)}</td>
+                                    </tr>`;
+                            });
+                            tableHtml += `</tbody></table></div>`;
+                            Swal.update({
+                                html: tableHtml,
+                                showConfirmButton: true,
+                                confirmButtonText: 'Tutup',
+                                confirmButtonColor: '#4A5568',
+                            });
+                        } else {
+                            Swal.update({
+                                html: '<div class="text-center text-gray-400 mt-4">Tidak ada detail stok (layer) untuk item ini.</div>',
+                                showConfirmButton: true,
+                                confirmButtonText: 'Tutup',
+                                confirmButtonColor: '#4A5568',
+                            });
+                        }
+                        Swal.hideLoading();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching stock layers:', error);
+                        Swal.update({
+                            html: '<div class="text-center text-red-400 mt-4">Gagal memuat data. Silakan coba lagi.</div>',
+                            showConfirmButton: true,
+                            confirmButtonText: 'Tutup',
+                            confirmButtonColor: '#4A5568',
+                        });
+                        Swal.hideLoading();
+                    });
+            }
+        });
     }
 </script>
 @endpush

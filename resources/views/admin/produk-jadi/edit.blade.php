@@ -130,7 +130,7 @@
                                         class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-4 text-white outline-none">
                                         @foreach($kategories as $kategori)
                                             <option value="{{ $kategori->nama_kategori }}"
-                                                {{ in_array($kategori->nama_kategori, $product->kategori ?? []) ? 'selected' : '' }}>
+                                                {{ in_array(trim($kategori->nama_kategori), array_map('trim', $product->kategori ?? [])) ? 'selected' : '' }}>
                                                 {{ $kategori->nama_kategori }}
                                             </option>
                                         @endforeach
@@ -161,7 +161,7 @@
                                         class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-4 text-white outline-none">
                                         @foreach($warnas as $warna)
                                             <option value="{{ $warna->nama_warna }}"
-                                                {{ in_array($warna->nama_warna, $product->warna) ? 'selected' : '' }}>
+                                                {{ in_array(trim($warna->nama_warna), array_map('trim', $product->warna ?? [])) ? 'selected' : '' }}>
                                                 {{ $warna->nama_warna }}
                                             </option>
                                         @endforeach
@@ -181,7 +181,7 @@
                                         class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-4 text-white outline-none">
                                         @foreach($motifs as $motif)
                                             <option value="{{ $motif->nama_motif }}"
-                                                {{ in_array($motif->nama_motif, $product->jenis_motif) ? 'selected' : '' }}>
+                                                {{ in_array(trim($motif->nama_motif), array_map('trim', $product->jenis_motif ?? [])) ? 'selected' : '' }}>
                                                 {{ $motif->nama_motif }}
                                             </option>
                                         @endforeach
@@ -461,4 +461,63 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    /**
+     * Fungsi untuk inisialisasi Select2 dan mengisi nilainya.
+     * @param {string} selector - ID dari elemen select (contoh: '#kategori-select').
+     * @param {string} placeholder - Teks placeholder untuk dropdown.
+     * @param {Array<string>} values - Nilai awal yang harus dipilih.
+     */
+    function setupSelect2(selector, placeholder, values) {
+        const select = $(selector);
+
+        // 1. Inisialisasi Select2
+        select.select2({
+            placeholder: placeholder,
+            allowClear: true,
+            tags: true,
+            tokenSeparators: [',']
+        });
+
+        // 2. Pastikan 'values' adalah array dan tidak kosong
+        if (!Array.isArray(values) || values.length === 0) {
+            return;
+        }
+
+        // 3. Bersihkan nilai (trim spasi) dan filter nilai kosong
+        const cleanedValues = values.map(v => (v || '').trim()).filter(v => v);
+
+        // 4. Buat option baru jika belum ada
+        cleanedValues.forEach(function(value) {
+            if (select.find("option[value='" + value + "']").length === 0) {
+                var newOption = new Option(value, value, true, true);
+                select.append(newOption);
+            }
+        });
+
+        // 5. Set nilai dan trigger 'change' untuk memperbarui tampilan
+        select.val(cleanedValues).trigger('change');
+    }
+
+    // Panggil fungsi untuk setiap dropdown
+    setupSelect2(
+        '#kategori-select',
+        'Pilih Kategori',
+        {!! json_encode($product->kategori ?? []) !!}
+    );
+
+    setupSelect2(
+        '#warna-select',
+        'Pilih Warna',
+        {!! json_encode($product->warna ?? []) !!}
+    );
+
+    setupSelect2(
+        '#motif-select',
+        'Pilih Motif',
+        {!! json_encode($product->jenis_motif ?? []) !!}
+    );
+});
+</script>
 @endsection

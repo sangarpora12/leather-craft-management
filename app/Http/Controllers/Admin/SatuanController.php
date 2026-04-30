@@ -3,83 +3,55 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Satuan;
+use App\Models\Satuan; // Ganti dengan model yang sesuai (Kategori, Warna, Motif)
 use Illuminate\Http\Request;
 
 class SatuanController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        return redirect()->route('admin.pengaturan.index');
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
+        // Sesuaikan nama field dan tabel pada validasi
         $request->validate([
-            'nama_satuan' => [
-                'required',
-                'string',
-                function ($attribute, $value, $fail) {
-                    if (Satuan::whereRaw('LOWER(nama_satuan) = ?', [strtolower($value)])->exists()) {
-                        $fail("Nama satuan '{$value}' sudah ada.");
-                    }
-                },
-            ],
-        ], [
-            'nama_satuan.required' => 'Nama satuan tidak boleh kosong.',
+            'nama_satuan' => 'required|string|max:255|unique:satuans,nama_satuan',
         ]);
 
+        // Sesuaikan nama field pada create
         Satuan::create([
             'nama_satuan' => $request->nama_satuan,
         ]);
 
-        return back()->with('success', 'Satuan berhasil ditambah!');
+        return back()->with('success', 'Data master berhasil ditambahkan.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function update(Request $request, $id)
     {
-        //
+        // Sesuaikan nama field dan tabel pada validasi
+        $request->validate([
+            'nama_satuan' => 'required|string|max:255|unique:satuans,nama_satuan,' . $id,
+        ]);
+
+        $data = Satuan::findOrFail($id);
+        // Sesuaikan nama field pada update
+        $data->update([
+            'nama_satuan' => $request->nama_satuan,
+        ]);
+
+        return back()->with('success', 'Data master berhasil diperbarui.');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy($id)
     {
-        Satuan::findOrFail($id)->delete();
-        return back()->with('success', 'Satuan Dihapus!');
+        try {
+            $data = Satuan::findOrFail($id);
+            $data->delete();
+            return back()->with('success', 'Data master berhasil dihapus.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', 'Data tidak dapat dihapus karena masih terikat dengan data lain.');
+        }
     }
 }

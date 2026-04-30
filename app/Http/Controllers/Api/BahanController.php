@@ -35,7 +35,7 @@ class BahanController extends Controller
                 }
             }
 
-            $bahans = $queryBuilder->select('id', 'kode_bahan', 'nama_bahan', 'stok', 'satuan', 'harga_satuan', 'foto', 'kategori')
+$bahans = $queryBuilder->select('id', 'kode_bahan', 'nama_bahan', 'stok', 'satuan', 'harga_satuan', 'foto', 'kategori', 'warna_id', 'deskripsi_bahan', 'detail')
                     ->limit(10)
                     ->get();
             

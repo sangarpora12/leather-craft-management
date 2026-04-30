@@ -13,7 +13,7 @@ class KategoriController extends Controller
      */
     public function index()
     {
-        //
+        return redirect()->route('admin.pengaturan.index');
     }
 
     /**

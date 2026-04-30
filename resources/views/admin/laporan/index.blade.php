@@ -333,8 +333,9 @@ if (!isset($mode) || empty($mode)) {
             </div>
             @endif
 
-            <!-- TABEL OUTPUT PRODUKSI (mode produk atau lengkap) -->
-            @if($mode == 'produk' || $mode == 'lengkap')
+            
+      <!-- TABEL OUTPUT PRODUKSI (mode produk atau lengkap) -->
+      @if($mode == 'produk' || $mode == 'lengkap')
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
                 <div class="px-4 py-3 border-b border-zinc-800">
                     <h3 class="text-white text-sm font-bold">Ringkasan Output Produksi (Produk Selesai)</h3>
@@ -345,9 +346,8 @@ if (!isset($mode) || empty($mode)) {
                             <tr>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Kode</th>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Produk</th>
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Keterangan (Operator)</th>
                                 <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Total Selesai</th>
-                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Jumlah SPK</th>
-                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Harga Jual</th>
                                 <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Nilai Total (Rp)</th>
                             </tr>
                         </thead>
@@ -356,19 +356,21 @@ if (!isset($mode) || empty($mode)) {
                             <tr>
                                 <td class="px-3 py-2 text-xs text-gray-400">{{ $prod->kode_produk ?? '-' }}</td>
                                 <td class="px-3 py-2 text-xs font-bold text-white">{{ $prod->nama_produk }}</td>
+                                <td class="px-3 py-2 text-xs text-gray-300">
+    <!-- 👈 Ganti pemanggilan variabelnya menjadi seperti ini -->
+    Diselesaikan oleh: <span class="text-white font-semibold">{{ $prod->operator_name ?? 'Tidak diketahui' }}</span>
+</td>
                                 <td class="px-3 py-2 text-xs text-green-400 text-right font-bold">+{{ number_format($prod->jumlah_selesai) }} pcs</td>
-                                <td class="px-3 py-2 text-xs text-gray-400 text-right">{{ $prod->jumlah_spk }} SPK</td>
-                                <td class="px-3 py-2 text-xs text-gray-400 text-right">Rp {{ number_format($prod->harga_jual, 0, ',', '.') }}</td>
                                 <td class="px-3 py-2 text-xs text-emerald-400 text-right font-bold">Rp {{ number_format($prod->jumlah_selesai * $prod->harga_jual, 0, ',', '.') }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="6" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data produksi</td></tr>
+                            <tr><td colspan="5" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data produksi</td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
-
+            
             <!-- TABEL PRODUK KELUAR (mode produk atau lengkap) -->
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
                 <div class="px-4 py-3 border-b border-zinc-800">
@@ -407,8 +409,8 @@ if (!isset($mode) || empty($mode)) {
             </div>
             @endif
 
-            <!-- TABEL BAHAN MASUK (mode bahan atau lengkap) -->
-            @if($mode == 'bahan' || $mode == 'lengkap')
+           <!-- TABEL BAHAN MASUK (mode bahan atau lengkap) -->
+           @if($mode == 'bahan' || $mode == 'lengkap')
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6 print-break-before">
                 <div class="px-4 py-3 border-b border-zinc-800">
                     <h3 class="text-white text-sm font-bold">Ringkasan Bahan Masuk (Pengadaan)</h3>
@@ -419,9 +421,8 @@ if (!isset($mode) || empty($mode)) {
                             <tr>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Kode</th>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Nama Bahan</th>
-                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Keterangan</th>
                                 <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Jumlah Masuk</th>
-                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">User</th>
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Operator / User</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-zinc-800">
@@ -429,27 +430,19 @@ if (!isset($mode) || empty($mode)) {
                             <tr>
                                 <td class="px-3 py-2 text-xs text-gray-400">{{ $bahan->kode_material ?? '-' }}</td>
                                 <td class="px-3 py-2 text-xs font-bold text-white">{{ $bahan->nama_material }}</td>
-                                <td class="px-3 py-2 text-xs text-gray-400">
-                                    @if(str_contains(strtoupper($bahan->jenis_transaksi), 'INPUT_BAHAN_BARU'))
-                                        <span class="font-semibold text-green-400">Bahan Baru</span>
-                                    @elseif(in_array(strtoupper($bahan->jenis_transaksi), ['TAMBAH_STOK', 'RESTOCK', 'PENYESUAIAN_MASUK']))
-                                        <span class="font-semibold text-blue-400">Tambah Stok</span>
-                                    @else
-                                        <span class="font-semibold text-yellow-400">{{ ucwords(str_replace('_', ' ', strtolower($bahan->jenis_transaksi))) }}</span>
-                                    @endif
-                                </td>
                                 <td class="px-3 py-2 text-xs text-green-400 text-right font-bold">+{{ rtrim(rtrim(number_format($bahan->jumlah, 2, ',', '.'), '0'), ',') }} {{ $bahan->satuan }}</td>
                                 <td class="px-3 py-2 text-xs text-gray-500">{{ $bahan->user_name ?? 'N/A' }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="5" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data bahan masuk</td></tr>
+                            <tr><td colspan="4" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data bahan masuk</td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
-
-            <!-- TABEL BAHAN KELUAR (mode bahan atau lengkap) -->
+            @endif
+           <!-- TABEL BAHAN KELUAR (mode bahan atau lengkap) -->
+           @if($mode == 'bahan' || $mode == 'lengkap')
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
                 <div class="px-4 py-3 border-b border-zinc-800">
                     <h3 class="text-white text-sm font-bold">Ringkasan Bahan Keluar (Pemakaian untuk SPK)</h3>
@@ -460,20 +453,30 @@ if (!isset($mode) || empty($mode)) {
                             <tr>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Kode</th>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Bahan</th>
+                                <!-- KOLOM KETERANGAN BARU -->
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Keterangan</th> 
                                 <th class="px-3 py-2 text-center text-xs font-bold text-gray-500">Satuan</th>
                                 <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Total Dipakai</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-zinc-800">
                             @forelse($materialUsage as $bahan)
-                            <tr>
-                                <td class="px-3 py-2 text-xs text-gray-400">{{ $bahan->kode_material ?? '-' }}</td>
-                                <td class="px-3 py-2 text-xs font-bold text-white">{{ $bahan->nama_material }}</td>
-                                <td class="px-3 py-2 text-xs text-gray-300 text-center">{{ $bahan->satuan ?? '-' }}</td>
-                                <td class="px-3 py-2 text-xs text-red-400 text-right font-bold">-{{ rtrim(rtrim(number_format($bahan->jumlah, 2, ',', '.'), '0'), ',') }}</td>
-                            </tr>
+                                <!-- PENGECEKAN DATA DIHAPUS: Lewati baris ini jika statusnya dihapus atau punya deleted_at -->
+                                @if(empty($bahan->deleted_at) && ($bahan->status ?? '') !== 'dihapus' && ($bahan->status ?? '') !== 'deleted')
+                                <tr>
+                                    <td class="px-3 py-2 text-xs text-gray-400">{{ $bahan->kode_material ?? '-' }}</td>
+                                    <td class="px-3 py-2 text-xs font-bold text-white">{{ $bahan->nama_material }}</td>
+                                    <!-- ISI KOLOM KETERANGAN BARU -->
+                                    <td class="px-3 py-2 text-xs text-gray-400">
+                                        Dipakai untuk: <span class="text-white font-semibold">{{ $bahan->nama_produk ?? $bahan->keterangan ?? 'SPK Tidak Diketahui' }}</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-xs text-gray-300 text-center">{{ $bahan->satuan ?? '-' }}</td>
+                                    <td class="px-3 py-2 text-xs text-red-400 text-right font-bold">-{{ rtrim(rtrim(number_format($bahan->jumlah, 2, ',', '.'), '0'), ',') }}</td>
+                                </tr>
+                                @endif
                             @empty
-                            <tr><td colspan="4" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data bahan keluar</td></tr>
+                            <!-- UBAH COLSPAN DARI 4 MENJADI 5 KARENA ADA TAMBAHAN KOLOM -->
+                            <tr><td colspan="5" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data bahan keluar</td></tr>
                             @endforelse
                         </tbody>
                     </table>

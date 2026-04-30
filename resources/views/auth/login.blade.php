@@ -90,7 +90,7 @@
             </div>
 
             <button type="submit" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-sm tracking-wide shadow-lg shadow-orange-900/20">
-                MASUK DASHBOARD
+                MASUK 
             </button>
         </form>
 

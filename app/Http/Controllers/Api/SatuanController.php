@@ -10,23 +10,33 @@ class SatuanController extends Controller
 {
     public function index()
     {
-        try {
-            $satuans = Satuan::orderBy('tipe', 'asc')
-                ->orderBy('nama_satuan', 'asc')
-                ->get(['id', 'nama_satuan', 'tipe']);
+        return Satuan::all();
+    }
 
-            // Group by tipe
-            $grouped = $satuans->groupBy('tipe');
+    public function store(Request $request)
+    {
+        $request->validate([
+            'nama_satuan' => 'required|string|max:255|unique:satuans,nama_satuan',
+        ]);
 
-            return response()->json([
-                'success' => true,
-                'data' => $grouped
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
+        return Satuan::create($request->all());
+    }
+
+    public function show($id)
+    {
+        return Satuan::findOrFail($id);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $satuan = Satuan::findOrFail($id);
+        $satuan->update($request->all());
+        return $satuan;
+    }
+
+    public function destroy($id)
+    {
+        Satuan::findOrFail($id)->delete();
+        return response()->json(null, 204);
     }
 }

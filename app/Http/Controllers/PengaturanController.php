@@ -34,22 +34,80 @@ class PengaturanController extends Controller
         $pengaturanCollection = Pengaturan::pluck('nilai', 'nama_pengaturan');
         $config = (object) $pengaturanCollection->toArray();
         
+        // Tetap di-load agar bisa dikirim ke View (Tab Data Master)
+
         $satuans = Satuan::all();
         $kategories = Kategori::all();
         $warnas = Warna::all();
         $motifs = Motif::all();
+        $bahanBakus = BahanBaku::all();
+        $produkJadis = ProdukJadi::all();
         $users = User::all();
         $user = Auth::user();
         
-        return view('admin.pengaturan.index', compact('pengaturanCollection', 'config', 'satuans', 'kategories', 'warnas', 'motifs', 'users', 'user'));
+        return view('admin.pengaturan.index', compact('pengaturanCollection', 'config', 'satuans', 'kategories', 'warnas', 'motifs', 'bahanBakus', 'produkJadis', 'users', 'user'));
     }
+
+    private function crudBahan(Request $request)
+    {
+        if ($request->has('hapus_bahan_id')) {
+            BahanBaku::destroy($request->hapus_bahan_id);
+            return back()->with('success', 'Bahan dihapus');
+        }
+        if ($request->filled('nama_bahan_baku')) {
+            BahanBaku::create(['nama_bahan' => $request->nama_bahan_baku]);
+            return back()->with('success', 'Bahan ditambah');
+        }
+        return back()->with('error', 'Data tidak lengkap');
+    }
+
+    private function crudProduk(Request $request)
+    {
+        if ($request->has('hapus_produk_id')) {
+            ProdukJadi::destroy($request->hapus_produk_id);
+            return back()->with('success', 'Produk dihapus');
+        }
+        if ($request->filled('nama_produk_jadi')) {
+            ProdukJadi::create(['nama_produk' => $request->nama_produk_jadi]);
+            return back()->with('success', 'Produk ditambah');
+        }
+        return back()->with('error', 'Data tidak lengkap');
+    }
+
+    /**
+     * Render Satuan Tab untuk AJAX/Tab
+     */
+    public function satuanTab()
+    {
+        $satuans = Satuan::all();
+        $kategories = Kategori::all();
+        $warnas = Warna::all();
+        $motifs = Motif::all();
+        return view('admin.pengaturan._satuan', compact('satuans', 'kategories', 'warnas', 'motifs'));
+    }
+
 
     /**
      * Simpan Pengaturan Umum & Update Kode Jika Prefix Berubah
      */
-    public function store(Request $request)
+public function store(Request $request)
     {
-        $inputs = $request->except(['_token', '_method']);
+        $tipe_master = $request->tipe_master;
+        
+        // Handle CRUD for master data
+        if ($tipe_master) {
+            return match($tipe_master) {
+                'satuan' => $this->crudSatuan($request),
+                'kategori' => $this->crudKategori($request),
+                'warna' => $this->crudWarna($request),
+                'motif' => $this->crudMotif($request),
+                'bahan' => $this->crudBahan($request),
+                'produk' => $this->crudProduk($request),
+                default => back()->with('error', 'Tipe tidak dikenali')
+            };
+        }
+
+        $inputs = $request->except(['_token', '_method', 'tipe_master']);
 
         // Backward compatibility (Pengaturan Gudang):
         // sebagian halaman lama menyimpan stok minimum global di key `stok_minimum`.
@@ -127,6 +185,54 @@ class PengaturanController extends Controller
         }
         
         return redirect()->route('admin.pengaturan.index')->with('success', $msg);
+    }
+
+    private function crudSatuan(Request $request)
+    {
+        if ($request->has('hapus_satuan_id')) {
+            Satuan::destroy($request->hapus_satuan_id);
+            return back()->with('success', 'Satuan dihapus');
+        }
+        if ($request->filled('nama_satuan')) {
+            Satuan::create(['nama_satuan' => $request->nama_satuan]);
+            return back()->with('success', 'Satuan ditambah');
+        }
+        return back()->with('error', 'Data tidak lengkap');
+    }
+
+    private function crudKategori(Request $request)
+    {
+        if ($request->has('hapus_kategori_id')) {
+            Kategori::destroy($request->hapus_kategori_id);
+            return back()->with('success', 'Kategori dihapus');
+        }
+        if ($request->filled('nama_kategori')) {
+            Kategori::create([
+                'nama_kategori' => $request->nama_kategori,
+                'tipe' => $request->tipe ?? 'bahan'
+            ]);
+            return back()->with('success', 'Kategori ditambah');
+        }
+        return back()->with('error', 'Data tidak lengkap');
+    }
+
+    private function crudWarna(Request $request)
+    {
+        if ($request->has('hapus_warna_id')) {
+            Warna::destroy($request->hapus_warna_id);
+            return back()->with('success', 'Warna dihapus');
+        }
+        if ($request->filled('nama_warna')) {
+            Warna::create(['nama_warna' => $request->nama_warna]);
+            return back()->with('success', 'Warna ditambah');
+        }
+        return back()->with('error', 'Data tidak lengkap');
+    }
+
+    private function crudMotif(Request $request)
+    {
+        // Motif uses Admin/MotifController
+        return back()->with('error', 'Gunakan halaman Motif');
     }
 
     /**
@@ -308,6 +414,10 @@ class PengaturanController extends Controller
             Bom::truncate();
             Satuan::truncate();
             Kategori::truncate();
+            
+            // Tambahan untuk membersihkan tabel Warna dan Motif (Fitur Baru)
+            Warna::truncate();
+            Motif::truncate();
 
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             return redirect()->route('admin.dashboard')->with('success', 'DATABASE BERHASIL DIKOSONGKAN TOTAL!');

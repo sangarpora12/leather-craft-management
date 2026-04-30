@@ -401,7 +401,23 @@ class ProduksiController extends Controller
                 if (empty($idsToUpdate)) {
                     throw new \Exception('Tidak ada SPK PENDING yang cocok untuk diproses.');
                 }
+                // --- 4. Update baris yang dipilih → SELESAI --------------------
+// Kita gunakan looping agar lebih pasti setiap baris menyimpan operator_id
+$rowsToFinish = Produksi::whereIn('id', $idsToFinish)->get();
 
+foreach ($rowsToFinish as $row) {
+    $row->status = 'SELESAI';
+    $row->jumlah_selesai = $row->jumlah_produksi;
+    $row->tanggal_selesai = now();
+    $row->foto_bukti = $fotoJson;
+    $row->operator_id = auth()->id(); // <--- Ini yang merekam nama Anda
+    $row->save();
+}
+
+// --- 5. Tambah stok produk jadi --------------------------------
+$totalQtyDiselesaikan = $rowsToFinish->sum('jumlah_produksi');
+$produkJadi = ProdukJadi::findOrFail($produkJadiId);
+$produkJadi->increment('stok', $totalQtyDiselesaikan);
                 // ✅ Update hanya ID yang sudah dipilih — dijamin tepat jumlahnya
                 $rowsToUpdate = Produksi::whereIn('id', $idsToUpdate)->get();
                 foreach ($rowsToUpdate as $row) {
@@ -560,7 +576,8 @@ class ProduksiController extends Controller
                     'status'          => 'SELESAI',
                     'jumlah_selesai'  => DB::raw('jumlah_produksi'), // tiap baris selesai 100%
                     'tanggal_selesai' => now(),
-                    'foto_bukti'      => $fotoJson,                  // foto yang sama untuk semua baris kloter ini
+                    'foto_bukti'      => $fotoJson,  
+                    'operator_id'     => auth()->id(),           // foto yang sama untuk semua baris kloter ini
                 ]);
 
             // ── 5. Tambah stok produk jadi ────────────────────────────────

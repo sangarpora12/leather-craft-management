@@ -4,26 +4,35 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Traits\CatatLogAktivitas;
-
-use App\Models\Pengaturan;
 
 class BahanBaku extends Model
 {
-    use HasFactory, Notifiable, CatatLogAktivitas;
-    protected $table = 'bahan_bakus'; // Pastikan nama tabel sesuai
-    protected $fillable = ['kode_material', 'nama_material', 'kategori', 'stok', 'reserved', 'satuan', 'harga_satuan', 'stok_minimum', 'status', 'supplier', 'ref_no', 'user_id', 'is_inventory', 'foto'];
+    use HasFactory;
 
-    protected $casts = [
-        'is_inventory' => 'boolean',
+    protected $table = 'bahan_bakus';
+
+    protected $fillable = [
+        'kode_material',
+        'nama_material',
+        'kategori',
+        'satuan',
+        'stok',
+        'stok_minimum',
+        'harga_satuan',
+        'supplier',
+        'is_inventory',
+        'foto',
+        'warna',
+        'detail',
+        'deskripsi_bahan',
+        'ref_no',
     ];
 
     /**
      * Get the stock layers for this material.
      */
-    public function stokLayers(): HasMany
+    public function stockLayers(): HasMany
     {
         return $this->hasMany(BahanStokLayer::class, 'bahan_baku_id');
     }

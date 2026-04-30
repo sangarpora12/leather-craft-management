@@ -8,27 +8,36 @@ use Illuminate\Http\Request;
 
 class KategoriController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        try {
-            $query = Kategori::orderBy('nama_kategori', 'asc');
+        return Kategori::all();
+    }
 
-            // Filter by tipe jika diminta
-            if ($request->filled('tipe')) {
-                $query->where('tipe', $request->tipe);
-            }
+    public function store(Request $request)
+    {
+        $request->validate([
+            'nama_kategori' => 'required|string|max:255',
+            'tipe' => 'required|in:bahan,produk',
+        ]);
 
-            $kategoris = $query->get(['id', 'nama_kategori', 'tipe']);
+        return Kategori::create($request->all());
+    }
 
-            return response()->json([
-                'success' => true,
-                'data' => $kategoris
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
+    public function show($id)
+    {
+        return Kategori::findOrFail($id);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $kategori = Kategori::findOrFail($id);
+        $kategori->update($request->all());
+        return $kategori;
+    }
+
+    public function destroy($id)
+    {
+        Kategori::findOrFail($id)->delete();
+        return response()->json(null, 204);
     }
 }
