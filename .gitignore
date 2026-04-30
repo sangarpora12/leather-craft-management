@@ -33,3 +33,13 @@ Thumbs.db
 /routes to use a tool to add the route. Let me use edit_file to add the route for partial production./
 /...
 /app/Http/Controllers/DashboardController.php to use a tool. Let me edit the DashboardController to use the NotificationService.
+# Laravel specific
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/framework/cache/data/*
+/storage/app/public/bahan_baku/*
+/storage/app/public/produk-jadi/*
+
+# Editor specific
+/.vscode
+/.idea
