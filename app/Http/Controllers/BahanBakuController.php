@@ -519,11 +519,11 @@ class BahanBakuController extends Controller
      * - jika belum -> buat item bahan baru
      * - catat transaksi ke transaksi_stok bila tabel tersedia
      */
+/**
+     * Simpan bahan masuk via SCAN NOTA (Operator)
+     */
     public function storeOperator(Request $request)
     {
-        // Debug log
-        \Log::info('storeOperator called', $request->all());
-
         $validated = $request->validate([
             'kode_material' => 'nullable|string|max:255',
             'nama_material' => 'required|string|max:255',
@@ -534,63 +534,42 @@ class BahanBakuController extends Controller
             'supplier' => 'nullable|string|max:255',
             'ref_no' => 'nullable|string|max:255',
             'is_inventory' => 'nullable|boolean',
+            'foto_nota' => 'required|image|max:2048', // WAJIB UNTUK SCAN NOTA
         ]);
 
-        // Default is_inventory = true (bahan inventory)
         $isInventory = $request->has('is_inventory') ? (bool) $request->is_inventory : true;
-
-        \Log::info('Validation passed', $validated);
-
         $qty = (float) $validated['stok'];
 
+        return DB::transaction(function () use ($validated, $qty, $isInventory, $request) {
+            
+            // 1. PROSES UPLOAD FOTO NOTA
+            $pathNota = $request->file('foto_nota')->store('notas', 'public');
 
-        return DB::transaction(function () use ($validated, $qty, $isInventory) {
-            \Log::info('Transaction started', ['qty' => $qty]);
-            // Ambil prefix dari pengaturan gudang
             $kodeMaterial = $validated['kode_material'] ?: $this->generateKodeMaterial();
 
-            // Cari berdasarkan nama_material (case insensitive)
-            // KHUSUS: BAHAN PELENGKAP (is_inventory = 0) SELALU BUAT BARU, TIDAK PERNAH UPDATE YANG LAMA
+            // Cari bahan (untuk inventory saja)
             $bahan = null;
             if ($isInventory) {
-                // Hanya untuk bahan inventory saja yang cek apakah sudah ada
                 $bahan = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$validated['nama_material']])
                     ->lockForUpdate()
                     ->first();
             }
 
             if ($bahan) {
-                // Jika nama sama, update info dan mungkin tambah stok
+                // UPDATE BAHAN LAMA (RESTOCK)
                 $bahan->kategori = $validated['kategori'];
                 $bahan->satuan = $validated['satuan'];
                 $bahan->supplier = $validated['supplier'] ?? $bahan->supplier;
                 $bahan->ref_no = $validated['ref_no'] ?? $bahan->ref_no;
-                $bahan->is_inventory = $isInventory;
+                $bahan->foto_nota_terakhir = $pathNota; // Simpan bukti nota terbaru
 
-                // Hanya update stok & harga jika is_inventory = true
                 if ($isInventory) {
                     $bahan->increment('stok', $qty);
                     $bahan->harga_satuan = $validated['harga_satuan'];
-                } else {
-                    $bahan->harga_satuan = 0;
                 }
-
                 $bahan->save();
-
-                // BUAT LAYER FIFO - Catat layer baru untuk material yang sudah ada (hanya jika inventory)
-                if ($isInventory && Schema::hasTable('bahan_stok_layers')) {
-                    \App\Models\BahanStokLayer::create([
-                        'bahan_baku_id' => $bahan->id,
-                        'tanggal_masuk' => now()->toDateString(),
-                        'qty_masuk' => $qty,
-                        'qty_sisa' => $qty,
-                        'harga_beli' => (float) $validated['harga_satuan'],
-                        'supplier' => $validated['supplier'] ?? $bahan->supplier,
-                        'ref_no' => $validated['ref_no'] ?? $bahan->ref_no,
-                    ]);
-                }
             } else {
-                // Jika nama belum ada, buat baru
+                // BUAT BAHAN BARU
                 $bahan = BahanBaku::create([
                     'kode_material' => $kodeMaterial,
                     'nama_material' => $validated['nama_material'],
@@ -602,70 +581,52 @@ class BahanBakuController extends Controller
                     'supplier' => $validated['supplier'] ?? null,
                     'ref_no' => $validated['ref_no'] ?? null,
                     'is_inventory' => $isInventory,
+                    'foto_nota_terakhir' => $pathNota, // Simpan bukti nota
                 ]);
-
-                // BUAT LAYER FIFO - Catat layer baru untuk material baru (hanya jika inventory)
-                if ($isInventory && Schema::hasTable('bahan_stok_layers')) {
-                    \App\Models\BahanStokLayer::create([
-                        'bahan_baku_id' => $bahan->id,
-                        'tanggal_masuk' => now()->toDateString(),
-                        'qty_masuk' => $qty,
-                        'qty_sisa' => $qty,
-                        'harga_beli' => (float) $validated['harga_satuan'],
-                        'supplier' => $validated['supplier'] ?? null,
-                        'ref_no' => $validated['ref_no'] ?? null,
-                    ]);
-                }
             }
 
-            // Notifikasi ke Admin bahwa stok bahan bertambah
-            try {
-                $admins = \App\Models\User::where('role', 'admin')->get();
-                foreach ($admins as $admin) {
-                    $admin->notify(new \App\Notifications\SystemNotification(
-                        'Stok Bahan Bertambah',
-                        "Stok {$bahan->nama_material} bertambah {$qty} {$bahan->satuan}.",
-                        'success',
-                        route('admin.bahan.index'),
-                        'admin'
-                    ));
-                }
-            } catch (\Throwable $e) {
-                // ignore
+            // 2. BUAT LAYER FIFO (PENTING UNTUK HARGA BELI & VERIFIKASI)
+            if ($isInventory && Schema::hasTable('bahan_stok_layers')) {
+                \App\Models\BahanStokLayer::create([
+                    'bahan_baku_id' => $bahan->id,
+                    'tanggal_masuk' => now()->toDateString(),
+                    'qty_masuk' => $qty,
+                    'qty_sisa' => $qty,
+                    'harga_beli' => (float) $validated['harga_satuan'],
+                    'supplier' => $validated['supplier'] ?? $bahan->supplier,
+                    'ref_no' => $validated['ref_no'] ?? $bahan->ref_no,
+                    'foto_nota' => $pathNota, // Simpan nota di layer ini
+                ]);
             }
 
-            // Log transaksi bahan masuk ke log_stok (untuk laporan)
-            // SEKARANG SEMUA BAHAN MASUK (TERMASUK BAHAN PELENGKAP) DICATAT KE LAPORAN
-            // Tentukan jenis transaksi otomatis berdasarkan apakah bahan baru atau sudah ada
-            $jenisTransaksi = $isInventory 
-                ? ($bahan->wasRecentlyCreated ? 'Bahan Baru' : 'Tambah Stok')
-                : 'Bahan Pelengkap';
-            
+            // 3. LOG STOK UNTUK LAPORAN
+            $jenisTransaksi = $isInventory ? 'SCAN_NOTA_MASUK' : 'BAHAN_PELENGKAP';
             DB::table('log_stok')->insert([
                 'bahan_baku_id' => $bahan->id,
                 'operator_id' => Auth::id(),
                 'jenis_transaksi' => $jenisTransaksi,
-                'jumlah' => $validated['stok'],
+                'jumlah' => $qty,
+                'keterangan' => 'Ditambah via Scan Nota (Verifikasi Diperlukan)',
                 'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
-            // Log transaksi bahan masuk (legacy table)
-            if (Schema::hasTable('transaksi_stok')) {
-                DB::table('transaksi_stok')->insert([
-                    'id_bahan' => $bahan->id,
-                    'id_produk' => null,
-                    'jenis_transaksi' => 'MASUK_BAHAN_PEMBELIAN',
-                    'jumlah' => $qty,
-                    'tanggal' => now()->toDateString(),
-                    'keterangan' => 'Masuk ' . $qty . ' ' . $bahan->satuan . ' via Pembelian' . (empty($bahan->supplier) ? '' : ' (' . $bahan->supplier . ')'),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            // 4. KIRIM NOTIFIKASI VERIFIKASI KHUSUS KE ADMIN
+            try {
+                $admins = \App\Models\User::where('role', 'admin')->get();
+                foreach ($admins as $admin) {
+                    $admin->notify(new \App\Notifications\SystemNotification(
+                        '📸 Verifikasi Scan Nota Baru', // Judul berbeda dengan bahan masuk biasa
+                        "Operator " . Auth::user()->name . " mengunggah nota belanja {$bahan->nama_material}. Klik untuk verifikasi.",
+                        'info',
+                        route('admin.bahan.index'), // Arahkan Admin ke dashboard untuk cek data
+                        'admin'
+                    ));
+                }
+            } catch (\Throwable $e) { 
+                \Log::error('Gagal kirim notifikasi scan: ' . $e->getMessage()); 
             }
 
-            // Update received quantity in related pengadaan (hanya untuk operator yang input)
-            // Cari pengadaan PENDING untuk bahan ini (tanpa filter operator_id agar semua operator bisa update)
+            // 5. UPDATE PENGADAAN JIKA TERKAIT
             $pendingPengadaan = \App\Models\Pengadaan::where('bahan_baku_id', $bahan->id)
                 ->where('status', 'PENDING')
                 ->orderBy('created_at', 'asc')
@@ -674,34 +635,16 @@ class BahanBakuController extends Controller
             foreach ($pendingPengadaan as $pengadaan) {
                 $remaining = $pengadaan->jumlah - $pengadaan->received;
                 if ($qty >= $remaining) {
-                    // Jika input LEBIH dari yang diminta, pengadaan langsung SELESAI
-                    $pengadaan->received = $pengadaan->jumlah;
-                    $pengadaan->status = 'DONE';
-                    $pengadaan->save();
+                    $pengadaan->update(['received' => $pengadaan->jumlah, 'status' => 'DONE']);
                     $qty -= $remaining;
                 } else {
-                    // Jika input KURANG dari yang diminta, update received saja
-                    $pengadaan->received += $qty;
-                    $pengadaan->save();
+                    $pengadaan->increment('received', $qty);
                     $qty = 0;
                     break;
                 }
             }
 
-            // Notif sederhana untuk operator
-            try {
-                Auth::user()?->notify(new \App\Notifications\SystemNotification(
-                    'Bahan Masuk Tercatat',
-                    "{$bahan->nama_material} bertambah {$qty} {$bahan->satuan}.",
-                    'success',
-                    route('operator.pengadaan'),
-                    'operator'
-                ));
-            } catch (\Throwable $e) {
-                // ignore (jika table notifications belum sesuai)
-            }
-
-            return redirect()->route('operator.pengadaan')->with('success', 'Bahan masuk berhasil dicatat.');
+            return redirect()->route('operator.pengadaan')->with('success', 'Bahan & Nota berhasil masuk!');
         });
     }
 
