@@ -146,10 +146,9 @@
                             
                             <div class="flex items-center justify-between gap-2">
                                 <div class="flex-1 flex items-center bg-black/40 rounded border border-white/5 p-1">
-                                    <button @click="item.qty > 1 ? item.qty = Math.round(item.qty - 1) : null" class="w-6 h-6 text-gray-500 flex-shrink-0">-</button>
-                                    <input type="number" x-model.number="item.qty" class="flex-1 min-w-0 bg-transparent text-center text-[10px] text-white outline-none">
-                                    <button @click="item.qty = Math.round(item.qty + 1)" class="w-6 h-6 text-gray-500 flex-shrink-0">+</button>
-                                </div>
+                                
+                                <input type="number" step="any" x-model="item.qty" class="flex-1 min-w-0 bg-transparent text-center text-[10px] text-white outline-none">
+                                 </div>
                             </div>
                             
                             <!-- Input Catatan -->
@@ -227,7 +226,7 @@
                                                 <input type="hidden" :name="`items[${index}][jumlah]`" :value="item.qty">
                                                 <input type="hidden" :name="`items[${index}][catatan]`" :value="item.catatan">
                                             </td>
-                                            <td class="py-3 px-4 text-center font-mono text-green-400 font-bold" x-text="Math.round(item.qty)"></td>
+                                            <td class="py-3 px-4 text-center font-mono text-green-400 font-bold" x-text="item.qty"></td>
                                             <td class="py-3 px-4 text-center text-gray-400 text-[10px]" x-text="item.satuan"></td>
                                             <td class="py-3 px-4 text-gray-400 text-[10px]" style="max-width:180px; white-space:normal;" x-text="item.catatan || '-'"></td>
                                         </tr>
@@ -300,7 +299,7 @@ function procurementApp() {
                                 if (!mat) return;
                                 const existing = this.cart.find(i => i.id === id);
                                 if (existing) {
-                                    existing.qty = Math.round(existing.qty + 1);
+                                    existing.qty = parseFloat(existing.qty + 1);
                                 } else {
                                     this.cart.push({
                                         id: mat.id,

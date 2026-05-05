@@ -72,7 +72,8 @@ class PengadaanMaterialNotification extends Notification implements ShouldQueue
     public function toDatabase($notifiable)
     {
         $daftarBahan = $this->pengadaanGroup->map(function($item) {
-            return intval($item->jumlah) . ' ' . $item->bahan->satuan . ' - ' . $item->bahan->nama_material;
+            // HAPUS intval() agar angka desimal (koma) tetap muncul
+            return $item->jumlah . ' ' . $item->bahan->satuan . ' - ' . $item->bahan->nama_material;
         })->implode(', ');
 
         return [

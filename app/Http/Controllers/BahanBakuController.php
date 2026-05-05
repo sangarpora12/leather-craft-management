@@ -30,11 +30,6 @@ class BahanBakuController extends Controller
         $query->when($request->filled('kategori'), function ($q) use ($request) {
             $q->where('kategori', $request->kategori);
         });
-
-        // Filter Warna
-        $query->when($request->filled('warna'), function ($q) use ($request) {
-            $q->where('warna', $request->warna);
-        });
     
         // Filter Status Stok
         $query->when($request->filled('status_stok'), function ($q) use ($request) {
@@ -157,18 +152,17 @@ class BahanBakuController extends Controller
     // 2. SIMPAN DATA BARU (STORE) - DENGAN LOGIKA RESTOCK & NON-INVENTORY
     public function store(Request $request)
     {
-        // Validasi - Tambahkan 'kode_jenis'
+        // Validasi - FIXED: Sesuaikan dengan field dari form (nama_material, tidak ada stok_minimum)
         $request->validate([
             'nama_material' => 'required|string|max:255',
             'kategori' => 'required|string',
             'satuan' => 'required|string',
-            'stok' => 'required|numeric',
+            'stok' => 'required|numeric', // Ini adalah Jumlah Masuk
             'harga_satuan' => 'required|numeric',
             'is_inventory' => 'nullable|boolean',
             'foto' => 'nullable|image|max:20480',
             'warna' => 'nullable|string',
             'detail' => 'nullable|string',
-            'deskripsi_bahan' => 'nullable|string',
         ]);
 
         // Default is_inventory = true (bahan inventory)
@@ -183,62 +177,105 @@ class BahanBakuController extends Controller
             $fotoPath = $request->file('foto')->store('bahan_baku', 'public');
         }
 
-        // Generate Kode Unik untuk setiap baris (varian)
-        $kode = BahanBaku::generateKodeMaterial();
+        // CEK KETERSEDIAAN BAHAN - Apakah material sudah ada?
+        $bahan = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$request->nama_material])->first();
 
-        // Simpan ke tabel bahan_bakus
-        $bahan = BahanBaku::create([
-            'kode_material' => $kode,
-            'nama_material' => $request->nama_material,
-            'kategori' => $request->kategori ?? $bahan->kategori,
-            'satuan' => $request->satuan,
-            'stok' => $isInventory ? $request->stok : 0,
-            'stok_minimum' => $stokMinimum,
-            'harga_satuan' => $isInventory ? $request->harga_satuan : 0,
-            'supplier' => $request->supplier ?? null,
-            'is_inventory' => $isInventory,
-            'foto' => $fotoPath,
-            'warna' => $request->warna,
-            'detail' => $request->detail,
-            'deskripsi_bahan' => $request->deskripsi_bahan,
-        ]);
+        if ($bahan) {
+            // ===== BAHAN SUDAH ADA (RESTOCK) =====
+            // Update info lain jika berbeda
+            $bahan->kategori = $request->kategori;
+            $bahan->satuan = $request->satuan;
+            $bahan->supplier = $request->supplier ?? $bahan->supplier;
+            $bahan->is_inventory = $isInventory;
 
-        // SIMPAN KE LAYER FIFO (bahan_stok_layers) - Layer pertama (hanya jika inventory)
-        if ($isInventory && Schema::hasTable('bahan_stok_layers')) {
-            \App\Models\BahanStokLayer::create([
-                'bahan_baku_id' => $bahan->id,
-                'tanggal_masuk' => now()->toDateString(),
-                'qty_masuk' => $request->stok,
-                'qty_sisa' => $request->stok,
-                'harga_beli' => $request->harga_satuan,
+            // Hanya update stok & harga jika is_inventory = true
+            if ($isInventory) {
+                $bahan->stok += $request->stok;
+                $bahan->harga_satuan = $request->harga_satuan;
+            } else {
+                // Untuk non-inventory, stok dan harga tidak berubah (dianggap 0)
+                $bahan->harga_satuan = 0;
+            }
+
+            $bahan->save();
+
+            // Tambahkan layer FIFO baru untuk riwayat pembelian ini (hanya jika inventory)
+            if ($isInventory && Schema::hasTable('bahan_stok_layers')) {
+                \App\Models\BahanStokLayer::create([
+                    'bahan_baku_id' => $bahan->id,
+                    'tanggal_masuk' => now()->toDateString(),
+                    'qty_masuk' => $request->stok,
+                    'qty_sisa' => $request->stok,
+                    'harga_beli' => $request->harga_satuan,
+                    'supplier' => $request->supplier ?? null,
+                ]);
+            }
+
+            // CATAT KE LOG_STOK untuk laporan (hanya jika inventory)
+            if ($isInventory) {
+                DB::table('log_stok')->insert([
+                    'bahan_baku_id' => $bahan->id,
+                    'operator_id' => Auth::id(),
+                    'jenis_transaksi' => 'RESTOCK',
+                    'jumlah' => $qty,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            $msg = $isInventory 
+                ? 'Stok material "' . $bahan->nama_material . '" berhasil ditambahkan! (Restock)' 
+                : 'Material non-stok "' . $bahan->nama_material . '" berhasil diupdate!';
+            return redirect()->route('admin.bahan.index')->with('success', $msg);
+        } else {
+            // ===== BAHAN BARU (INSERT BARU) =====
+            // Generate Kode Otomatis - sekarang baca prefix dari database settings
+            $kode = $this->generateKodeMaterial();
+
+            // Simpan ke tabel bahan_bakus
+            $bahan = BahanBaku::create([
+                'kode_material' => $kode,
+                'nama_material' => $request->nama_material,
+                'kategori' => $request->kategori,
+                'satuan' => $request->satuan,
+                'stok' => $isInventory ? $request->stok : 0,
+                'stok_minimum' => $stokMinimum,
+                'harga_satuan' => $isInventory ? $request->harga_satuan : 0,
                 'supplier' => $request->supplier ?? null,
+                'is_inventory' => $isInventory,
             ]);
-        }
 
-        // CATAT KE LOG_STOK untuk laporan (hanya jika inventory)
-        if ($isInventory) {
-            DB::table('log_stok')->insert([
-                'bahan_baku_id' => $bahan->id,
-                'operator_id' => Auth::id(),
-                'jenis_transaksi' => 'INPUT_BAHAN_BARU',
-                'jumlah' => $request->stok,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
+            // SIMPAN KE LAYER FIFO (bahan_stok_layers) - Layer pertama (hanya jika inventory)
+            if ($isInventory && Schema::hasTable('bahan_stok_layers')) {
+                \App\Models\BahanStokLayer::create([
+                    'bahan_baku_id' => $bahan->id,
+                    'tanggal_masuk' => now()->toDateString(),
+                    'qty_masuk' => $request->stok,
+                    'qty_sisa' => $request->stok,
+                    'harga_beli' => $request->harga_satuan,
+                    'supplier' => $request->supplier ?? null,
+                ]);
+            }
 
-        $msg = $isInventory
-            ? 'Material baru "' . $bahan->nama_material . '" berhasil ditambahkan dengan kode ' . $kode . '!'
-            : 'Material non-stok "' . $bahan->nama_material . '" berhasil ditambahkan!';
-        return redirect()->route('admin.bahan.index')->with('success', $msg);
+            // CATAT KE LOG_STOK untuk laporan (hanya jika inventory)
+            if ($isInventory) {
+                DB::table('log_stok')->insert([
+                    'bahan_baku_id' => $bahan->id,
+                    'operator_id' => Auth::id(),
+                    'jenis_transaksi' => 'INPUT_BAHAN_BARU',
+                    'jumlah' => $request->stok,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            $msg = $isInventory 
+                ? 'Material baru "' . $bahan->nama_material . '" berhasil ditambahkan dengan kode ' . $kode . '!' 
+                : 'Material non-stok "' . $bahan->nama_material . '" berhasil ditambahkan!';
+            return redirect()->route('admin.bahan.index')->with('success', $msg);
+        }
     }
 
-
-    public function show($id)
-    {
-        $bahan = BahanBaku::with('stockLayers')->findOrFail($id);
-        return view('admin.bahan.show', compact('bahan'));
-    }
 
     // 3. TAMPILKAN FORM EDIT
     public function edit($id)
@@ -248,12 +285,9 @@ class BahanBakuController extends Controller
         $kategories = Kategori::where('tipe', 'bahan')->get();
         $warnas = Warna::all();
 
-        // Ambil nilai pertama jika data berupa string terpisah koma
-        $kategoriArray = !is_null($bahan->kategori) ? explode(',', $bahan->kategori) : [];
-        $bahan->kategori = trim($kategoriArray[0] ?? '');
-
-        $warnaArray = !is_null($bahan->warna) ? explode(',', $bahan->warna) : [];
-        $bahan->warna = trim($warnaArray[0] ?? '');
+        // Pecah string kategori dan warna menjadi array
+        $bahan->kategori = !is_null($bahan->kategori) ? explode(',', $bahan->kategori) : [];
+        $bahan->warna = !is_null($bahan->warna) ? explode(',', $bahan->warna) : [];
 
         return view('admin.bahan.edit', compact('bahan', 'satuans', 'kategories', 'warnas'));
     }
@@ -268,10 +302,10 @@ class BahanBakuController extends Controller
         // Validasi untuk field yang boleh diubah
         $request->validate([
             'nama_material' => 'required|string|max:255',
-            'kategori' => 'nullable|string',
+            'kategori' => 'required|array', // Diubah menjadi array
             'satuan' => 'required|string',
             'foto' => 'nullable|image|max:20480',
-            'warna' => 'nullable|string',
+            'warna' => 'nullable|array', // Diubah menjadi array
             'detail' => 'nullable|string',
         ]);
 
@@ -287,16 +321,20 @@ class BahanBakuController extends Controller
             $fotoPath = $request->file('foto')->store('bahan_baku', 'public');
         }
 
+        // Konversi array ke string yang dipisahkan koma
+        $kategoriString = implode(',', $request->kategori);
+        $warnaString = $request->has('warna') ? implode(',', $request->warna) : null;
+
         // Update hanya field yang diizinkan
         $bahan->update([
             'nama_material' => $request->nama_material,
-            'kategori' => $request->kategori ?? $bahan->kategori,
+            'kategori' => $request->kategori,
             'satuan' => $request->satuan,
             'supplier' => $request->supplier ?? $bahan->supplier,
             'ref_no' => $request->ref_no ?? $bahan->ref_no,
             'foto' => $fotoPath,
-            'warna' => $request->warna,
-            'detail' => $request->detail,
+            'warna_id' => $request->warna_id,
+            'deskripsi_bahan' => $request->deskripsi_bahan,
         ]);
 
         return redirect()->route('admin.bahan.index')->with('success', 'Data bahan baku berhasil diperbarui.');
@@ -402,12 +440,9 @@ class BahanBakuController extends Controller
         $satuans = \App\Models\Satuan::all();
         $warnas = \App\Models\Warna::all();
 
-        // Ambil nilai pertama jika data berupa string terpisah koma
-        $kategoriArray = !is_null($bahan->kategori) ? explode(',', $bahan->kategori) : [];
-        $bahan->kategori = trim($kategoriArray[0] ?? '');
-
-        $warnaArray = !is_null($bahan->warna) ? explode(',', $bahan->warna) : [];
-        $bahan->warna = trim($warnaArray[0] ?? '');
+        // Pecah string menjadi array untuk multi-select
+        $bahan->kategori = !is_null($bahan->kategori) ? explode(',', $bahan->kategori) : [];
+        $bahan->warna = !is_null($bahan->warna) ? explode(',', $bahan->warna) : [];
 
         return view('operator.bahan-baku.edit', compact('bahan', 'kategories', 'satuans', 'warnas'));
     }
@@ -419,41 +454,53 @@ class BahanBakuController extends Controller
     public function updateOperator(Request $request, $id)
     {
         $bahan = BahanBaku::findOrFail($id);
+        $stokLama = $bahan->stok;
 
         $data = $request->validate([
             'nama_material' => 'required|string|max:255',
-            'kategori' => 'nullable|string',
-            'satuan' => 'required|string',
             'stok' => 'required|numeric',
-            'harga_satuan' => 'required|string',
-            'warna' => 'nullable|string',
-            'keterangan' => 'nullable|string',
-            'foto' => 'nullable|image|max:20480',
+            'stok_minimum' => 'nullable|numeric',
+            'kategori' => 'required|array', // Diubah menjadi array
+            'satuan' => 'required|string|max:50',
+            'harga_satuan' => 'required',
+            'supplier' => 'nullable|string|max:255',
+            'ref_no' => 'nullable|string|max:255',
+            'warna' => 'nullable|array', // Ditambahkan
         ]);
 
-        $harga = (int) preg_replace('/\D+/', '', $data['harga_satuan']);
+        $harga = (int) preg_replace('/\D+/', '', (string) $data['harga_satuan']);
+        $stokBaru = $data['stok'];
+        $selisih = $stokBaru - $stokLama;
 
-        // Handle file upload
-        $fotoPath = $bahan->foto;
-        if ($request->hasFile('foto')) {
-            if ($bahan->foto && Storage::disk('public')->exists($bahan->foto)) {
-                Storage::disk('public')->delete($bahan->foto);
-            }
-            $fotoPath = $request->file('foto')->store('bahan_baku', 'public');
-        }
+        // Konversi array ke string
+        $kategoriString = implode(',', $data['kategori']);
+        $warnaString = isset($data['warna']) ? implode(',', $data['warna']) : null;
 
         $bahan->update([
             'nama_material' => $data['nama_material'],
-            'kategori' => $data['kategori'],
+            'stok' => $stokBaru,
+            'stok_minimum' => $data['stok_minimum'] ?? ($bahan->stok_minimum ?? 10),
+            'kategori' => $kategoriString,
             'satuan' => $data['satuan'],
-            'stok' => $data['stok'],
             'harga_satuan' => $harga,
-            'warna' => $data['warna'],
-            'keterangan' => $data['keterangan'],
-            'foto' => $fotoPath,
+            'supplier' => $data['supplier'] ?? null,
+            'ref_no' => $data['ref_no'] ?? null,
+            'warna' => $warnaString, // Ditambahkan
         ]);
 
-        return redirect()->route('operator.bahan.index')->with('success', 'Data bahan baku berhasil diperbarui.');
+        // CATAT KE LOG_STOK jika ada perubahan stok
+        if ($selisih != 0) {
+            DB::table('log_stok')->insert([
+                'bahan_baku_id' => $bahan->id,
+                'operator_id' => Auth::id(),
+                'jenis_transaksi' => $selisih > 0 ? 'TAMBAH_STOK' : 'KELUAR_PRODUKSI',
+                'jumlah' => abs($selisih),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return redirect()->route('operator.bahan.index')->with('success', 'Data stok berhasil diperbarui.');
     }
 
     /**

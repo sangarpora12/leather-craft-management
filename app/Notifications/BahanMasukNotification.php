@@ -46,14 +46,13 @@ class BahanMasukNotification extends Notification
         $url = route('admin.bahan.index');
         
         return (new MailMessage)
-            ->subject('📦 Notifikasi Bahan Baku Masuk')
-            ->greeting('Halo ' . $notifiable->name . '!')
-            ->line("Bahan baku **{$this->bahan->nama_material}** baru saja masuk.")
-            ->line("Jumlah masuk: **{$this->qtyMasuk} {$this->bahan->satuan}**")
-            ->line("Stok saat ini: **{$this->bahan->stok} {$this->bahan->satuan}**")
-
-            ->action('Lihat Stok Bahan Baku', $url)
-            ->line('Terima kasih telah menggunakan sistem Berliano Leather!');
+        ->subject('📦 Notifikasi Bahan Baku Masuk')
+        ->greeting('Halo ' . $notifiable->name . '!')
+        ->line("Bahan baku **{$this->bahan->nama_material}** baru saja masuk.")
+        ->line("Jumlah masuk: **{$this->qtyMasuk} {$this->bahan->satuan}**")
+        ->line("Stok saat ini: **{$this->bahan->stok} {$this->bahan->satuan}**")
+        ->action('Lihat Stok Bahan Baku', $url)
+        ->line('Terima kasih telah menggunakan sistem Berliano Leather!');
     }
 
     /**

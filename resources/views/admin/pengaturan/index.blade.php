@@ -8,7 +8,7 @@
                 $menus = [
                     ['id' => 'satuan', 'icon' => 'fa-ruler-combined', 'color' => 'purple', 'title' => 'Satuan & Kategori', 'desc' => 'Kelola satuan dan kategori', 'onclick' => "bukaMenu('satuan')"],
                     ['id' => 'gudang', 'icon' => 'fa-warehouse', 'color' => 'green', 'title' => 'Konfigurasi Gudang', 'desc' => 'Batas stok, margin & harga jual', 'onclick' => "bukaMenu('gudang')"],
-                    ['id' => 'notifikasi', 'icon' => 'fa-bell', 'color' => 'pink', 'title' => 'Notifikasi', 'desc' => 'Bot Telegram & stok kritis', 'onclick' => "bukaMenu('notifikasi')"],
+                  
                     ['id' => 'danger', 'icon' => 'fa-exclamation-triangle', 'color' => 'red', 'title' => 'Danger Zone', 'desc' => 'Reset & hapus data', 'onclick' => "bukaMenu('danger')"],
                 ];
             @endphp

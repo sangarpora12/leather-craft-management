@@ -87,8 +87,8 @@ class PengadaanController extends Controller
                     'id' => $firstItem->id,
                     'bahan_baku_id' => $bahanId,
                     'bahan' => $firstItem->bahan,
-                    'total_jumlah' => intval($items->sum('jumlah')),
-                    'total_received' => intval($items->sum('received')),
+'total_jumlah' => $items->sum('jumlah'),
+'total_received' => $items->sum('received'),
                     'jumlah_order' => $items->count(),
                     'prioritas' => $items->contains(fn($i) => $i->prioritas == 'URGENT') ? 'URGENT' : 'BIASA',
                     'deadline_terdekat' => $items->min('tanggal_dibutuhkan'),
@@ -177,9 +177,14 @@ class PengadaanController extends Controller
     {
         // Validasi input
         $request->validate([
-            'jumlah_diterima' => 'required|numeric|min:1',
+            // Ganti 'integer' menjadi 'numeric'
+            'jumlah_diterima' => 'required|numeric|min:0.01',
             'harga_satuan' => 'nullable|numeric|min:0',
         ]);
+        $jumlahDiterima = (float) str_replace(',', '.', $request->jumlah_diterima);
+    
+        // Tambahkan logika replace koma ke titik jika user mengetik format Indonesia (1,5)
+        $jumlahDiterima = (float) str_replace(',', '.', $request->jumlah_diterima);
 
         $jumlahDiterima = (float) $request->jumlah_diterima;
         $jumlahAwal = $jumlahDiterima;
@@ -330,11 +335,13 @@ class PengadaanController extends Controller
         $request->validate([
             'items' => 'required|array|min:1',
             'items.*.bahan_baku_id' => 'required|exists:bahan_bakus,id',
-            'items.*.jumlah' => 'required|numeric|min:1',
+            // Ganti 'integer' menjadi 'numeric' agar mendukung desimal
+            'items.*.jumlah' => 'required|numeric|min:0.01', 
             'prioritas' => 'required|in:BIASA,URGENT',
             'tanggal_dibutuhkan' => 'required|date',
-            'operator_id' => 'nullable|exists:users,id', // Pastikan operator_id ada di tabel users
+            'operator_id' => 'nullable|exists:users,id',
         ]);
+        
 
         try {
             DB::transaction(function () use ($request) {
