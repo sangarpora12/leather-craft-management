@@ -188,46 +188,46 @@ public function store(Request $request)
     }
 
     private function crudSatuan(Request $request)
-    {
-        if ($request->has('hapus_satuan_id')) {
-            Satuan::destroy($request->hapus_satuan_id);
-            return back()->with('success', 'Satuan dihapus');
-        }
-        if ($request->filled('nama_satuan')) {
-            Satuan::create(['nama_satuan' => $request->nama_satuan]);
-            return back()->with('success', 'Satuan ditambah');
-        }
-        return back()->with('error', 'Data tidak lengkap');
+{
+    if ($request->has('hapus_satuan_id')) {
+        Satuan::destroy($request->hapus_satuan_id);
+        return back()->with('success', 'Satuan dihapus');
     }
+    if ($request->filled('nama_satuan')) {
+        Satuan::create(['nama_satuan' => $request->nama_satuan]);
+        return back()->with('success', 'Satuan ditambah');
+    }
+    return back()->with('error', 'Data tidak lengkap');
+}
 
-    private function crudKategori(Request $request)
-    {
-        if ($request->has('hapus_kategori_id')) {
-            Kategori::destroy($request->hapus_kategori_id);
-            return back()->with('success', 'Kategori dihapus');
-        }
-        if ($request->filled('nama_kategori')) {
-            Kategori::create([
-                'nama_kategori' => $request->nama_kategori,
-                'tipe' => $request->tipe ?? 'bahan'
-            ]);
-            return back()->with('success', 'Kategori ditambah');
-        }
-        return back()->with('error', 'Data tidak lengkap');
+private function crudKategori(Request $request)
+{
+    if ($request->has('hapus_kategori_id')) {
+        Kategori::destroy($request->hapus_kategori_id);
+        return back()->with('success', 'Kategori dihapus');
     }
+    if ($request->filled('nama_kategori')) {
+        Kategori::create([
+            'nama_kategori' => $request->nama_kategori,
+            'tipe' => $request->tipe ?? 'bahan'
+        ]);
+        return back()->with('success', 'Kategori ditambah');
+    }
+    return back()->with('error', 'Data tidak lengkap');
+}
 
-    private function crudWarna(Request $request)
-    {
-        if ($request->has('hapus_warna_id')) {
-            Warna::destroy($request->hapus_warna_id);
-            return back()->with('success', 'Warna dihapus');
-        }
-        if ($request->filled('nama_warna')) {
-            Warna::create(['nama_warna' => $request->nama_warna]);
-            return back()->with('success', 'Warna ditambah');
-        }
-        return back()->with('error', 'Data tidak lengkap');
+private function crudWarna(Request $request)
+{
+    if ($request->has('hapus_warna_id')) {
+        Warna::destroy($request->hapus_warna_id);
+        return back()->with('success', 'Warna dihapus');
     }
+    if ($request->filled('nama_warna')) {
+        Warna::create(['nama_warna' => $request->nama_warna]);
+        return back()->with('success', 'Warna ditambah');
+    }
+    return back()->with('error', 'Data tidak lengkap');
+}
 
     private function crudMotif(Request $request)
     {
@@ -287,7 +287,10 @@ public function store(Request $request)
     public function gudangIndex()
     {
         $pengaturanCollection = Pengaturan::pluck('nilai', 'nama_pengaturan');
-        return view('admin.laporan.pengaturan.gudang', compact('pengaturanCollection'));
+        // Tambahkan baris ini agar variabel $config tersedia di view gudang
+        $config = (object) $pengaturanCollection->toArray(); 
+        
+        return view('admin.laporan.pengaturan.gudang', compact('pengaturanCollection', 'config'));
     }
     
     public function gudangStore(Request $request)

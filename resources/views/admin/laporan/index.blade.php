@@ -226,19 +226,19 @@ if (!isset($mode) || empty($mode)) {
             </div>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
-                    <p class="text-gray-400 text-xs">Total Output</p>
+                    <p class="text-gray-400 text-xs">Total produk jadi</p>
                     <p class="text-white text-xl font-bold">{{ number_format($totalOutput) }}</p>
                 </div>
                 <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
-                    <p class="text-gray-400 text-xs">Produksi Pending</p>
+                    <p class="text-gray-400 text-xs">Produksi belum selesai</p>
                     <p class="text-white text-xl font-bold">{{ number_format($produksiPending) }}</p>
                 </div>
                 <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
-                    <p class="text-gray-400 text-xs">Barang Keluar</p>
+                    <p class="text-gray-400 text-xs">produk Keluar</p>
                     <p class="text-white text-xl font-bold">{{ number_format($barangKeluar) }}</p>
                 </div>
                 <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
-                    <p class="text-gray-400 text-xs">Stok Kritis</p>
+                    <p class="text-gray-400 text-xs">produk Kritis</p>
                     <p class="text-white text-xl font-bold">{{ $stokKritisCount }}</p>
                 </div>
             </div>
@@ -262,7 +262,7 @@ if (!isset($mode) || empty($mode)) {
                 </div>
                 <!-- Card: Stok Tersedia -->
                 <div class="summary-card bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
-                    <p class="text-gray-400 text-xs">Total Stok Tersedia</p>
+                    <p class="text-gray-400 text-xs">Total bahan di gudang</p>
                     <p class="text-white text-xl font-bold">{{ number_format($stokTersedia ?? 0) }}</p>
                 </div>
             </div>
@@ -468,8 +468,12 @@ if (!isset($mode) || empty($mode)) {
                                     <td class="px-3 py-2 text-xs font-bold text-white">{{ $bahan->nama_material }}</td>
                                     <!-- ISI KOLOM KETERANGAN BARU -->
                                     <td class="px-3 py-2 text-xs text-gray-400">
-                                        Dipakai untuk: <span class="text-white font-semibold">{{ $bahan->nama_produk ?? $bahan->keterangan ?? 'SPK Tidak Diketahui' }}</span>
-                                    </td>
+    Dipakai untuk: 
+    <span class="text-white font-semibold">
+        {{-- Prioritaskan Nama Produk, jika kosong tampilkan Kode SPK --}}
+        {{ $bahan->nama_produk ?? ($bahan->kode_spk ?? 'SPK Tidak Diketahui') }}
+    </span>
+</td>
                                     <td class="px-3 py-2 text-xs text-gray-300 text-center">{{ $bahan->satuan ?? '-' }}</td>
                                     <td class="px-3 py-2 text-xs text-red-400 text-right font-bold">-{{ rtrim(rtrim(number_format($bahan->jumlah, 2, ',', '.'), '0'), ',') }}</td>
                                 </tr>

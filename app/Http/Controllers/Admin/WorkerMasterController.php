@@ -96,6 +96,9 @@ class WorkerMasterController extends Controller
     /**
      * Menampilkan detail kinerja operator.
      */
+    /**
+     * Menampilkan detail kinerja operator.
+     */
     public function kinerja(Request $request, $id)
     {
         try {
@@ -104,10 +107,10 @@ class WorkerMasterController extends Controller
             // Ambil tanggal dari request
             $tanggal = $request->input('tanggal');
 
-            // Statistik produk yang diselesaikan bulan ini
+            // 1. Statistik produk yang diselesaikan BULAN INI oleh operator INI
             $produksiBulanIni = DB::table('produksis')
                 ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
-                ->where('produksis.operator_id', $id)
+                ->where('produksis.operator_id', $id) // Filter Operator
                 ->where(DB::raw('TRIM(produksis.status)'), 'Selesai')
                 ->whereMonth('produksis.tanggal_selesai', now()->month)
                 ->whereYear('produksis.tanggal_selesai', now()->year)
@@ -119,14 +122,17 @@ class WorkerMasterController extends Controller
             // Total produk selesai bulan ini
             $totalProdukBulanIni = $produksiBulanIni->sum('total');
             
-            // Statistik keseluruhan
+            // 2. Statistik KESELURUHAN (Semua waktu) untuk operator INI
             $totalSemuaProduk = DB::table('produksis')
-                ->where('operator_id', $id)
+                ->where('operator_id', $id) // Filter Operator
                 ->where(DB::raw('TRIM(status)'), 'Selesai')
                 ->sum('jumlah_selesai');
             
-            // ✅ Cek kolom operator_id agar aman dari error 1054
+            // 3. Total Bahan Diinput BULAN INI oleh operator INI
             $totalBahanDiinput = DB::table('log_stok')
+                ->where('operator_id', $id) // Filter Operator KHUSUS INI
+                ->whereMonth('created_at', now()->month) // Filter hanya bulan ini
+                ->whereYear('created_at', now()->year)
                 ->where(function($q) {
                     $q->where('jenis_transaksi', 'like', '%MASUK%')
                       ->orWhere('jenis_transaksi', 'like', '%TAMBAH%')
@@ -138,10 +144,10 @@ class WorkerMasterController extends Controller
 
             // --- TAMBAHAN UNTUK 10 PRODUK & BAHAN TERBARU --- //
             
-            // 1. Ambil Produk Terbaru dengan Paginasi
+            // 1. Ambil Produk Terbaru dengan Paginasi (Atau list) untuk operator INI
             $queryProduk = DB::table('produksis')
                 ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
-                ->where('produksis.operator_id', $id)
+                ->where('produksis.operator_id', $id) // Filter Operator
                 ->where(DB::raw('TRIM(produksis.status)'), 'Selesai');
 
             // Terapkan filter tanggal jika ada
@@ -150,13 +156,19 @@ class WorkerMasterController extends Controller
             }
 
             $produkSelesaiTerbaru = $queryProduk
-                ->orderByDesc('produksis.tanggal_selesai')
-                ->select('produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produksis.jumlah_selesai', 'produksis.tanggal_selesai as created_at')
-                ->get();
-
-            // 2. Ambil 10 Bahan Masuk Terbaru (Aman dari error 1054)
+            ->select(
+                'produk_jadis.nama_produk', 
+                'produk_jadis.kode_produk', 
+                DB::raw('SUM(produksis.jumlah_selesai) as jumlah_selesai'), 
+                DB::raw('DATE(produksis.tanggal_selesai) as created_at')
+            )
+            ->groupBy('produk_jadis.kode_produk', 'produk_jadis.nama_produk', DB::raw('DATE(produksis.tanggal_selesai)'))
+            ->orderByDesc(DB::raw('DATE(produksis.tanggal_selesai)'))
+            ->get();
+            // 2. Ambil Bahan Masuk Terbaru oleh operator INI
             $queryBahan = DB::table('log_stok')
                 ->join('bahan_bakus', 'log_stok.bahan_baku_id', '=', 'bahan_bakus.id')
+                ->where('log_stok.operator_id', $id) // Filter Operator KHUSUS INI
                 ->where(function($q) {
                     $q->where('log_stok.jenis_transaksi', 'like', '%MASUK%')
                         ->orWhere('log_stok.jenis_transaksi', 'like', '%TAMBAH%')
@@ -171,10 +183,15 @@ class WorkerMasterController extends Controller
             }
 
             $bahanTerbaru = $queryBahan
-                ->orderByDesc('log_stok.created_at')
-                ->select('bahan_bakus.nama_material', 'bahan_bakus.kode_material as kode_bahan', 'log_stok.jumlah', 'log_stok.created_at')
-                ->get();
-
+            ->select(
+                'bahan_bakus.nama_material', 
+                'bahan_bakus.kode_material as kode_bahan', 
+                DB::raw('SUM(log_stok.jumlah) as jumlah'), 
+                DB::raw('DATE(log_stok.created_at) as created_at')
+            )
+            ->groupBy('bahan_bakus.kode_material', 'bahan_bakus.nama_material', DB::raw('DATE(log_stok.created_at)'))
+            ->orderByDesc(DB::raw('DATE(log_stok.created_at)'))
+            ->get();
             return view('admin.pekerja-master.kinerja', compact(
                 'operator',
                 'produksiBulanIni',
@@ -191,7 +208,6 @@ class WorkerMasterController extends Controller
             return redirect()->back()->with('error', 'Gagal memuat kinerja: ' . $e->getMessage());
         }
     }
-
     /**
      * Menyimpan data operator baru.
      */

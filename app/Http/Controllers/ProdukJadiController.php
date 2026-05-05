@@ -37,9 +37,8 @@ class ProdukJadiController extends Controller
         $query = ProdukJadi::query();
 
         // ATURAN BARU: Hanya tampilkan produk yang relevan (punya stok / pernah diproduksi)
-        $query->where(function ($q) {
-            $q->where('stok', '>', 0)
-              ->orWhereHas('produksi'); // Cek apakah ada relasi/riwayat di tabel produksi
+        $query->whereHas('produksi', function ($q) {
+            $q->where('status', 'SELESAI');
         });
 
         // 3. Terapkan semua filter SECARA BERURUTAN
@@ -149,24 +148,29 @@ class ProdukJadiController extends Controller
      */
     public function create()
     {
-        // Logika Definitif: Menemukan nomor tertinggi dari kode produk,
-        // tidak peduli format/prefix (PROD- vs PR0D-).
-        $lastProduct = ProdukJadi::select('kode_produk')
+        // 1. Ambil prefix dari pengaturan gudang
+        $prefix = Pengaturan::where('nama_pengaturan', 'prefix_produk')->value('nilai') ?? 'PROD';
+    
+        // 2. Cari produk terakhir yang kodenya mirip dengan prefix tersebut
+        $lastProduct = ProdukJadi::where('kode_produk', 'like', $prefix . '-%')
             ->orderByRaw("CAST(REGEXP_REPLACE(kode_produk, '[^0-9]+', '') AS UNSIGNED) DESC")
             ->first();
-
-        $newCode = 'PROD-0001'; // Default jika tidak ada produk sama sekali
-
+    
         if ($lastProduct) {
-            // Ekstrak nomor dari kode tertinggi yang ditemukan
+            // Ambil angka saja dari kode produk tersebut
             $lastNumber = (int) preg_replace('/[^0-9]/', '', $lastProduct->kode_produk);
             $newNumber = $lastNumber + 1;
-            $newCode = 'PROD-' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+        } else {
+            $newNumber = 1;
         }
-
+    
+        // 3. Format kode baru sesuai prefix (Contoh: PROD-0001)
+        $newCode = $prefix . '-' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+    
         $kategories = Kategori::where('tipe', 'produk')->get(['id', 'nama_kategori']);
         $warnas = Warna::all(['id', 'nama_warna']);
         $motifs = Motif::all(['id', 'nama_motif']);
+        
         return view('admin.produk-jadi.create', compact('newCode', 'kategories', 'warnas', 'motifs'));
     }
 
@@ -175,65 +179,56 @@ class ProdukJadiController extends Controller
      */
     public function store(Request $request)
     {
+        // 1. Validasi data dasar (kode_produk tidak perlu divalidasi 'required' dari input lagi)
         $validated = $request->validate([
             'nama_produk'  => ['required', 'string', 'max:255'],
             'kategori'     => ['required', 'array', 'min:1'],
-            'kategori.*'   => ['string', 'max:100'],
             'warna'        => ['required', 'array', 'min:1'],
-            'warna.*'      => ['string', 'max:100'],
             'jenis_motif'  => ['required', 'array', 'min:1'],
-            'jenis_motif.*'=> ['string', 'max:100'],
+            'tipe_harga'   => ['nullable', 'string', 'in:manual,otomatis'],
             'harga_jual'   => ['nullable', 'string', 'required_if:tipe_harga,manual'],
             'deskripsi'    => ['nullable', 'string'],
             'keterangan'   => ['nullable', 'string'],
             'foto'         => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:10240'],
-            'tipe_harga'   => ['nullable', 'string', 'in:manual,otomatis'],
-            'kode_produk'  => ['required', 'string', 'unique:produk_jadis,kode_produk'],
         ]);
 
-        // ✅ FIX FINAL - PARSING HARGA JUAL
+        // 2. Generate KODE OTOMATIS di sini
+        $kodeOtomatis = $this->generateKodeProduk();
+
+        // 3. Parsing Harga Jual
         $hargaJual = 0;
         $hargaInput = $request->input('harga_jual');
-        
-        if ($request->tipe_harga == 'manual' && !empty($hargaInput) && $hargaInput !== '0' && $hargaInput !== 'Rp 0') {
-            // Bersihkan SEMUA karakter non numerik
-            $hargaJual = preg_replace('/[^0-9]/', '', $hargaInput);
-            $hargaJual = (int) $hargaJual;
+        if ($request->tipe_harga == 'manual' && !empty($hargaInput)) {
+            $hargaJual = (int) preg_replace('/[^0-9]/', '', $hargaInput);
         }
-        
-        return DB::transaction(function () use ($validated, $request, $hargaJual) {
+
+        return DB::transaction(function () use ($validated, $request, $hargaJual, $kodeOtomatis) {
             $pathFoto = null;
             if ($request->hasFile('foto')) {
                 $pathFoto = $request->file('foto')->store('produk-jadi', 'public');
             }
 
-            $pathSketsa = null;
-            if ($request->hasFile('sketsa')) {
-                $pathSketsa = $request->file('sketsa')->store('produk/sketsa', 'public');
-            }
-
+            // 4. Simpan ke database menggunakan $kodeOtomatis
             $product = ProdukJadi::create([
-                'kode_produk'  => $validated['kode_produk'],
+                'kode_produk'  => $kodeOtomatis,
                 'nama_produk'  => $validated['nama_produk'],
-                'kategori'     => isset($validated['kategori']) ? json_encode($validated['kategori']) : null,
-                'warna'        => isset($validated['warna']) ? json_encode($validated['warna']) : null,
-                'jenis_motif'  => isset($validated['jenis_motif']) ? json_encode($validated['jenis_motif']) : null,
+                'kategori'     => json_encode($validated['kategori']),
+                'warna'        => json_encode($validated['warna']),
+                'jenis_motif'  => json_encode($validated['jenis_motif']),
                 'harga_jual'   => $hargaJual,
-                'deskripsi'    => $validated['deskripsi'],
-                'keterangan'   => $validated['keterangan'],
+                'tipe_harga'   => $validated['tipe_harga'] ?? 'otomatis',
+                // Gunakan ?? null agar tidak error jika inputnya kosong/tidak ada
+                'deskripsi'    => $validated['deskripsi'] ?? null, 
+                'keterangan'   => $validated['keterangan'] ?? null,
                 'stok'         => 0,
                 'foto'         => $pathFoto,
-                'panjang'      => $validated['panjang'] ?? null,
-                'lebar'        => $validated['lebar'] ?? null,
-                'tinggi'       => $validated['tinggi'] ?? null,
-                'detail_pola'  => $validated['detail_pola'] ?? null,
-                'sketsa'       => $pathSketsa,
-                'tipe_harga'   => $validated['tipe_harga'] ?? 'otomatis',
             ]);
 
+            // 5. Redirect ke halaman buat BOM (Resep)
             return redirect()->route('admin.bom.edit', $product->id)
-                ->with('success', 'Produk ' . $validated['kode_produk'] . ' berhasil dibuat. Sekarang, silakan isi resep BOM-nya.');
+    ->with('success', 'Produk berhasil dibuat! Sekarang silakan isi resep bahannya.');
         });
+    
     }
 
     /**
@@ -296,8 +291,9 @@ class ProdukJadiController extends Controller
             'lebar'        => ['nullable', 'numeric', 'min:0'],
             'tinggi'       => ['nullable', 'numeric', 'min:0'],
             'detail_pola'  => ['nullable', 'string'],
-            'sketsa'       => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
             'tipe_harga'   => ['nullable', 'string', 'in:manual,otomatis'],
+            'sketsa'       => ['nullable', 'array', 'max:4'],
+            'sketsa.*'     => ['image', 'mimes:jpeg,png,jpg,gif,svg', 'max:10240'],
         ]);
 
         // ✅ ✅ LOGIKA BARU FIX DATABASE ERROR
@@ -332,10 +328,19 @@ class ProdukJadiController extends Controller
             $pathFoto = $request->file('foto')->store('produk-jadi', 'public');
         }
 
-        $pathSketsa = $product->sketsa;
+        $pathsSketsa = $product->sketsa ? json_decode($product->sketsa, true) : [];
         if ($request->hasFile('sketsa')) {
-            if ($product->sketsa) Storage::disk('public')->delete($product->sketsa);
-            $pathSketsa = $request->file('sketsa')->store('produk/sketsa', 'public');
+            // Hapus file lama jika ada
+            if (is_array($pathsSketsa)) {
+                foreach ($pathsSketsa as $oldPath) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+            }
+            // Upload file baru
+            $pathsSketsa = [];
+            foreach ($request->file('sketsa') as $file) {
+                $pathsSketsa[] = $file->store('produk/sketsa', 'public');
+            }
         }
 
         $product->update([
@@ -350,7 +355,7 @@ class ProdukJadiController extends Controller
             'lebar'        => $validated['lebar'] ?? $product->lebar,
             'tinggi'       => $validated['tinggi'] ?? $product->tinggi,
             'detail_pola'  => $validated['detail_pola'] ?? $product->detail_pola,
-            'sketsa'       => $pathSketsa,
+            'sketsa'       => !empty($pathsSketsa) ? json_encode($pathsSketsa) : null,
             'foto'         => $pathFoto,
             'tipe_harga'   => $validated['tipe_harga'] ?? $product->tipe_harga ?? 'manual',
         ]);
@@ -428,6 +433,7 @@ class ProdukJadiController extends Controller
             'type'   => ['required', Rule::in(['add', 'reduce'])],
             'amount' => ['required', 'integer', 'min:1'],
             'alasan' => ['nullable', 'string', 'max:255'],
+            
         ]);
 
         $product = ProdukJadi::findOrFail($id);
@@ -490,24 +496,19 @@ class ProdukJadiController extends Controller
      * Generate Kode Otomatis
      */
     private function generateKodeProduk(): string
-    {
-        $prefix = Pengaturan::where('nama_pengaturan', 'prefix_produk')->value('nilai') ?? 'PRD-';
+{
+    $prefix = Pengaturan::where('nama_pengaturan', 'prefix_produk')->value('nilai') ?? 'PROD';
 
-        // Cari kode produk terakhir dengan prefix yang sama
-        $lastProduct = ProdukJadi::where('kode_produk', 'LIKE', $prefix . '%')
-            ->orderBy('kode_produk', 'desc')
-            ->first();
+    $lastProduct = ProdukJadi::where('kode_produk', 'LIKE', $prefix . '-%')
+        ->orderByRaw("CAST(REGEXP_REPLACE(kode_produk, '[^0-9]+', '') AS UNSIGNED) DESC")
+        ->first();
 
-        if ($lastProduct) {
-            // Ambil nomor dari kode terakhir
-            $lastNumber = (int) str_replace($prefix, '', $lastProduct->kode_produk);
-            $newNumber = $lastNumber + 1;
-        } else {
-            // Jika belum ada, mulai dari 1
-            $newNumber = 1;
-        }
-
-        // Format nomor tanpa padding nol (misal: 1)
-        return $prefix . $newNumber;
+    $newNumber = 1;
+    if ($lastProduct) {
+        $lastNumber = (int) preg_replace('/[^0-9]/', '', $lastProduct->kode_produk);
+        $newNumber = $lastNumber + 1;
     }
+
+    return $prefix . '-' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+}
 }

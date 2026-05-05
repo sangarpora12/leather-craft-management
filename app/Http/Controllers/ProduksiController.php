@@ -402,22 +402,6 @@ class ProduksiController extends Controller
                     throw new \Exception('Tidak ada SPK PENDING yang cocok untuk diproses.');
                 }
                 // --- 4. Update baris yang dipilih → SELESAI --------------------
-// Kita gunakan looping agar lebih pasti setiap baris menyimpan operator_id
-$rowsToFinish = Produksi::whereIn('id', $idsToFinish)->get();
-
-foreach ($rowsToFinish as $row) {
-    $row->status = 'SELESAI';
-    $row->jumlah_selesai = $row->jumlah_produksi;
-    $row->tanggal_selesai = now();
-    $row->foto_bukti = $fotoJson;
-    $row->operator_id = auth()->id(); // <--- Ini yang merekam nama Anda
-    $row->save();
-}
-
-// --- 5. Tambah stok produk jadi --------------------------------
-$totalQtyDiselesaikan = $rowsToFinish->sum('jumlah_produksi');
-$produkJadi = ProdukJadi::findOrFail($produkJadiId);
-$produkJadi->increment('stok', $totalQtyDiselesaikan);
                 // ✅ Update hanya ID yang sudah dipilih — dijamin tepat jumlahnya
                 $rowsToUpdate = Produksi::whereIn('id', $idsToUpdate)->get();
                 foreach ($rowsToUpdate as $row) {
@@ -539,17 +523,18 @@ $produkJadi->increment('stok', $totalQtyDiselesaikan);
                 ->orderBy('created_at', 'asc')
                 ->get(['id', 'jumlah_produksi']);
 
-            $idsToFinish = [];
-            $accumulated = 0;
-            foreach ($prosesRows as $row) {
-                if ($accumulated >= $qtySelesai) break;
-                $idsToFinish[] = $row->id;
-                $accumulated  += (int) $row->jumlah_produksi;
-            }
+// ✅ KODE YANG BENAR:
+$idsToFinish = [];
+$accumulated = 0;
+foreach ($prosesRows as $row) {
+    if ($accumulated >= $qtySelesai) break;
+    $idsToFinish[] = $row->id;
+    $accumulated  += (int) $row->jumlah_produksi;
+}
 
-            if (empty($idsToFinish)) {
-                throw new \Exception('Tidak ada SPK PROSES yang bisa diselesaikan.');
-            }
+if (empty($idsToFinish)) {
+    throw new \Exception('Tidak ada SPK PROSES yang bisa diselesaikan.');
+}
 
             // ── 3. Multi-upload foto bukti ────────────────────────────────
             // Form: <input type="file" name="foto_bukti[]" multiple accept="image/*">

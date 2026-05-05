@@ -9,7 +9,11 @@
     <div class="mb-8">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div class="flex items-center gap-4">
-                <img class="h-16 w-16 rounded-full object-cover" src="{{ $operator->profile_photo_url }}" alt="{{ $operator->name }}">
+            @if($operator->foto)
+    <img class="h-16 w-16 rounded-full object-cover border-2 border-purple-500/30" src="{{ asset('storage/' . $operator->foto) }}" alt="{{ $operator->name }}">
+@else
+    <img class="h-16 w-16 rounded-full object-cover border-2 border-purple-500/30" src="https://ui-avatars.com/api/?name={{ urlencode($operator->name) }}&background=2D3748&color=fff" alt="{{ $operator->name }}">
+@endif
                 <div>
                     <h1 class="text-2xl font-bold text-white">{{ $operator->name }}</h1>
                     <p class="text-sm text-gray-400">Kinerja & Riwayat Aktivitas</p>
@@ -95,8 +99,8 @@
                                 <tr class="hover:bg-white/[0.02] transition-colors">
                                     <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-mono text-gray-300 sm:pl-6">{{ $produk->kode_produk }}</td>
                                     <td class="whitespace-normal break-words px-3 py-4 text-sm font-medium text-white">{{ $produk->nama_produk }}</td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ $produk->jumlah_selesai }} Pcs</td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ $produk->created_at ? \Carbon\Carbon::parse($produk->created_at)->format('d/m/Y H:i') : '-' }}</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ floatval($produk->jumlah_selesai) }} Pcs</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ $produk->created_at ? \Carbon\Carbon::parse($produk->created_at)->format('d/m/Y') : '-' }}</td>
                                 </tr>
                             @empty
                                 <tr>
@@ -132,8 +136,8 @@
                                 <tr class="hover:bg-white/[0.02] transition-colors">
                                     <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-mono text-gray-300 sm:pl-6">{{ $bahan->kode_bahan }}</td>
                                     <td class="whitespace-normal break-words px-3 py-4 text-sm font-medium text-white">{{ $bahan->nama_material }}</td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ number_format($bahan->jumlah, 0, ',', '.') }}</td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ $bahan->created_at ? \Carbon\Carbon::parse($bahan->created_at)->format('d/m/Y H:i') : '-' }}</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ floatval($bahan->jumlah) }}</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ $bahan->created_at ? \Carbon\Carbon::parse($bahan->created_at)->format('d/m/Y') : '-' }}</td>
                                 </tr>
                             @empty
                                 <tr>

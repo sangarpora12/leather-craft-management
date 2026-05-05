@@ -5,21 +5,33 @@
 @section('content')
 <div class="p-2">
     {{-- Header --}}
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b border-white/10 pb-6 gap-4">
+    {{-- Header --}}
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 border-b border-white/10 pb-6 gap-4">
         <div>
             <p class="text-gray-400 text-sm">Resep bahan baku untuk setiap unit produk jadi.</p>
         </div>
         
-        <div class="flex gap-3 w-full md:w-auto">
-            <div class="relative w-full md:w-64">
-                <form action="{{ route('admin.bom.index') }}" method="GET">
+        <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+            <!-- Form membungkus Search dan Filter -->
+            <form action="{{ route('admin.bom.index') }}" method="GET" class="flex flex-col sm:flex-row gap-3 w-full">
+                <!-- Kotak Pencarian -->
+                <div class="relative w-full sm:w-64">
                     <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari Resep Produk..." class="bg-[#1A1A1A] border border-white/10 rounded-lg py-2.5 px-4 pl-10 text-sm focus:outline-none focus:border-orange-500 w-full transition text-white">
                     <span class="absolute left-3 top-3 text-gray-500">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     </span>
-                </form>
-            </div>
-            <a href="{{ route('admin.produk-jadi.create') }}" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition whitespace-nowrap">
+                </div>
+
+                <!-- Dropdown Filter Status -->
+                <select name="status" onchange="this.form.submit()" class="bg-[#1A1A1A] border border-white/10 rounded-lg py-2.5 px-4 text-sm focus:outline-none focus:border-orange-500 transition text-white cursor-pointer w-full sm:w-auto outline-none">
+                    <option value="">Semua Status</option>
+                    <option value="sudah_ada" {{ request('status') == 'sudah_ada' ? 'selected' : '' }}>Sudah Ada Resep</option>
+                    <option value="belum_ada" {{ request('status') == 'belum_ada' ? 'selected' : '' }}>Belum Ada Resep</option>
+                </select>
+            </form>
+
+            <!-- Tombol Buat Produk Baru -->
+            <a href="{{ route('admin.produk-jadi.create') }}" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition whitespace-nowrap flex items-center justify-center shrink-0">
                 Buat Produk Baru
             </a>
         </div>

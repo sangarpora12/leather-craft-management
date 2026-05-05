@@ -24,9 +24,6 @@
     border-radius: 0.5rem !important;
     padding: 0.25rem 0.5rem !important;
 }
-.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
-    color: white !important;
-}
 .select2-dropdown {
     background-color: #0f0f0f !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -55,9 +52,7 @@
                         </a>
                         <h1 class="text-3xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">Buat Produk Baru</h1>
                     </div>
-                    <p class="text-sm text-gray-400">
-                        Buat master data produk jadi. Stok akan bertambah otomatis dari proses produksi.
-                    </p>
+                    <p class="text-sm text-gray-400">Isi data dasar produk. Setelah ini Anda akan diarahkan untuk mengisi Resep Bahan (BOM).</p>
                 </div>
             </div>
 
@@ -66,10 +61,9 @@
                 <form action="{{ route('admin.produk-jadi.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
-                    {{-- Error --}}
                     @if ($errors->any())
                         <div class="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl backdrop-blur-sm">
-                            <ul class="list-disc list-inside space-y-1">
+                            <ul class="list-disc list-inside">
                                 @foreach ($errors->all() as $error)
                                     <li>{{ $error }}</li>
                                 @endforeach
@@ -77,303 +71,167 @@
                         </div>
                     @endif
 
-                    {{-- Field Groups --}}
-                    <div x-data="{
-                        price: '',
-                        filePreview: null,
+                    <div x-data="{ price: '', filePreview: null,
                         formatRupiah(value) {
                             let number_string = value.replace(/[^,\d]/g, '').toString();
                             let split = number_string.split(',');
                             let sisa = split[0].length % 3;
                             let rupiah = split[0].substr(0, sisa);
                             let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
-                            if (ribuan) {
-                                separator = sisa ? '.' : '';
-                                rupiah += separator + ribuan.join('.');
-                            }
-                            rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
-                            return rupiah;
-                        },
-                        handleFile(e) {
-                            const file = e.target.files[0];
-                            if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (e) => {
-                                    this.filePreview = e.target.result;
-                                };
-                                reader.readAsDataURL(file);
-                            } else {
-                                this.filePreview = null;
-                            }
+                            if (ribuan) { separator = sisa ? '.' : ''; rupiah += separator + ribuan.join('.'); }
+                            return split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
                         }
                     }">
             
-            {{-- Group 1: Informasi Dasar --}}
-            <div class="space-y-6 mb-10">
-                <div class="pt-1 pb-4 border-b border-white/10">
-                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                        <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
-                        Informasi Dasar
-                    </h3>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-                    {{-- Nama --}}
-                    <div class="lg:col-span-2">
-                        <label class="block text-sm font-semibold text-gray-300 mb-2">Nama Produk <span class="text-red-400">*</span></label>
-                        <input type="text" name="nama_produk" required
-                            class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-4 py-3 text-white placeholder-gray-500 text-base font-medium focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50"
-                            placeholder="Contoh: Tas Kulit Premium Black Edition">
-                    </div>
-
-                    {{-- Kategori --}}
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-300 mb-2">Kategori</label>
-                        <select name="kategori[]" multiple class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-5 py-4 text-white placeholder-gray-500 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50" id="kategori-select">
-                            @foreach($kategories as $kategori)
-                            <option value="{{ $kategori->nama_kategori }}">{{ $kategori->nama_kategori }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                </div>
-            </div>
-
-{{-- Group 2: Spesifikasi --}}
-            <div class="space-y-6 mb-10">
-                <div class="pt-1 pb-4 border-b border-white/10">
-                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                        <div class="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                        Spesifikasi Produk
-                    </h3>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {{-- Warna --}}
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-300 mb-2">Warna <span class="text-red-400">*</span></label>
-                        <select name="warna[]" multiple required class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-5 py-4 text-white placeholder-gray-500 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50" id="warna-select">
-                            <option value="">Pilih Warna</option>
-                            @foreach($warnas as $warna)
-                            <option value="{{ $warna->nama_warna }}">{{ $warna->nama_warna }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    {{-- Motif --}}
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-300 mb-2">Jenis Motif</label>
-                        <select name="jenis_motif[]" multiple class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-5 py-4 text-white placeholder-gray-500 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50" id="motif-select">
-                            <option value="">Pilih Motif</option>
-                            @foreach($motifs as $motif)
-                            <option value="{{ $motif->nama_motif }}">{{ $motif->nama_motif }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Group: Dimensi Pola --}}
-            <div class="space-y-6 mb-10">
-                <div class="pt-1 pb-4 border-b border-white/10">
-                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                        <div class="w-2 h-2 bg-cyan-400 rounded-full"></div>
-                        Dimensi Pola & Sketsa
-                    </h3>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {{-- Panjang --}}
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-300 mb-2">Panjang (cm)</label>
-                        <input type="number" step="0.01" name="panjang"
-                            class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-5 py-4 text-white placeholder-gray-500 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50"
-                            placeholder="25">
-                    </div>
-
-                    {{-- Lebar --}}
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-300 mb-2">Lebar (cm)</label>
-                        <input type="number" step="0.01" name="lebar"
-                            class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-5 py-4 text-white placeholder-gray-500 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50"
-                            placeholder="10">
-                    </div>
-
-                    {{-- Tinggi --}}
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-300 mb-2">Tinggi (cm)</label>
-                        <input type="number" step="0.01" name="tinggi"
-                            class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-5 py-4 text-white placeholder-gray-500 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50"
-                            placeholder="15">
-                    </div>
-                </div>
-
-                <div class="space-y-3">
-                    <label class="block text-sm font-semibold text-gray-300">Detail Pola / Catatan Potong</label>
-                    <textarea name="detail_pola" rows="3"
-                        class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-5 py-5 text-white placeholder-gray-500 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50 resize-vertical text-base"
-                        placeholder="Contoh: Pola A dipotong 2x, Pola B dipotong 1x dengan ketebalan 1.2mm..."></textarea>
-                </div>
-
-                <div class="space-y-3" x-data="{ sketsaPreview: null }">
-                    <label class="block text-sm font-semibold text-gray-300">Upload Foto Sketsa</label>
-                    <div class="space-y-3">
-                        {{-- Preview --}}
-                        <div x-show="sketsaPreview" class="w-full h-48 rounded-2xl overflow-hidden border-2 border-dashed border-white/20 bg-black/30 flex items-center justify-center shadow-lg">
-                            <img x-bind:src="sketsaPreview" class="w-full h-full object-contain">
-                        </div>
-                        <div x-show="!sketsaPreview" class="group relative w-full h-32 border-2 border-dashed border-white/20 hover:border-cyan-400 hover:bg-white/5 rounded-2xl flex flex-col items-center justify-center p-6 cursor-pointer transition-all duration-300 shadow-lg hover:shadow-cyan-400/10 bg-black/30 backdrop-blur-sm">
-                            <svg class="w-12 h-12 text-gray-400 group-hover:text-cyan-400 mb-3 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h10a4 4 0 014 4v5a4 4 0 01-4 4H7z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                            <div class="text-center">
-                                <p class="text-white font-medium mb-1">Klik atau drag sketsa ke sini</p>
-                                <p class="text-sm text-gray-400">PNG, JPG hingga 2MB</p>
+                        {{-- Group 1: Informasi Dasar --}}
+                        <div class="space-y-6 mb-10">
+                            <div class="pt-1 pb-4 border-b border-white/10">
+                                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                    <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
+                                    Informasi Dasar
+                                </h3>
                             </div>
-                            <input type="file" name="sketsa" accept="image/*" 
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                x-on:change="sketsaPreview = URL.createObjectURL($event.target.files[0])">
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            {{-- Group 3: Harga & Media --}}
-            <div class="space-y-6 mb-10">
-                <div class="pt-1 pb-4 border-b border-white/10">
-                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                        <div class="w-2 h-2 bg-amber-400 rounded-full"></div>
-                        Harga & Media
-                    </h3>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {{-- Tipe Harga --}}
-                    <div class="space-y-3">
-                        <label class="block text-sm font-semibold text-gray-300">Tipe Harga</label>
-                        <div class="space-y-3">
-                            <label class="flex items-center p-4 bg-[#0a0a0a]/80 border border-white/20 rounded-2xl cursor-pointer hover:border-gold-400 transition-all">
-                                <input type="radio" name="tipe_harga" value="manual" checked 
-                                    class="w-5 h-5 text-gold-400 border-gray-600 focus:ring-gold-400 focus:ring-2 bg-transparent"
-                                    onchange="toggleHargaField()">
-                                <div class="ml-3">
-                                    <span class="text-white font-semibold">Harga Manual</span>
-                                    <p class="text-xs text-gray-500 mt-1">Input harga secara langsung</p>
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {{-- Nama --}}
+                                <div class="lg:col-span-1">
+                                    <label class="block text-sm font-semibold text-gray-300 mb-2">Nama Produk <span class="text-red-400">*</span></label>
+                                    <input type="text" name="nama_produk" required value="{{ old('nama_produk') }}"
+                                        class="w-full bg-[#0a0a0a]/80 border border-white/20 rounded-2xl px-4 py-3 text-white focus:border-gold-400 transition-all outline-none"
+                                        placeholder="Contoh: Messenger Bag - Java Heritage">
                                 </div>
-                            </label>
-                            <label class="flex items-center p-4 bg-[#0a0a0a]/80 border border-white/20 rounded-2xl cursor-pointer hover:border-gold-400 transition-all">
-                                <input type="radio" name="tipe_harga" value="otomatis" 
-                                    class="w-5 h-5 text-gold-400 border-gray-600 focus:ring-gold-400 focus:ring-2 bg-transparent"
-                                    onchange="toggleHargaField()">
-                                <div class="ml-3">
-                                    <span class="text-white font-semibold">Harga Otomatis</span>
-                                    <p class="text-xs text-gray-500 mt-1">Markup dari BOM + Margin + PPN</p>
+
+                                {{-- Kode Produk (Otomatis & Read-Only) --}}
+<div class="lg:col-span-1">
+    <label class="block text-sm font-semibold text-gray-300 mb-2">Kode Produk (Otomatis)</label>
+    <input type="text" value="{{ $newCode }}" readonly
+        class="w-full bg-[#0a0a0a]/50 border border-white/10 rounded-2xl px-4 py-3 text-gray-500 font-mono cursor-not-allowed outline-none"
+        placeholder="Akan digenerate otomatis">
+    <p class="text-[10px] text-gray-500 mt-1">*Kode mengikuti format pengaturan gudang (Prefix-000X)</p>
+</div>
+                                {{-- Kategori --}}
+                                <div class="lg:col-span-2">
+                                    <label class="block text-sm font-semibold text-gray-300 mb-2">Kategori</label>
+                                    <select name="kategori[]" multiple class="w-full" id="kategori-select">
+                                        @foreach($kategories as $kategori)
+                                            <option value="{{ $kategori->nama_kategori }}">{{ $kategori->nama_kategori }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
-                            </label>
-                        </div>
-                    </div>
-
-                    {{-- Harga --}}
-                    <div class="space-y-2" id="harga-manual-container">
-                        <label class="block text-sm font-semibold text-gray-300">Harga Jual <span class="text-red-400">*</span></label>
-                        <div class="relative">
-                            <span class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">Rp</span>
-                            <input type="text" name="harga_jual" id="harga_jual_input" required 
-                                x-model="price"
-                                x-on:input="price = formatRupiah($event.target.value)"
-                                class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl py-5 pl-14 pr-5 text-white placeholder-gray-500 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50 font-mono font-bold text-xl"
-                                placeholder="150.000">
-                        </div>
-                        <p class="text-xs text-gray-500" id="bantuan-harga">Harga akan dihitung otomatis berdasarkan modal bahan baku + Margin + PPN saat produk disimpan.</p>
-                    </div>
-
-                    {{-- Biaya Lain-lain --}}
-                    <div class="space-y-2">
-                        <label class="block text-sm font-semibold text-gray-300">Biaya Lain-lain (Rp)</label>
-                        <div class="relative">
-                            <span class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">Rp</span>
-                            <input type="text" name="biaya_lain"
-                                   x-data="{ biaya: '' }"
-                                   x-model="biaya"
-                                   x-on:input="biaya = formatRupiah($event.target.value)"
-                                   class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl py-5 pl-14 pr-5 text-white placeholder-gray-500 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50 font-mono font-bold text-xl"
-                                   placeholder="0">
-                        </div>
-                        <p class="text-xs text-gray-500">Contoh: biaya packaging, stiker, dll. (Opsional)</p>
-                    </div>
-
-                    {{-- Foto --}}
-                    <div class="space-y-3">
-                        <label class="block text-sm font-semibold text-gray-300">Foto Produk</label>
-                        <div class="space-y-3">
-                            {{-- Preview --}}
-                            <div x-show="filePreview" class="w-full h-32 rounded-2xl overflow-hidden border-2 border-dashed border-white/20 bg-black/30 flex items-center justify-center shadow-lg">
-                                <img x-bind:src="filePreview" class="w-full h-full object-cover">
-                            </div>
-                            <div x-show="!filePreview" id="upload-area" class="group relative w-full h-32 border-2 border-dashed border-white/20 hover:border-gold-400 hover:bg-white/5 rounded-2xl flex flex-col items-center justify-center p-6 cursor-pointer transition-all duration-300 shadow-lg hover:shadow-gold-400/10 bg-black/30 backdrop-blur-sm">
-                                <svg class="w-12 h-12 text-gray-400 group-hover:text-gold-400 mb-3 transition" fill="none" stroke="currentColor" viewBox="0 0 48 48">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v4a2 2 0 002 2h10l3 3H6a2 2 0 00-2 2v3a2 2 0 002 2h24a2 2 0 002-2v-3a2 2 0 00-2-2H19l3-3h10a2 2 0 002-2v-4a2 2 0 00-2-2H12z"/>
-                                </svg>
-                                <div class="text-center">
-                                    <p class="text-white font-medium mb-1">Klik atau drag gambar ke sini</p>
-                                    <p class="text-sm text-gray-400">PNG, JPG hingga 5MB</p>
-                                </div>
-                                <input type="file" name="foto" accept="image/*" 
-                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    x-on:change="handleFile($event)">
                             </div>
                         </div>
+
+                        {{-- Group 2: Spesifikasi --}}
+                        <div class="space-y-6 mb-10">
+                            <div class="pt-1 pb-4 border-b border-white/10">
+                                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                    <div class="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                                    Tampilan & Gaya
+                                </h3>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {{-- Warna --}}
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-300 mb-2">Warna <span class="text-red-400">*</span></label>
+                                    <select name="warna[]" multiple required id="warna-select">
+                                        @foreach($warnas as $warna)
+                                            <option value="{{ $warna->nama_warna }}">{{ $warna->nama_warna }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                {{-- Motif --}}
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-300 mb-2">Jenis Motif <span class="text-red-400">*</span></label>
+                                    <select name="jenis_motif[]" multiple required id="motif-select">
+                                        @foreach($motifs as $motif)
+                                            <option value="{{ $motif->nama_motif }}">{{ $motif->nama_motif }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Group 3: Harga & Media --}}
+                        <div class="space-y-6 mb-10">
+                            <div class="pt-1 pb-4 border-b border-white/10">
+                                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                    <div class="w-2 h-2 bg-amber-400 rounded-full"></div>
+                                    Harga & Media
+                                </h3>
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {{-- Tipe Harga --}}
+                                <div class="space-y-3">
+                                    <label class="block text-sm font-semibold text-gray-300">Tipe Harga</label>
+                                    <div class="grid grid-cols-1 gap-3">
+                                        <label class="flex items-center p-4 bg-[#0a0a0a]/80 border border-white/20 rounded-2xl cursor-pointer hover:border-gold-400 transition-all">
+                                            <input type="radio" name="tipe_harga" value="manual" checked onchange="toggleHargaField()" class="w-5 h-5 text-gold-400">
+                                            <div class="ml-3">
+                                                <span class="text-white font-semibold">Harga Manual</span>
+                                                <p class="text-xs text-gray-500">Input harga jual secara langsung</p>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center p-4 bg-[#0a0a0a]/80 border border-white/20 rounded-2xl cursor-pointer hover:border-gold-400 transition-all">
+                                            <input type="radio" name="tipe_harga" value="otomatis" onchange="toggleHargaField()" class="w-5 h-5 text-gold-400">
+                                            <div class="ml-3">
+                                                <span class="text-white font-semibold">Harga Otomatis</span>
+                                                <p class="text-xs text-gray-500">Dihitung otomatis dari total bahan baku</p>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {{-- Harga --}}
+                                <div class="space-y-2" id="harga-manual-container">
+                                    <label class="block text-sm font-semibold text-gray-300">Harga Jual <span class="text-red-400">*</span></label>
+                                    <div class="relative">
+                                        <span class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">Rp</span>
+                                        <input type="text" name="harga_jual" id="harga_jual_input" required 
+                                            x-model="price" x-on:input="price = formatRupiah($event.target.value)"
+                                            class="w-full bg-[#0a0a0a]/80 border border-white/20 rounded-2xl py-5 pl-14 pr-5 text-white font-mono font-bold text-xl outline-none"
+                                            placeholder="150.000">
+                                    </div>
+                                    <p class="text-xs text-gray-500 hidden" id="bantuan-harga">Harga akan muncul otomatis setelah resep bahan baku diisi.</p>
+                                </div>
+
+                                {{-- Foto Utama --}}
+                                <div class="lg:col-span-2">
+                                    <label class="block text-sm font-semibold text-gray-300 mb-2">Foto Produk Utama</label>
+                                    <div x-show="filePreview" class="mb-3 w-full h-48 rounded-2xl overflow-hidden border border-white/20 bg-black/30 flex items-center justify-center">
+                                        <img x-bind:src="filePreview" class="h-full object-cover">
+                                    </div>
+                                    <div class="relative group w-full h-32 border-2 border-dashed border-white/20 hover:border-gold-400 rounded-2xl flex flex-col items-center justify-center p-6 cursor-pointer bg-black/30">
+                                        <p class="text-white font-medium">Klik untuk upload foto produk</p>
+                                        <input type="file" name="foto" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            x-on:change="const file = $event.target.files[0]; if(file){ const reader = new FileReader(); reader.onload = (e) => { filePreview = e.target.result; }; reader.readAsDataURL(file); }">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Deskripsi --}}
+                        <div class="space-y-3 mb-6">
+                            <label class="block text-sm font-semibold text-gray-300">Deskripsi Singkat</label>
+                            <textarea name="deskripsi" rows="3" class="w-full bg-[#0a0a0a]/80 border border-white/20 rounded-2xl px-5 py-5 text-white outline-none" placeholder="Messenger Bag vintage berbahan kulit Crazy Horse..."></textarea>
+                        </div>
+
+                        {{-- Footer --}}
+                        <div class="flex justify-end gap-4 mt-12 pt-8 border-t border-white/10">
+                            <a href="{{ route('admin.produk-jadi.index') }}" class="px-8 py-4 bg-white/5 text-white rounded-2xl text-sm font-semibold hover:bg-white/10 transition">Batal</a>
+                            <button type="submit" class="px-10 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-emerald-900/30 transition hover:scale-105">
+                                Simpan & Lanjut ke BOM
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </form>
             </div>
-
-            {{-- Deskripsi --}}
-            <div class="space-y-3 mb-6">
-                <label class="block text-sm font-semibold text-gray-300">Deskripsi Produk</label>
-                <textarea name="deskripsi" rows="5"
-                    class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-5 py-5 text-white placeholder-gray-500 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50 resize-vertical text-base"
-                    placeholder="Jelaskan detail produk, bahan, ukuran, atau spesifikasi khusus lainnya..."></textarea>
-            </div>
-
-            {{-- Keterangan --}}
-            <div class="space-y-3">
-                <label class="block text-sm font-semibold text-gray-300">Keterangan (Internal)</label>
-                <textarea name="keterangan" rows="3"
-                    class="w-full bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/20 hover:border-white/30 rounded-2xl px-5 py-5 text-white placeholder-gray-500 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 transition-all duration-300 outline-none shadow-lg shadow-black/50 resize-vertical text-base"
-                    placeholder="Catatan internal, misal: 'Revisi dari customer X', 'Gunakan benang jenis Y'..."></textarea>
-            </div>
-
-            </div>
-
-            {{-- Footer --}}
-            <div class="flex flex-col sm:flex-row justify-end gap-4 mt-12 pt-8 border-t border-white/10">
-                <a href="{{ route('admin.produk-jadi.index') }}"
-                   class="px-8 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg shadow-black/30 hover:shadow-white/10">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                    Batal
-                </a>
-                <button type="submit"
-                    class="px-10 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-2xl text-sm font-bold shadow-lg shadow-emerald-900/30 hover:shadow-emerald-900/50 transition-all duration-300 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    Simpan Produk Baru
-                </button>
-            </div>
-
         </div>
-    </div>
-
-        </form>
     </div>
 </div>
 @endsection
-
-<style>
-    .gold-400 { color: #d4af37; }
-    .shadow-gold-400\/10 { box-shadow: 0 10px 25px rgba(212, 175, 55, 0.1); }
-</style>
 
 <script>
 function toggleHargaField() {
@@ -385,39 +243,20 @@ function toggleHargaField() {
     if (tipeOtomatis) {
         hargaInput.disabled = true;
         hargaInput.removeAttribute('required');
-        hargaInput.classList.add('bg-gray-800', 'cursor-not-allowed', 'opacity-50');
         container.classList.add('opacity-50');
         bantuanText.classList.remove('hidden');
     } else {
         hargaInput.disabled = false;
         hargaInput.setAttribute('required', 'required');
-        hargaInput.classList.remove('bg-gray-800', 'cursor-not-allowed', 'opacity-50');
         container.classList.remove('opacity-50');
         bantuanText.classList.add('hidden');
     }
 }
 
-// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     toggleHargaField();
-    
-    // Initialize Select2 for multi-select fields
-    $('#kategori-select').select2({
-        placeholder: "Pilih Kategori",
-        width: '100%',
-        theme: 'default'
-    });
-    
-    $('#warna-select').select2({
-        placeholder: "Pilih Warna",
-        width: '100%',
-        theme: 'default'
-    });
-    
-    $('#motif-select').select2({
-        placeholder: "Pilih Motif",
-        width: '100%',
-        theme: 'default'
-    });
+    $('#kategori-select').select2({ placeholder: "Pilih Kategori" });
+    $('#warna-select').select2({ placeholder: "Pilih Warna" });
+    $('#motif-select').select2({ placeholder: "Pilih Motif" });
 });
 </script>

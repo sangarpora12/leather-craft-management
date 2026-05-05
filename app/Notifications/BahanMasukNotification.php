@@ -51,7 +51,7 @@ class BahanMasukNotification extends Notification
             ->line("Bahan baku **{$this->bahan->nama_material}** baru saja masuk.")
             ->line("Jumlah masuk: **{$this->qtyMasuk} {$this->bahan->satuan}**")
             ->line("Stok saat ini: **{$this->bahan->stok} {$this->bahan->satuan}**")
-            ->line("Supplier: {$this->bahan->supplier ?? 'Umum'}")
+
             ->action('Lihat Stok Bahan Baku', $url)
             ->line('Terima kasih telah menggunakan sistem Berliano Leather!');
     }

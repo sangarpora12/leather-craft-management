@@ -26,11 +26,12 @@ class BomController extends Controller
         }
 
         // Filter by recipe status
-        // Manually trim the input to prevent issues with leading/trailing spaces
-        $filter = trim($request->input('filter', 'all'));
-        if ($filter === 'has_recipe') {
+        // UBAH: Ambil nilai berdasarkan nama dropdown di view yaitu 'status'
+        $status = trim($request->input('status', '')); 
+        
+        if ($status === 'sudah_ada') {
             $query->whereHas('boms');
-        } elseif ($filter === 'no_recipe') {
+        } elseif ($status === 'belum_ada') {
             $query->whereDoesntHave('boms');
         }
 
@@ -124,72 +125,87 @@ public function edit($id)
     return view('admin.bom.edit', compact('product', 'existingBoms', 'materials'));
 }
 
-    public function update(Request $request, $id)
-    {
-        // Validasi BOM + Spesifikasi Teknis
-        $validated = $request->validate([
-            'material_id'   => 'sometimes|array',
-            'material_id.*' => 'required',
-            'quantity.*'    => 'required|numeric',
-            'unit.*'        => 'required|string',
-            'panjang'       => ['nullable', 'numeric', 'min:0'],
-            'lebar'         => ['nullable', 'numeric', 'min:0'],
-            'tinggi'        => ['nullable', 'numeric', 'min:0'],
-            'detail_pola'   => ['nullable', 'string'],
-            'sketsa'        => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
+public function update(Request $request, $id)
+{
+    // 1. Validasi: Semua wajib diisi KECUALI detail_pola
+    $request->validate([
+        'panjang'       => 'required|numeric|min:0.01',
+        'lebar'         => 'required|numeric|min:0.01',
+        'tinggi'        => 'required|numeric|min:0.01',
+        'detail_pola'   => 'nullable|string', // Hanya ini yang boleh kosong
+        'material_id'   => 'required|array|min:1',
+        'material_id.*' => 'required|exists:bahan_bakus,id',
+        'quantity'      => 'required|array|min:1',
+        'quantity.*'    => 'required|numeric|min:0.01',
+        'unit'          => 'required|array',
+        'unit.*'        => 'required|string',
+        'sketsa.*'      => 'image|mimes:jpeg,png,jpg,gif,svg|max:10240',
+    ], [
+        // Pesan Error Bahasa Indonesia agar mudah saat Demo Skripsi
+        'panjang.required' => 'Dimensi Panjang wajib diisi.',
+        'lebar.required'   => 'Dimensi Lebar wajib diisi.',
+        'tinggi.required'  => 'Dimensi Tinggi wajib diisi.',
+        'material_id.required' => 'Anda harus memilih minimal satu bahan baku.',
+        'quantity.*.min'   => 'Jumlah bahan tidak boleh 0.',
+    ]);
+
+    DB::beginTransaction();
+    try {
+        $product = ProdukJadi::findOrFail($id);
+        
+        // --- PROSES SKETSA (FOTO) ---
+        $existingSketsas = $product->sketsa ? json_decode($product->sketsa, true) : [];
+        if ($request->has('delete_sketsa')) {
+            foreach ($request->delete_sketsa as $path) {
+                Storage::disk('public')->delete($path);
+                $existingSketsas = array_diff($existingSketsas, [$path]);
+            }
+        }
+        $newSketsas = [];
+        if ($request->hasFile('sketsa')) {
+            foreach ($request->file('sketsa') as $file) {
+                $newSketsas[] = $file->store('produk/sketsa', 'public');
+            }
+        }
+        $allSketsas = array_merge(array_values($existingSketsas), $newSketsas);
+
+        // --- 1. UPDATE DATA PRODUK ---
+        $product->update([
+            'panjang'     => $request->panjang,
+            'lebar'       => $request->lebar,
+            'tinggi'      => $request->tinggi,
+            'detail_pola' => $request->detail_pola,
+            'sketsa'      => !empty($allSketsas) ? json_encode(array_values($allSketsas)) : null,
         ]);
 
-        DB::beginTransaction();
-        try {
-            // === 1. UPDATE SPESIFIKASI TEKNIS PRODUK ===
-            $product = ProdukJadi::findOrFail($id);
-            
-            $pathSketsa = $product->sketsa;
-            if ($request->hasFile('sketsa')) {
-                // Hapus sketsa lama jika ada
-                if ($product->sketsa) {
-                    Storage::disk('public')->delete($product->sketsa);
-                }
-                $pathSketsa = $request->file('sketsa')->store('produk/sketsa', 'public');
+        // --- 2. UPDATE RESEP BOM ---
+        // Hapus resep lama (Relasi id_produk sesuai tabel bom kamu)
+        DB::table('bom')->where('id_produk', $product->id)->delete();
+
+        $bomsData = [];
+        foreach ($request->material_id as $index => $materialId) {
+            if (!empty($materialId)) {
+                $bomsData[] = [
+                    'id_produk'        => $product->id,
+                    'id_bahan'         => $materialId,
+                    'jumlah_kebutuhan' => $request->quantity[$index],
+                    'satuan'           => $request->unit[$index],
+                    'created_at'       => now(),
+                    'updated_at'       => now(),
+                ];
             }
-
-            $product->update([
-                'panjang' => $validated['panjang'] ?? $product->panjang,
-                'lebar' => $validated['lebar'] ?? $product->lebar,
-                'tinggi' => $validated['tinggi'] ?? $product->tinggi,
-                'detail_pola' => $validated['detail_pola'] ?? $product->detail_pola,
-                'sketsa' => $pathSketsa,
-            ]);
-
-            // === 2. UPDATE RESEP BOM ===
-            // Cek apakah ada data material yang dikirim, jika tidak, lewati update BOM
-            if ($request->has('material_id')) {
-                DB::table('bom')->where('id_produk', $product->id)->delete();
-
-                $bomsData = [];
-                foreach ($request->material_id as $index => $materialId) {
-                    if (!empty($materialId) && isset($request->quantity[$index]) && $request->quantity[$index] > 0) {
-                        $bomsData[] = [
-                            'id_produk'        => $product->id,
-                            'id_bahan'         => $materialId,
-                            'jumlah_kebutuhan' => $request->quantity[$index],
-                            'satuan'           => $request->unit[$index],
-                            'created_at'       => now(),
-                            'updated_at'       => now(),
-                        ];
-                    }
-                }
-
-                if (count($bomsData) > 0) {
-                    DB::table('bom')->insert($bomsData);
-                }
-            }
-
-            DB::commit();
-            return redirect()->route('admin.bom.index')->with('success', 'BOM & Spesifikasi untuk produk ' . $product->nama_produk . ' berhasil diperbarui.');
-        } catch (\Exception $e) {
-            DB::rollback();
-            return back()->withInput()->with('error', "Gagal memperbarui: " . $e->getMessage());
         }
+
+        if (!empty($bomsData)) {
+            DB::table('bom')->insert($bomsData);
+        }
+
+        DB::commit();
+        return redirect()->route('admin.bom.index')->with('success', '✅ BOM ' . $product->nama_produk . ' Berhasil Disimpan!');
+
+    } catch (\Exception $e) {
+        DB::rollback();
+        return back()->withInput()->with('error', "Gagal simpan: " . $e->getMessage());
     }
+}
 }

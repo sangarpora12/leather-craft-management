@@ -12,7 +12,10 @@
 </div>
 
 {{-- 2. FOTO & SKETSA (DAMPINGAN) --}}
-@php $sketsas = $spk->product->sketsa ?? []; @endphp
+@php 
+    $rawSketsa = $spk->product->sketsa;
+    $sketsas = is_array($rawSketsa) ? $rawSketsa : (json_decode($rawSketsa, true) ?: []);
+@endphp
 <table style="width: 100%; margin-bottom: 20px;">
     <tr>
         <td style="width: 50%; text-align: center; padding: 10px; border: 1px solid #eee; vertical-align: top;">
@@ -94,19 +97,36 @@
 
 <hr style="margin: 20px 0; border: 1px dashed #eee;">
 
-{{-- 6. TABEL BAHAN --}}
+{{-- 6. TABEL BAHAN --}}{{-- 6. TABEL BAHAN BAKU --}}
 <strong>📦 Daftar Bahan Baku:</strong>
-<table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px;">
+
+<table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; border: 1px solid #ddd;">
     <tr style="background: #34495e; color: white;">
+        <th style="padding: 8px; border: 1px solid #ddd; text-align: center; width: 50px;">Foto</th>
         <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Bahan</th>
         <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Total</th>
     </tr>
-    @foreach ($spk->product->boms as $bom)
-    <tr>
-        <td style="padding: 8px; border: 1px solid #ddd;">{{ $bom->bahanBaku->nama_material }}</td>
-        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{{ (int)($bom->jumlah_kebutuhan * $spk->jumlah_produksi) }} {{ str_replace('buah-buahan', 'Pcs', $bom->bahanBaku->satuan) }}</td>
-    </tr>
-    @endforeach
+    @isset($spk->product->boms)
+        @foreach ($spk->product->boms as $bom)
+        <tr>
+            <td style="padding: 5px; border: 1px solid #ddd; text-align: center;">
+                @if(isset($bom->bahanBaku->foto) && $bom->bahanBaku->foto)
+                    <img src="{{ $message->embed(storage_path('app/public/' . $bom->bahanBaku->foto)) }}" width="40" height="40" style="border-radius: 4px;">
+                @else
+                    <span style="color: #ccc; font-size: 8px;">No Pic</span>
+                @endif
+            </td>
+            <td style="padding: 8px; border: 1px solid #ddd;">
+                <strong>{{ $bom->bahanBaku->nama_material ?? 'Bahan Tidak Diketahui' }}</strong>
+                <br><small style="color: #7f8c8d;">Warna: {{ $bom->bahanBaku->warna ?? '-' }}</small>
+            </td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                {{ (int)($bom->jumlah_kebutuhan * $spk->jumlah_produksi) }} 
+                {{ $bom->bahanBaku->satuan ?? 'Unit' }}
+            </td>
+        </tr>
+        @endforeach
+    @endisset
 </table>
 
 <div style="text-align: center; margin: 20px 0; background: #ebf5fb; padding: 10px;">

@@ -118,7 +118,13 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             @endif
 
-            <!-- Sketsa Produk -->
+          <!-- Sketsa Produk -->
+          {{-- Tambahkan 4 baris PHP ini untuk memastikan formatnya Array --}}
+            @php 
+                $rawSketsa = $produksi->produk_jadi->sketsa ?? [];
+                $rsSketsas = is_array($rawSketsa) ? $rawSketsa : (json_decode($rawSketsa, true) ?: []);
+            @endphp
+            
             @if(count($rsSketsas) > 0)
             <div class="glass-card rounded-2xl p-5">
                 <h3 class="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2">
@@ -136,8 +142,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
             @endif
+            </div>
         </div>
     </div>
+
 
     <!-- Info Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -168,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-xs text-gray-500">Tanggal Selesai</span>
-                    <span class="text-xs text-emerald-300">{{ $produksi->tanggal_selesai ? \Carbon\Carbon::parse($produksi->tanggal_selesai)->format('d M Y H:i') : '-' }}</span>
+                    <span class="text-xs text-emerald-300">{{ $produksi->tanggal_selesai ? \Carbon\Carbon::parse($produksi->tanggal_selesai)->format('d M Y ') : '-' }}</span>
                 </div>
             </div>
         </div>
@@ -318,8 +326,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     @foreach($produksi->produk_jadi->boms as $bom)
                     <tr class="border-b border-white/5 hover:bg-white/5 transition">
                         <td class="py-3 px-3 text-white font-medium">{{ $bom->bahanBaku?->nama_material ?? '-' }}</td>
-                        <td class="py-3 px-3 text-right text-gray-400">{{ $bom->jumlah_kebutuhan }}</td>
-                        <td class="py-3 px-3 text-right text-emerald-300 font-bold">{{ number_format($bom->jumlah_kebutuhan * $produksi->jumlah_produksi, 2, ',', '.') }}</td>
+                        <td class="py-3 px-3 text-right text-gray-400">{{(float) $bom->jumlah_kebutuhan}}</td>
+                        <td class="py-3 px-3 text-right text-emerald-300 font-bold">{{ number_format($bom->jumlah_kebutuhan * $produksi->jumlah_produksi) }}</td>
                         <td class="py-3 px-3 text-right text-gray-400">{{ $bom->bahanBaku?->satuan ?? '-' }}</td>
                     </tr>
                     @endforeach

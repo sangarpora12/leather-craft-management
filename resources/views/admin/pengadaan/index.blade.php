@@ -105,15 +105,18 @@
         </div>
 
         {{-- PANEL KANAN: KERANJANG ORDER (FIXED STICKY) --}}
-        <div class="w-full lg:w-[380px] shrink-0 sticky top-4 h-[calc(100vh-3rem)]">
-            <div class="bg-[#1A1C24] border border-white/5 rounded-xl shadow-2xl flex flex-col h-full">
-                <div class="p-4 border-b border-white/5 flex justify-between items-center bg-white/5">
+        <div class="w-full lg:w-[380px] shrink-0 sticky top-4 h-[calc(100vh-6rem)]">
+            <!-- Tambahan overflow-hidden di sini sangat penting -->
+            <div class="bg-[#1A1C24] border border-white/5 rounded-xl shadow-2xl flex flex-col h-full overflow-hidden">
+                
+                {{-- Header (Statis di Atas) --}}
+                <div class="p-4 border-b border-white/5 flex justify-between items-center bg-white/5 shrink-0 z-10">
                     <h3 class="text-orange-500 font-black text-[10px] uppercase tracking-widest text-center">Keranjang Order</h3>
                     <span class="text-[10px] text-gray-500" x-text="cart.length + ' Item'"></span>
                 </div>
 
-                {{-- Daftar Item Keranjang DENGAN SCROLL --}}
-                <div class="p-4 space-y-3 flex-grow overflow-y-auto max-h-[350px] custom-scrollbar">
+                {{-- Daftar Item (Area ini yang bisa di-scroll) --}}
+                <div class="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar min-h-0 bg-[#1A1C24]">
                     <template x-for="(item, index) in cart" :key="item.id">
                         <div class="bg-[#0D1117] border border-white/5 p-3 rounded-lg flex flex-col gap-2">
                             <div class="flex gap-3 items-start">
@@ -143,9 +146,9 @@
                             
                             <div class="flex items-center justify-between gap-2">
                                 <div class="flex-1 flex items-center bg-black/40 rounded border border-white/5 p-1">
-                                    <button @click="item.qty > 1 ? item.qty = Math.round(item.qty - 1) : null" class="w-6 h-6 text-gray-500">-</button>
-                                    <input type="number" x-model.number="item.qty" class="w-full bg-transparent text-center text-[10px] text-white outline-none">
-                                    <button @click="item.qty = Math.round(item.qty + 1)" class="w-6 h-6 text-gray-500">+</button>
+                                    <button @click="item.qty > 1 ? item.qty = Math.round(item.qty - 1) : null" class="w-6 h-6 text-gray-500 flex-shrink-0">-</button>
+                                    <input type="number" x-model.number="item.qty" class="flex-1 min-w-0 bg-transparent text-center text-[10px] text-white outline-none">
+                                    <button @click="item.qty = Math.round(item.qty + 1)" class="w-6 h-6 text-gray-500 flex-shrink-0">+</button>
                                 </div>
                             </div>
                             
@@ -159,9 +162,9 @@
                     <div x-show="cart.length === 0" class="py-10 text-center opacity-20 italic text-[10px]">Belum ada pilihan</div>
                 </div>
 
-                {{-- Footer Keranjang Tetap di Bawah --}}
-                <div class="p-4 border-t border-white/5 bg-black/20 space-y-3 mt-auto">
-                    <div class="flex justify-between items-center">
+                {{-- Footer (Statis di Bawah) --}}
+                <div class="p-4 border-t border-white/5 bg-[#1A1C24] shrink-0 z-10">
+                    <div class="flex justify-between items-center mb-3">
                         <span class="text-[9px] font-bold text-gray-500 uppercase">Estimasi</span>
                         <span class="text-sm font-black text-[#00BFA5]" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(totalEstimasi)"></span>
                     </div>
@@ -172,91 +175,98 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    {{-- MODAL (TETAP SAMA) --}}
+        {{-- MODAL KONFIRMASI PENGADAAN --}}
     <div x-show="showSubmitModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
-        <div @click.outside="showSubmitModal = false" class="w-full max-w-md bg-[#1A1C24] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-zoom-in">
-            <div class="p-4 border-b border-white/5 bg-black/20 flex justify-between items-center">
+        <!-- Wrapper modal ditambahkan max-h-[90vh] dan flex flex-col -->
+        <div @click.outside="showSubmitModal = false" class="w-full max-w-2xl max-h-[90vh] bg-[#1A1C24] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-zoom-in flex flex-col">
+            
+            {{-- Header Modal (Statis) --}}
+            <div class="p-4 border-b border-white/5 bg-black/20 flex justify-between items-center shrink-0">
                 <h3 class="text-white font-black text-[10px] uppercase tracking-widest">Konfirmasi Pengadaan</h3>
-                <button @click="showSubmitModal = false" class="text-gray-500 hover:text-white"><i class="fas fa-times text-xs"></i></button>
+                <button type="button" @click="showSubmitModal = false" class="text-gray-500 hover:text-white"><i class="fas fa-times text-xs"></i></button>
             </div>
             
-            <form action="{{ route('admin.pengadaan.store') }}" method="POST" class="p-6 space-y-4" x-ref="submitForm">
+            <form action="{{ route('admin.pengadaan.store') }}" method="POST" class="flex flex-col flex-1 overflow-hidden" x-ref="submitForm">
                 @csrf
 
-                <!-- TABEL DAFTAR BAHAN YANG AKAN DIPESAN -->
-                <div class="mb-4 bg-[#0D1117] rounded-lg overflow-hidden border border-white/5">
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="bg-black/30 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                                <th class="py-3 px-4">Foto</th>
-                                <th class="py-3 px-4">Nama Bahan</th>
-                                <th class="py-3 px-4 text-center">Jumlah</th>
-                                <th class="py-3 px-4 text-center">Satuan</th>
-                                <th class="py-3 px-4">Catatan</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template x-for="(item, index) in cart" :key="index">
-                                <tr class="border-t border-white/5">
-                                    <td class="py-3 px-4">
-                                        <template x-if="item.foto">
-                                        <img :src="'/storage/' + item.foto" 
-                                             :alt="item.nama_material"
-                                             class="w-16 h-16 rounded-lg object-cover border border-white/10" style="max-width: 64px; max-height: 64px;">
-                                        </template>
-                                        <template x-if="!item.foto">
-                                            <div class="w-16 h-16 rounded-lg bg-[#2D3139] flex items-center justify-center border border-gray-700/50">
-                                                <i class="fa-solid fa-image text-gray-500 text-lg"></i>
-                                            </div>
-                                        </template>
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <p class="text-white text-[11px] font-bold" x-text="item.nama_material"></p>
-                                        <p class="text-[9px] text-gray-500 font-mono mt-0.5" x-text="item.kode_material"></p>
-                                        <input type="hidden" :name="`items[${index}][bahan_baku_id]`" :value="item.id">
-                                        <input type="hidden" :name="`items[${index}][jumlah]`" :value="item.qty">
-                                        <input type="hidden" :name="`items[${index}][catatan]`" :value="item.catatan">
-                                    </td>
-                                    <td class="py-3 px-4 text-center font-mono text-green-400 font-bold" x-text="Math.round(item.qty)"></td>
-                                    <td class="py-3 px-4 text-center text-gray-400 text-[10px]" x-text="item.satuan"></td>
-                                    <td class="py-3 px-4 text-gray-400 text-[10px]" style="max-width:180px; word-wrap:break-word;" x-text="item.catatan || '-'"></td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
+                {{-- Area Body Modal (Bisa di-scroll) --}}
+                <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1 min-h-0 bg-[#1A1C24]">
+                    
+                    <!-- TABEL DAFTAR BAHAN YANG AKAN DIPESAN -->
+                    <div class="bg-[#0D1117] rounded-lg overflow-hidden border border-white/5">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left whitespace-nowrap">
+                                <thead>
+                                    <tr class="bg-black/30 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                        <th class="py-3 px-4">Foto</th>
+                                        <th class="py-3 px-4">Nama Bahan</th>
+                                        <th class="py-3 px-4 text-center">Jumlah</th>
+                                        <th class="py-3 px-4 text-center">Satuan</th>
+                                        <th class="py-3 px-4">Catatan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(item, index) in cart" :key="index">
+                                        <tr class="border-t border-white/5">
+                                            <td class="py-3 px-4">
+                                                <template x-if="item.foto">
+                                                    <img :src="'/storage/' + item.foto" 
+                                                         :alt="item.nama_material"
+                                                         class="w-12 h-12 rounded-lg object-cover border border-white/10">
+                                                </template>
+                                                <template x-if="!item.foto">
+                                                    <div class="w-12 h-12 rounded-lg bg-[#2D3139] flex items-center justify-center border border-gray-700/50">
+                                                        <i class="fa-solid fa-image text-gray-500 text-lg"></i>
+                                                    </div>
+                                                </template>
+                                            </td>
+                                            <td class="py-3 px-4">
+                                                <p class="text-white text-[11px] font-bold" x-text="item.nama_material"></p>
+                                                <p class="text-[9px] text-gray-500 font-mono mt-0.5" x-text="item.kode_material"></p>
+                                                <input type="hidden" :name="`items[${index}][bahan_baku_id]`" :value="item.id">
+                                                <input type="hidden" :name="`items[${index}][jumlah]`" :value="item.qty">
+                                                <input type="hidden" :name="`items[${index}][catatan]`" :value="item.catatan">
+                                            </td>
+                                            <td class="py-3 px-4 text-center font-mono text-green-400 font-bold" x-text="Math.round(item.qty)"></td>
+                                            <td class="py-3 px-4 text-center text-gray-400 text-[10px]" x-text="item.satuan"></td>
+                                            <td class="py-3 px-4 text-gray-400 text-[10px]" style="max-width:180px; white-space:normal;" x-text="item.catatan || '-'"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-[9px] font-bold text-gray-500 uppercase mb-1">Prioritas</label>
+                            <select name="prioritas" class="w-full bg-[#0D1117] border border-white/10 rounded-lg text-white text-[11px] px-3 py-2 outline-none focus:border-orange-500">
+                                <option value="BIASA">BIASA</option>
+                                <option value="URGENT">URGENT</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-bold text-gray-500 uppercase mb-1">Target Tanggal</label>
+                            <input type="date" name="tanggal_dibutuhkan" x-model="form.tanggal" class="w-full bg-[#0D1117] border border-white/10 rounded-lg text-white text-[11px] px-3 py-2 outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-bold text-gray-500 uppercase mb-1">Operator</label>
+                            <select name="operator_id" class="w-full bg-[#0D1117] border border-white/10 rounded-lg text-white text-[11px] px-3 py-2 outline-none focus:border-orange-500">
+                                <option value="">-- Pilih --</option>
+                                @foreach($operators as $op) <option value="{{ $op->id }}">{{ $op->name }}</option> @endforeach
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-[9px] font-bold text-gray-500 uppercase mb-1">Prioritas</label>
-                        <select name="prioritas" class="w-full bg-[#0D1117] border border-white/10 rounded-lg text-white text-[11px] px-3 py-2 outline-none focus:border-orange-500">
-                            <option value="BIASA">BIASA</option>
-                            <option value="URGENT">URGENT</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[9px] font-bold text-gray-500 uppercase mb-1">Target Tanggal</label>
-                        <input type="date" name="tanggal_dibutuhkan" x-model="form.tanggal" class="w-full bg-[#0D1117] border border-white/10 rounded-lg text-white text-[11px] px-3 py-2 outline-none focus:border-orange-500">
-                    </div>
-                    <div>
-                        <label class="block text-[9px] font-bold text-gray-500 uppercase mb-1">Operator</label>
-                        <select name="operator_id" class="w-full bg-[#0D1117] border border-white/10 rounded-lg text-white text-[11px] px-3 py-2 outline-none focus:border-orange-500">
-                            <option value="">-- Pilih --</option>
-                            @foreach($operators as $op) <option value="{{ $op->id }}">{{ $op->name }}</option> @endforeach
-                        </select>
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-3 pt-4 border-t border-white/5">
-                    <button type="button" @click="showSubmitModal = false" class="text-[10px] text-gray-500 font-bold hover:text-white transition">BATAL</button>
-                    <button type="button" @click="submitPengadaan()" :disabled="!isFormValid" class="px-6 py-2 bg-orange-600 text-white text-[10px] font-black rounded-lg shadow-lg shadow-orange-900/40 uppercase tracking-widest hover:scale-105 active:scale-95 disabled:opacity-50">KIRIM ORDER</button>
+                {{-- Footer Modal / Tombol (Statis di Bawah) --}}
+                <div class="p-4 border-t border-white/5 bg-[#1A1C24] flex justify-end gap-3 shrink-0">
+                    <button type="button" @click="showSubmitModal = false" class="text-[10px] text-gray-500 font-bold hover:text-white transition px-4 py-2">BATAL</button>
+                    <button type="button" @click="submitPengadaan()" :disabled="!isFormValid" class="px-6 py-2 bg-orange-600 text-white text-[10px] font-black rounded-lg shadow-lg shadow-orange-900/40 uppercase tracking-widest hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all">KIRIM ORDER</button>
                 </div>
             </form>
         </div>
     </div>
-</div>
 
 {{-- LOGIKA Alpine.js --}}
 @push('scripts')

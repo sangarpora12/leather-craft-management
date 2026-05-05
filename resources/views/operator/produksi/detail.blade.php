@@ -240,33 +240,57 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
         </div>
         @endif
 
-        <!-- ── Info Produk ───────────────────────────────────────── -->
-        <div class="glass-card rounded-2xl p-4 slide-up">
-            <h2 class="text-sm font-bold text-white leading-tight mb-3">{{ $produksi->produk_jadi->nama_produk ?? 'Produk Dihapus' }}</h2>
-
-            <div class="grid grid-cols-2 gap-3 mb-3">
-                <div class="rounded-2xl overflow-hidden bg-white/5 border border-white/10 shadow-lg flex flex-col">
-                    <div class="text-[10px] text-gray-500 uppercase font-bold text-center py-2 border-b border-white/10">📸 FOTO PRODUK</div>
-                    <div class="flex-1 flex items-center justify-center min-h-[140px]">
+        <div class="grid grid-cols-2 gap-3 mb-3">
+                {{-- 1. FOTO PRODUK --}}
+                <div class="rounded-2xl overflow-hidden bg-white/5 border border-white/10 shadow-lg flex flex-col relative">
+                    <div class="text-[10px] text-gray-500 uppercase font-bold text-center py-2 border-b border-white/10 z-10 bg-[#0f172a]/80 backdrop-blur-sm">📸 FOTO PRODUK</div>
+                    <div class="flex-1 relative min-h-[140px] w-full bg-black/20">
                         @if(!empty($produksi->produk_jadi->foto))
-                            <img src="{{ asset('storage/'.$produksi->produk_jadi->foto) }}" class="w-full h-full object-cover" alt="Foto Produk">
+                            <img src="{{ asset('storage/'.$produksi->produk_jadi->foto) }}" 
+                                 class="w-full h-full absolute inset-0 object-cover cursor-pointer hover:opacity-90 transition" 
+                                 alt="Foto Produk"
+                                 onclick="Swal.fire({imageUrl: this.src, imageAlt: 'Foto Produk', width: '90%', background: 'transparent', padding: 0, showConfirmButton: false, showCloseButton: true})">
                         @else
-                            <div class="text-gray-600 text-sm">🚫 Belum tersedia</div>
+                            <div class="absolute inset-0 flex items-center justify-center text-gray-600 text-sm">🚫 Belum tersedia</div>
                         @endif
                     </div>
                 </div>
-                <div class="rounded-2xl overflow-hidden bg-white/5 border border-white/10 shadow-lg flex flex-col">
-                    <div class="text-[10px] text-gray-500 uppercase font-bold text-center py-2 border-b border-white/10">📏 SKETSA POLA</div>
-                    @php $opSketsas = $produksi->produk_jadi->sketsa ?? []; @endphp
-                    <div class="flex-1 flex items-center justify-center min-h-[140px] p-2">
+
+                {{-- 2. SKETSA POLA (SLIDER) --}}
+                <div class="rounded-2xl overflow-hidden bg-white/5 border border-white/10 shadow-lg flex flex-col relative">
+                    <div class="text-[10px] text-gray-500 uppercase font-bold text-center py-2 border-b border-white/10 z-10 bg-[#0f172a]/80 backdrop-blur-sm">📏 SKETSA POLA</div>
+                    @php 
+                        $rawSketsa = $produksi->produk_jadi->sketsa;
+                        $opSketsas = is_array($rawSketsa) ? $rawSketsa : (json_decode($rawSketsa, true) ?: []); 
+                    @endphp
+                    
+                    <div class="flex-1 relative min-h-[140px] w-full bg-black/20">
                         @if(count($opSketsas) > 0)
-                            <div class="grid grid-cols-2 gap-1 w-full h-full">
-                                @foreach(array_slice($opSketsas, 0, 4) as $skPath)
-                                    <img src="{{ asset('storage/'.$skPath) }}" class="w-full h-full object-cover rounded-lg" alt="Sketsa">
+                            <style>
+                                /* Scrollbar khusus biar tetap cantik dan bisa digeser di laptop */
+                                .sketsa-slider::-webkit-scrollbar { height: 6px; }
+                                .sketsa-slider::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+                                .sketsa-slider::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+                                .sketsa-slider::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+                            </style>
+                            <div class="flex overflow-x-auto snap-x snap-mandatory w-full h-full absolute inset-0 sketsa-slider">
+                                @foreach($opSketsas as $skPath)
+                                    <img src="{{ asset('storage/'.$skPath) }}" 
+                                         class="w-full h-full flex-shrink-0 object-contain bg-white/5 snap-center cursor-pointer hover:opacity-90 transition" 
+                                         alt="Sketsa"
+                                         onclick="Swal.fire({imageUrl: this.src, imageAlt: 'Sketsa', width: '90%', background: 'transparent', padding: 0, showConfirmButton: false, showCloseButton: true})">
                                 @endforeach
                             </div>
+                            
+                            {{-- Indikator Geser (Dipindah agak ke atas biar tidak nabrak scrollbar) --}}
+                            @if(count($opSketsas) > 1)
+                                <div class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full text-[9px] text-white/90 flex items-center gap-1.5 shadow-lg pointer-events-none border border-white/10">
+                                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                    Geser ({{ count($opSketsas) }})
+                                </div>
+                            @endif
                         @else
-                            <div class="text-gray-600 text-sm">🚫 Belum tersedia</div>
+                            <div class="absolute inset-0 flex items-center justify-center text-gray-600 text-sm">🚫 Belum tersedia</div>
                         @endif
                     </div>
                 </div>

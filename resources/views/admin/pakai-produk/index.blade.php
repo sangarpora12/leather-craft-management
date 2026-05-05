@@ -173,7 +173,7 @@
                                 onclick="openModal('{{ $produk->id }}', '{{ e(ucwords(strtolower($produk->nama_produk))) }}', '{{ $stok }}')"
                                 class="w-full text-white font-bold py-2 px-3 rounded-lg transition mt-2 bg-[#FD730D] hover:bg-[#E6670B] text-xs">
                                 <i class="fa-solid fa-box-minus mr-1"></i>
-                                Pakai Stok
+                                Pakai produk
                             </button>
                         @else
                             <div class="w-full text-gray-400 font-bold py-2 px-3 rounded-lg mt-2 bg-gray-700 text-center cursor-not-allowed text-xs">
