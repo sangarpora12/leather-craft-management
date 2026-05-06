@@ -62,7 +62,7 @@
                         </div>
                         <div>
                             <p class="text-gray-400">Stok Saat Ini</p>
-                            <p class="text-white font-bold text-lg">{{ number_format($bahan->stok, 2, ',', '.') }} <span class="text-xs text-gray-400">{{ $bahan->satuan }}</span></p>
+                            <p class="text-white font-bold text-lg">{{ floatval($bahan->stok) }} <span class="text-xs text-gray-400">{{ $bahan->satuan }}</span></p>
                         </div>
                         <div>
                             <p class="text-gray-400">Satuan</p>
@@ -99,8 +99,8 @@
                                 @foreach($bahan->stockLayers->sortByDesc('created_at') as $layer)
                                 <tr class="hover:bg-gray-700/50">
                                     <td class="px-4 py-2 text-gray-300">{{ \Carbon\Carbon::parse($layer->tanggal_masuk)->isoFormat('D MMM YYYY') }}</td>
-                                    <td class="px-4 py-2 text-right text-gray-300">{{ number_format($layer->qty_masuk, 2, ',', '.') }}</td>
-                                    <td class="px-4 py-2 text-right font-bold {{ $layer->qty_sisa > 0 ? 'text-orange-400' : 'text-gray-500' }}">{{ number_format($layer->qty_sisa, 2, ',', '.') }}</td>
+                                    <td class="px-4 py-2 text-right text-gray-300">{{ floatval($bahan->stok) }}</td>
+                                    <td class="px-4 py-2 text-right font-bold {{ $layer->qty_sisa > 0 ? 'text-orange-400' : 'text-gray-500' }}">{{ number_format($layer->qty_sisa,) }}</td>
                                     <td class="px-4 py-2 text-right text-gray-300">Rp {{ number_format($layer->harga_beli, 0, ',', '.') }}</td>
                                 </tr>
                                 @endforeach

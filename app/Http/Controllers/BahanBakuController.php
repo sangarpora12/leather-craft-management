@@ -14,6 +14,21 @@ use Illuminate\Support\Facades\Storage;
 
 class BahanBakuController extends Controller
 {
+    public function show($id)
+    {
+        $bahan = BahanBaku::findOrFail($id);
+        
+        // Ambil riwayat stok lengkap dengan nama penginput (Admin/Operator)
+        $riwayatStok = DB::table('log_stok')
+            ->leftJoin('users', 'log_stok.operator_id', '=', 'users.id')
+            ->where('log_stok.bahan_baku_id', $id)
+            ->select('log_stok.*', 'users.name as nama_penginput')
+            ->orderBy('log_stok.created_at', 'desc')
+            ->limit(20)
+            ->get();
+
+        return view('admin.bahan.show', compact('bahan', 'riwayatStok'));
+    }
     // 1. TAMPILKAN HALAMAN UTAMA (INDEX) + PENCARIAN + FILTER
     public function index(Request $request)
     {
@@ -192,7 +207,21 @@ class BahanBakuController extends Controller
             if ($isInventory) {
                 $bahan->stok += $request->stok;
                 $bahan->harga_satuan = $request->harga_satuan;
-            } else {
+// Cari function store(Request $request)
+if ($bahan) {
+    // JANGAN UPDATE STOK DI SINI
+    // Berikan pesan error bahwa penambahan stok harus melalui Operator (Scan Nota)
+    return redirect()->back()->with('error', 'Admin tidak diizinkan menambah stok. Silahkan gunakan akun Operator untuk Scan Nota.');
+} else {
+    // Admin buat bahan baru, paksa stok awal jadi 0
+    $bahan = BahanBaku::create([
+        'kode_material' => $this->generateKodeMaterial(),
+        'nama_material' => $request->nama_material,
+        // ... field lain ...
+        'stok' => 0, 
+        'harga_satuan' => 0,
+    ]);
+}
                 // Untuk non-inventory, stok dan harga tidak berubah (dianggap 0)
                 $bahan->harga_satuan = 0;
             }
