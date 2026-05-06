@@ -378,6 +378,9 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
                 </div>
             </div>
 
+            {{-- Hapus Section Progress --}}
+            @php $selesai = 0; $target = 0; $sisa = 0; $progressPercent = 0; @endphp
+
             @if($selesai > 0)
             <div class="mt-3 pt-3" style="border-top:1px solid rgba(255,255,255,0.1)">
                 <div class="flex items-center justify-between mb-2">
@@ -503,6 +506,10 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
                                 <tr class="bom-row transition" style="border-bottom:1px solid rgba(255,255,255,0.05)">
                                     <td class="px-2 py-2 text-gray-300">
                                         {{ $bom->bahanBaku->nama_material ?? $bom->material->nama_material ?? 'Material Hilang' }}
+                                        @php $_warna = $bom->bahanBaku->warna ?? $bom->material->warna ?? null; @endphp
+                                        @if($_warna)
+                                            <span class="text-[9px] px-1 py-0.5 ml-1 bg-blue-600/20 text-blue-400 rounded border border-blue-600/30">{{ $_warna }}</span>
+                                        @endif
                                     </td>
                                     <td class="px-2 py-2 text-right font-bold">
                                         <span class="need-qty text-emerald-300"

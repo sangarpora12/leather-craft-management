@@ -47,7 +47,7 @@ class BomController extends Controller
     public function create($produk_jadi_id)
     {
         $product = ProdukJadi::findOrFail($produk_jadi_id);
-        $materials = BahanBaku::select('id', 'nama_material', 'satuan', 'harga_satuan', 'stok', 'is_inventory')
+        $materials = BahanBaku::select('id', 'nama_material', 'warna', 'satuan', 'harga_satuan', 'stok', 'is_inventory')
                         ->orderBy('nama_material', 'asc')->get();
         
         return view('admin.bom.create', compact('product', 'materials'));
@@ -119,7 +119,7 @@ public function edit($id)
         }
     }
     
-    $materials = BahanBaku::select('id', 'nama_material', 'satuan', 'harga_satuan', 'stok', 'is_inventory')
+    $materials = BahanBaku::select('id', 'nama_material', 'warna', 'satuan', 'harga_satuan', 'stok', 'is_inventory')
                     ->orderBy('nama_material', 'asc')->get();
     
     return view('admin.bom.edit', compact('product', 'existingBoms', 'materials'));

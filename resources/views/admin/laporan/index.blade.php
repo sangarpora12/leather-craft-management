@@ -320,8 +320,12 @@ if (!isset($mode) || empty($mode)) {
                         @forelse($bahanCepatHabis as $bahan)
                         <div class="flex items-center justify-between py-3 border-b border-zinc-800 last:border-0">
                             <div>
-                                <p class="text-white text-sm font-bold">{{ $bahan->nama_material }}</p>
-                                <p class="text-gray-500 text-xs">{{ $bahan->kode_material }}</p>
+                                    <p class="text-white text-sm font-bold">{{ $bahan->nama_material }}</p>
+                                    <p class="text-gray-500 text-xs">{{ $bahan->kode_material }}
+                                        @if(isset($bahan->warna) && $bahan->warna && $bahan->warna !== 'Tidak Ada Warna')
+                                            <span class="text-blue-400 ml-1">[{{ $bahan->warna }}]</span>
+                                        @endif
+                                    </p>
                             </div>
                             <span class="text-red-400 text-sm font-bold">-{{ number_format($bahan->total_dipakai) }} {{ $bahan->satuan }}</span>
                         </div>
@@ -429,7 +433,12 @@ if (!isset($mode) || empty($mode)) {
                             @forelse($pengadaans as $bahan)
                             <tr>
                                 <td class="px-3 py-2 text-xs text-gray-400">{{ $bahan->kode_material ?? '-' }}</td>
-                                <td class="px-3 py-2 text-xs font-bold text-white">{{ $bahan->nama_material }}</td>
+                                <td class="px-3 py-2 text-xs font-bold text-white">
+    {{ $bahan->nama_material }}
+    @if(isset($bahan->warna) && $bahan->warna && $bahan->warna !== 'Tidak Ada Warna')
+        <span class="text-blue-400 ml-1">[{{ $bahan->warna }}]</span>
+    @endif
+</td>
                                 <td class="px-3 py-2 text-xs text-green-400 text-right font-bold">+{{ rtrim(rtrim(number_format($bahan->jumlah, 2, ',', '.'), '0'), ',') }} {{ $bahan->satuan }}</td>
                                 <td class="px-3 py-2 text-xs text-gray-500">{{ $bahan->user_name ?? 'N/A' }}</td>
                             </tr>
@@ -465,7 +474,12 @@ if (!isset($mode) || empty($mode)) {
                                 @if(empty($bahan->deleted_at) && ($bahan->status ?? '') !== 'dihapus' && ($bahan->status ?? '') !== 'deleted')
                                 <tr>
                                     <td class="px-3 py-2 text-xs text-gray-400">{{ $bahan->kode_material ?? '-' }}</td>
-                                    <td class="px-3 py-2 text-xs font-bold text-white">{{ $bahan->nama_material }}</td>
+                                    <td class="px-3 py-2 text-xs font-bold text-white">
+                                        {{ $bahan->nama_material }}
+                                        @if(isset($bahan->warna) && $bahan->warna && $bahan->warna !== 'Tidak Ada Warna')
+                                            <span class="text-blue-400 ml-1">[{{ $bahan->warna }}]</span>
+                                        @endif
+                                    </td>
                                     <!-- ISI KOLOM KETERANGAN BARU -->
                                     <td class="px-3 py-2 text-xs text-gray-400">
     Dipakai untuk: 

@@ -1,4 +1,3 @@
-
 <div id="contentPelengkap" class="hidden">
     <div class="bg-[#1A1A1A] rounded-3xl shadow-xl border border-white/10 p-6">
         <div class="text-center mb-6">
@@ -10,7 +9,7 @@
             <h3 class="text-lg font-semibold text-white">Input Bahan Pelengkap</h3>
             <p class="text-gray-400 text-sm mt-1">Bahan non-stok (stok = 0, harga = 0)</p>
         </div>
-        <form id="pelengkapForm" action="{{ route('operator.bahan.store') }}" method="POST" class="space-y-4">
+        <form id="pelengkapForm" action="{{ route('operator.bahan.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
             @csrf
             <div class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-5 border border-white/5 shadow-xl">
                 <div>
@@ -48,9 +47,10 @@
                 </div>
 
                 <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Warna <span class="text-orange-400">*</span></label>
-                    <select name="warna" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-orange-500 outline-none" required>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Warna</label>
+                    <select name="warna" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-orange-500 outline-none">
                         <option value="">-- Pilih Warna --</option>
+                        <option value="Tidak Ada Warna"> Tidak Ada Warna (Default)</option>
                         @forelse ($warnas as $warna)
                             <option value="{{ $warna->nama_warna }}">{{ $warna->nama_warna }}</option>
                         @empty
@@ -58,13 +58,30 @@
                         @endforelse
                     </select>
                 </div>
+
                 <input type="hidden" name="stok" value="0">
                 <input type="hidden" name="harga_satuan" value="0">
                 <input type="hidden" name="is_inventory" value="0">
 
                 <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Deskripsi Bahan <span class="text-purple-400">*</span></label>
-                    <textarea name="detail" rows="3" placeholder="Detail spesifikasi bahan, ketebalan, grade, ukuran, kondisi, dll..." class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none resize-vertical" required></textarea>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Deskripsi Bahan</label>
+                    <textarea name="detail" rows="3" placeholder="Detail spesifikasi bahan, ketebalan, grade, ukuran, kondisi, dll..." class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none resize-vertical"></textarea>
+                </div>
+
+                <!-- Upload Foto Bahan Pelengkap -->
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Foto Bahan <span class="text-gray-500 text-xs">(opsional)</span></label>
+                    <div class="relative">
+                        <input type="file" name="foto" id="pelengkapFotoInput" accept="image/*" class="hidden">
+                        <div id="pelengkapFotoPreview" class="hidden mb-3">
+                            <img id="pelengkapFotoThumbnail" class="w-full h-40 object-cover rounded-xl border border-purple-500/30">
+                        </div>
+                        <button type="button" id="pelengkapBtnFoto" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white flex items-center justify-center gap-2 hover:bg-gray-700/50 transition">
+                            <i class="fa-solid fa-image text-purple-400"></i>
+                            <span id="pelengkapTextFoto">📷 Pilih Foto Bahan</span>
+                        </button>
+                        <p class="text-xs text-gray-500 mt-1">Pilih foto untuk bahan pelengkap ini.</p>
+                    </div>
                 </div>
 
                 <div class="mt-4 bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
@@ -79,3 +96,32 @@
     </div>
 </div>
 
+<script>
+// Upload foto bahan pelengkap
+document.addEventListener('DOMContentLoaded', function() {
+    const btnFoto = document.getElementById('pelengkapBtnFoto');
+    const inputFoto = document.getElementById('pelengkapFotoInput');
+    const previewFoto = document.getElementById('pelengkapFotoPreview');
+    const thumbnailFoto = document.getElementById('pelengkapFotoThumbnail');
+    const textFoto = document.getElementById('pelengkapTextFoto');
+
+    if (btnFoto && inputFoto) {
+        btnFoto.addEventListener('click', function() {
+            inputFoto.click();
+        });
+
+        inputFoto.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                thumbnailFoto.src = event.target.result;
+                previewFoto.classList.remove('hidden');
+                textFoto.textContent = '✅ Foto Siap (akan tersimpan saat submit)';
+                btnFoto.classList.add('bg-purple-500/20', 'border-purple-500/50');
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+});
+</script>

@@ -1,4 +1,3 @@
-
 <div id="contentManual" class="hidden">
     <div class="bg-[#1A1A1A] rounded-3xl shadow-xl border border-white/10 p-6">
         <div class="text-center mb-6">
@@ -10,7 +9,7 @@
             <h3 class="text-lg font-semibold text-white">Input Manual Bahan</h3>
             <p class="text-gray-400 text-sm mt-1">Masukkan data bahan secara manual</p>
         </div>
-        <form id="manualForm" action="{{ route('operator.bahan.store') }}" method="POST" class="space-y-4">
+        <form id="manualForm" action="{{ route('operator.bahan.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
             @csrf
             <div class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-5 border border-white/5 shadow-xl">
                 <div>
@@ -60,8 +59,9 @@
 
                 <div class="mt-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Warna <span class="text-orange-400">*</span></label>
-                    <select name="warna" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-orange-500 outline-none" required>
+                    <select name="warna" id="warna" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-orange-500 outline-none" required>
                         <option value="">-- Pilih Warna --</option>
+                        <option value="Tidak Ada Warna">🚫 Tidak Ada Warna (Default OCR)</option>
                         @forelse ($warnas as $warna)
                             <option value="{{ $warna->nama_warna }}">{{ $warna->nama_warna }}</option>
                         @empty
@@ -69,6 +69,7 @@
                         @endforelse
                     </select>
                 </div>
+
                 <div class="grid grid-cols-2 gap-3 mt-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">Jumlah Masuk <span class="text-red-500">*</span></label>
@@ -82,23 +83,32 @@
                 </div>
 
                 <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Deskripsi Bahan <span class="text-purple-400">*</span></label>
-                    <textarea name="detail" rows="3" placeholder="Detail spesifikasi bahan, ketebalan, grade, ukuran, kondisi, dll..." class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none resize-vertical" required></textarea>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Deskripsi Bahan</label>
+                    <textarea name="detail" id="deskripsi_bahan" rows="3" placeholder="Detail spesifikasi bahan, ketebalan, grade, ukuran, kondisi, dll..." class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none resize-vertical"></textarea>
+                </div>
+
+                <!-- Preview & Upload Foto Bahan -->
+                <div id="previewFotoVarianContainer" class="mt-4" style="display:none;">
+                    <label class="block text-sm font-medium text-emerald-400 mb-2">📸 Foto Bahan Saat Ini</label>
+                    <img id="preview-foto-lama" src="" class="w-full h-40 object-cover rounded-xl border border-white/10">
+                    <p class="text-xs text-gray-500 mt-1">Foto dari database. Upload foto baru di bawah untuk mengganti.</p>
                 </div>
 
                 <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Foto Bukti (Opsional)</label>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Foto Bahan <span class="text-gray-500 text-xs">(upload untuk mengganti foto di database)</span></label>
                     <div class="relative">
-                        <input type="file" name="foto_bukti" id="fotoBuktiInput" accept="image/*" class="hidden">
-                        <div id="fotoBuktiPreview" class="hidden mb-3">
-                            <img id="fotoBuktiThumbnail" class="w-full h-32 object-cover rounded-xl border border-white/10">
+                        <input type="file" name="foto" id="manualFotoInput" accept="image/*" class="hidden">
+                        <div id="manualFotoPreview" class="hidden mb-3">
+                            <img id="manualFotoThumbnail" class="w-full h-40 object-cover rounded-xl border border-emerald-500/30">
                         </div>
-                        <button type="button" id="btnFotoBukti" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white flex items-center justify-center gap-2 hover:bg-gray-700/50 transition">
-                            <i class="fa-solid fa-camera text-gray-400"></i>
-                            <span id="textFotoBukti">Tambah Foto Bukti Fisik</span>
+                        <button type="button" id="manualBtnFoto" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white flex items-center justify-center gap-2 hover:bg-gray-700/50 transition">
+                            <i class="fa-solid fa-image text-emerald-400"></i>
+                            <span id="manualTextFoto">📷 Pilih Foto Bahan</span>
                         </button>
+                        <p class="text-xs text-gray-500 mt-1">Pilih foto untuk varian warna ini. Foto akan langsung tersimpan di database saat submit.</p>
                     </div>
                 </div>
+
                 <div class="mt-4">
                     <label class="flex items-center gap-3 cursor-pointer">
                         <input type="checkbox" name="is_inventory" value="1" class="w-5 h-5 rounded border-white/10 bg-[#1C222D] text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" checked>
@@ -115,3 +125,102 @@
     </div>
 </div>
 
+<script>
+// Upload foto bahan untuk INPUT MANUAL
+document.addEventListener('DOMContentLoaded', function() {
+    const btnFoto = document.getElementById('manualBtnFoto');
+    const inputFoto = document.getElementById('manualFotoInput');
+    const previewFoto = document.getElementById('manualFotoPreview');
+    const thumbnailFoto = document.getElementById('manualFotoThumbnail');
+    const textFoto = document.getElementById('manualTextFoto');
+
+    if (btnFoto && inputFoto) {
+        btnFoto.addEventListener('click', function() {
+            inputFoto.click();
+        });
+
+        inputFoto.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                thumbnailFoto.src = event.target.result;
+                previewFoto.classList.remove('hidden');
+                textFoto.textContent = '✅ Foto Siap (akan tersimpan saat submit)';
+                btnFoto.classList.add('bg-emerald-500/20', 'border-emerald-500/50');
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+});
+
+// Auto-fill deskripsi & preview foto berdasarkan nama_material + warna
+document.addEventListener('DOMContentLoaded', function() {
+    const namaInput = document.getElementById('nama_material');
+    const warnaSelect = document.getElementById('warna');
+    const deskripsiArea = document.getElementById('deskripsi_bahan');
+    const previewFotoLama = document.getElementById('preview-foto-lama');
+    const previewContainer = document.getElementById('previewFotoVarianContainer');
+
+    if (!namaInput || !warnaSelect) return;
+
+    let debounceTimer;
+
+    function cekBahan() {
+        const nama = namaInput.value.trim();
+        const warna = warnaSelect.value;
+
+        if (nama.length < 1 || !warna) {
+            if (deskripsiArea) deskripsiArea.value = '';
+            if (previewFotoLama) { previewFotoLama.style.display = 'none'; previewFotoLama.src = ''; }
+            if (previewContainer) previewContainer.style.display = 'none';
+            return;
+        }
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function() {
+            fetch('/api/cek-bahan?nama_material=' + encodeURIComponent(nama) + '&warna=' + encodeURIComponent(warna), {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'include'
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (deskripsiArea) {
+                    if (data && data.detail) {
+                        deskripsiArea.value = data.detail;
+                    } else if (data && data.deskripsi_bahan) {
+                        deskripsiArea.value = data.deskripsi_bahan;
+                    } else {
+                        deskripsiArea.value = '';
+                    }
+                }
+
+                if (previewFotoLama && previewContainer) {
+                    if (data && data.foto_url) {
+                        previewFotoLama.src = data.foto_url;
+                        previewFotoLama.style.display = 'block';
+                        previewFotoLama.style.width = '100%';
+                        previewFotoLama.style.maxHeight = '180px';
+                        previewFotoLama.style.objectFit = 'cover';
+                        previewFotoLama.style.borderRadius = '8px';
+                        previewFotoLama.style.border = '1px solid rgba(255,255,255,0.1)';
+                        previewContainer.style.display = 'block';
+                    } else {
+                        previewFotoLama.style.display = 'none';
+                        previewFotoLama.src = '';
+                        previewContainer.style.display = 'none';
+                    }
+                }
+            })
+            .catch(function() {
+                if (deskripsiArea) deskripsiArea.value = '';
+                if (previewFotoLama) { previewFotoLama.style.display = 'none'; previewFotoLama.src = ''; }
+                if (previewContainer) previewContainer.style.display = 'none';
+            });
+        }, 300);
+    }
+
+    namaInput.addEventListener('input', cekBahan);
+    warnaSelect.addEventListener('change', cekBahan);
+});
+</script>

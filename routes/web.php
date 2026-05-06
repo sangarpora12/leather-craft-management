@@ -115,6 +115,7 @@ Route::middleware(['auth'])->group(function () {
         // --- DATA MASTER (BAHAN BAKU) ---
         Route::resource('bahan', BahanBakuController::class)->names('bahan');
         Route::get('bahan/{id}/show', [BahanBakuController::class, 'show'])->name('bahan.show');
+        Route::post('bahan/{id}/update-varian', [BahanBakuController::class, 'updateVarian'])->name('bahan.update-varian');
         Route::get('/bahan/{id}/stock-layers', [BahanBakuController::class, 'getStockLayers'])->name('bahan.stock-layers');
         Route::get('/api/bahan/search', [BahanBakuController::class, 'searchApi'])->name('bahan.search.api');
         
@@ -410,6 +411,7 @@ Route::get('/operator/auto-login', [ProduksiController::class, 'autoLogin'])->na
 
 // API for bahan search
 Route::get('/api/bahan/search', [BahanBakuController::class, 'searchApi'])->name('api.bahan.search')->middleware('auth');
+Route::get('/api/cek-bahan', [BahanBakuController::class, 'cekBahanApi'])->name('api.bahan.cek')->middleware('auth');
 Route::get('/api/bahan/suggestions', [BahanBakuController::class, 'searchSuggestions'])->name('api.bahan.suggestions')->middleware('auth');
 Route::get('/api/produk-jadi/suggestions', [ProdukJadiController::class, 'searchSuggestions'])->name('api.produk-jadi.suggestions')->middleware('auth');
 Route::get('/admin/get-hpp-produk/{id}', [ProdukJadiController::class, 'getHpp'])->name('admin.get-hpp-produk')->middleware('auth');

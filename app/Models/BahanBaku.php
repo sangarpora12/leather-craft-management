@@ -23,6 +23,7 @@ class BahanBaku extends Model
         'supplier',
         'is_inventory',
         'foto',
+        'foto_nota_terakhir',
         'warna',
         'detail',
         'deskripsi_bahan',
@@ -51,5 +52,32 @@ class BahanBaku extends Model
         } while (self::where('kode_material', $kode)->exists());
 
         return $kode;
+    }
+
+    /**
+     * Scope: Cari master material berdasarkan nama (case-insensitive).
+     */
+    public function scopeMasterByName($query, $nama)
+    {
+        return $query->whereRaw('LOWER(nama_material) = LOWER(?)', [$nama]);
+    }
+
+    /**
+     * Scope: Ambil semua varian dari material yang sama (berdasarkan kode_material).
+     */
+    public function scopeVarians($query, $kodeMaterial)
+    {
+        return $query->where('kode_material', $kodeMaterial)->orderBy('warna');
+    }
+
+    /**
+     * Cari atau buat kode_material untuk suatu nama_material.
+     * Jika sudah ada varian lain, pakai kode_material yang sama.
+     * Jika belum ada sama sekali, generate baru.
+     */
+    public static function resolveKodeMaterial(string $namaMaterial): string
+    {
+        $existing = self::whereRaw('LOWER(nama_material) = LOWER(?)', [$namaMaterial])->first();
+        return $existing ? $existing->kode_material : self::generateKodeMaterial();
     }
 }

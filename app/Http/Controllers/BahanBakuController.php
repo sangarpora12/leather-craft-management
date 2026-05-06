@@ -18,6 +18,11 @@ class BahanBakuController extends Controller
     {
         $bahan = BahanBaku::findOrFail($id);
         
+        // Ambil semua varian warna dari material yang SAMA (berdasarkan nama_material)
+        $varianWarna = BahanBaku::where('nama_material', $bahan->nama_material)
+            ->orderBy('warna')
+            ->get();
+        
         // Ambil riwayat stok lengkap dengan nama penginput (Admin/Operator)
         $riwayatStok = DB::table('log_stok')
             ->leftJoin('users', 'log_stok.operator_id', '=', 'users.id')
@@ -27,18 +32,51 @@ class BahanBakuController extends Controller
             ->limit(20)
             ->get();
 
-        return view('admin.bahan.show', compact('bahan', 'riwayatStok'));
+        // Ambil ID dari SEMUA varian (nama_material sama) untuk query FIFO
+        $semuaVarianIds = $varianWarna->pluck('id')->toArray();
+        if (empty($semuaVarianIds)) {
+            $semuaVarianIds = [$id];
+        }
+
+        // Ambil SEMUA layer FIFO dari semua varian
+        $semuaLayer = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $semuaVarianIds)
+            ->orderBy('tanggal_masuk', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Group by harga_beli untuk ringkasan per harga
+        // Urutkan berdasarkan tanggal masuk TERAKHIR (desc) agar tag TERAKHIR benar
+        $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $semuaVarianIds)
+            ->select('harga_beli', DB::raw('SUM(qty_masuk) as total_masuk'), DB::raw('SUM(qty_sisa) as total_sisa'), DB::raw('MAX(tanggal_masuk) as tgl_terakhir'))
+            ->groupBy('harga_beli')
+            ->orderBy('tgl_terakhir', 'desc')
+            ->get();
+
+        $warnas = \App\Models\Warna::all();
+        return view('admin.bahan.show', compact('bahan', 'riwayatStok', 'varianWarna', 'warnas', 'semuaLayer', 'ringkasanPerHarga'));
     }
-    // 1. TAMPILKAN HALAMAN UTAMA (INDEX) + PENCARIAN + FILTER
+    // 1. TAMPILKAN HALAMAN UTAMA (INDEX) + PENCARIAN + FILTER (MASTER-VARIANT)
     public function index(Request $request)
     {
-        $query = BahanBaku::query();
+        // Query utama: GROUP BY master material, SUM stok dari semua varian warna
+        $query = BahanBaku::select([
+            'kode_material',
+            'nama_material',
+            'kategori',
+            'satuan',
+            DB::raw('SUM(stok) as total_stok'),
+            DB::raw('MAX(harga_satuan) as harga_satuan'),
+            DB::raw('MAX(id) as id'),
+            DB::raw('MAX(foto) as foto'), // Foto dari varian manapun
+        ]);
     
         // Filter Pencarian (Kode/Nama Material)
         $query->when($request->filled('search'), function ($q) use ($request) {
             $search = $request->search;
-            $q->where('nama_material', 'LIKE', "%{$search}%")
-              ->orWhere('kode_material', 'LIKE', "%{$search}%");
+            $q->where(function($sub) use ($search) {
+                $sub->where('nama_material', 'LIKE', "%{$search}%")
+                  ->orWhere('kode_material', 'LIKE', "%{$search}%");
+            });
         });
     
         // Filter Kategori
@@ -46,28 +84,29 @@ class BahanBakuController extends Controller
             $q->where('kategori', $request->kategori);
         });
     
-        // Filter Status Stok
+        // Filter Status Stok (berdasarkan total stok dari semua varian)
         $query->when($request->filled('status_stok'), function ($q) use ($request) {
             $batasStokGlobal = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5);
             
+            // HAVING digunakan karena total_stok adalah hasil agregasi SUM
             if ($request->status_stok == 'kritis') {
-                // Stok Kritis: 0 < stok <= min_stok
-                $q->where('stok', '>', 0)->where('stok', '<=', $batasStokGlobal);
+                $q->having('total_stok', '>', 0)->having('total_stok', '<=', $batasStokGlobal);
             } elseif ($request->status_stok == 'habis') {
-                // Stok Habis: stok = 0
-                $q->where('stok', 0);
+                $q->having('total_stok', 0);
             }
-            // 'semua' = tidak filter
         });
+    
+        // GROUP BY untuk master material (bukan per varian)
+        $query->groupBy('kode_material', 'nama_material', 'kategori', 'satuan');
     
         // Sorting / Urutkan
         $query->when($request->filled('sort_by'), function ($q) use ($request) {
             switch ($request->sort_by) {
                 case 'stok_terbanyak':
-                    $q->orderBy('stok', 'desc');
+                    $q->orderBy('total_stok', 'desc');
                     break;
                 case 'stok_sedikit':
-                    $q->orderBy('stok', 'asc');
+                    $q->orderBy('total_stok', 'asc');
                     break;
                 case 'harga_termahal':
                     $q->orderBy('harga_satuan', 'desc');
@@ -90,7 +129,7 @@ class BahanBakuController extends Controller
         $kategories = Kategori::where('tipe', 'bahan')->get();
         $warnas = Warna::all();
     
-        // --- JALUR CEPAT HITUNG ASET ---
+        // --- JALUR CEPAT HITUNG ASET (hitung dari semua varian) ---
         $totalAsetBahan = (float) BahanBaku::all()->sum(function($bahan) {
             return ($bahan->stok ?? 0) * ($bahan->harga_satuan ?? 0);
         });
@@ -101,9 +140,14 @@ class BahanBakuController extends Controller
             ['total' => $totalAsetBahan, 'updated_at' => now()]
         );
 
-        // Ringkasan stok kritis/habis (IKUTI Pengaturan Gudang: stok_minimum_global)
+        // Ringkasan stok kritis/habis (berdasarkan master grouping)
         $batasStokGlobal = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5);
-        $totalKritis = BahanBaku::where('stok', '>', 0)->where('stok', '<=', $batasStokGlobal)->count();
+        $totalKritis = BahanBaku::select(DB::raw('SUM(stok) as total_stok'))
+            ->groupBy('kode_material')
+            ->having('total_stok', '>', 0)
+            ->having('total_stok', '<=', $batasStokGlobal)
+            ->get()
+            ->count();
     
         return view('admin.bahan.index', compact('bahans', 'satuans', 'kategories', 'warnas', 'totalAsetBahan', 'totalKritis', 'batasStokGlobal'));
     }
@@ -121,21 +165,38 @@ class BahanBakuController extends Controller
     }
 
     /**
-     * AJAX: pencarian bahan untuk kebutuhan form (misalnya BOM / produksi).
+     * AJAX: pencarian bahan untuk kebutuhan autocomplete (Input Manual / Scan Nota).
+     * Hasil di-GROUP BY nama_material agar tidak duplikat per varian warna.
+     * Menampilkan total stok dari semua varian warna.
      */
     public function searchApi(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
 
-        $items = BahanBaku::query()
-            ->when($q !== '', function ($query) use ($q) {
+        if ($q === '') {
+            return response()->json([]);
+        }
+
+        $items = BahanBaku::select([
+            DB::raw('MAX(id) as id'),
+            'kode_material',
+            'nama_material',
+            DB::raw('SUM(stok) as stok'),
+            'satuan',
+            DB::raw('MAX(harga_satuan) as harga_satuan'),
+            'kategori',
+            DB::raw('MAX(foto) as foto'),
+            DB::raw('MAX(warna) as warna'),
+        ])
+            ->where(function ($query) use ($q) {
                 $query->whereRaw('LOWER(nama_material) LIKE LOWER(?)', ["%{$q}%"])
                     ->orWhereRaw('LOWER(kode_material) LIKE LOWER(?)', ["%{$q}%"])
                     ->orWhereRaw('LOWER(kategori) LIKE LOWER(?)', ["%{$q}%"]);
             })
+            ->groupBy('kode_material', 'nama_material', 'satuan', 'kategori')
             ->orderBy('nama_material')
             ->limit(20)
-            ->get(['id', 'kode_material', 'nama_material', 'stok', 'satuan', 'harga_satuan', 'stok_minimum', 'supplier', 'kategori', 'ref_no', 'foto']);
+            ->get();
 
         return response()->json($items);
     }
@@ -549,7 +610,11 @@ if ($bahan) {
      * - catat transaksi ke transaksi_stok bila tabel tersedia
      */
 /**
-     * Simpan bahan masuk via SCAN NOTA (Operator)
+     * Simpan bahan masuk via SCAN NOTA / INPUT MANUAL (Operator)
+     * Menggunakan konsep MASTER-VARIANT:
+     * - Kombinasi nama_material + warna adalah UNIK (satu baris per varian)
+     * - Semua varian berbagi kode_material yang SAMA
+     * - Stok ditambahkan ke varian yang sesuai, bukan ke baris pertama
      */
     public function storeOperator(Request $request)
     {
@@ -562,35 +627,57 @@ if ($bahan) {
             'harga_satuan' => 'required|numeric|min:0',
             'supplier' => 'nullable|string|max:255',
             'ref_no' => 'nullable|string|max:255',
+            'warna' => 'nullable|string|max:255',
+            'detail' => 'nullable|string',
             'is_inventory' => 'nullable|boolean',
-            'foto_nota' => 'required|image|max:2048', // WAJIB UNTUK SCAN NOTA
+            'foto_nota' => 'nullable|image|max:2048',
+            'foto_bukti' => 'nullable|image|max:2048',
+            'foto' => 'nullable|image|max:20480',
         ]);
 
         $isInventory = $request->has('is_inventory') ? (bool) $request->is_inventory : true;
         $qty = (float) $validated['stok'];
+        $warna = $validated['warna'] ?? 'Tidak Ada Warna';
+        $detail = $validated['detail'] ?? null;
 
-        return DB::transaction(function () use ($validated, $qty, $isInventory, $request) {
+        return DB::transaction(function () use ($validated, $qty, $isInventory, $request, $warna, $detail) {
             
-            // 1. PROSES UPLOAD FOTO NOTA
-            $pathNota = $request->file('foto_nota')->store('notas', 'public');
+            // 1. PROSES UPLOAD FOTO (nota / bukti)
+            $pathNota = null;
+            if ($request->hasFile('foto_nota')) {
+                $pathNota = $request->file('foto_nota')->store('notas', 'public');
+            } elseif ($request->hasFile('foto_bukti')) {
+                $pathNota = $request->file('foto_bukti')->store('notas', 'public');
+            }
+            
+            // Upload foto spesifik varian (gambar bahan per warna)
+            $fotoVarian = null;
+            if ($request->hasFile('foto')) {
+                $fotoVarian = $request->file('foto')->store('bahan_baku', 'public');
+            }
 
-            $kodeMaterial = $validated['kode_material'] ?: $this->generateKodeMaterial();
-
-            // Cari bahan (untuk inventory saja)
+            // ============================================================
+            // LOGIKA MASTER-VARIANT: Cek by nama_material + warna
+            // ============================================================
             $bahan = null;
+            
             if ($isInventory) {
-                $bahan = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$validated['nama_material']])
+                // LANGKAH A: Cari kombinasi nama_material + warna yang EXACT SAMA
+                $bahan = BahanBaku::where('nama_material', $validated['nama_material'])
+                    ->where('warna', $warna)
                     ->lockForUpdate()
                     ->first();
             }
 
             if ($bahan) {
-                // UPDATE BAHAN LAMA (RESTOCK)
+                // ===== KOMBINASI (nama_material + warna) SUDAH ADA → RESTOCK =====
                 $bahan->kategori = $validated['kategori'];
                 $bahan->satuan = $validated['satuan'];
                 $bahan->supplier = $validated['supplier'] ?? $bahan->supplier;
                 $bahan->ref_no = $validated['ref_no'] ?? $bahan->ref_no;
-                $bahan->foto_nota_terakhir = $pathNota; // Simpan bukti nota terbaru
+                $bahan->detail = $detail ?? $bahan->detail;
+                $bahan->foto_nota_terakhir = $pathNota ?? $bahan->foto_nota_terakhir;
+                if ($fotoVarian) $bahan->foto = $fotoVarian;
 
                 if ($isInventory) {
                     $bahan->increment('stok', $qty);
@@ -598,7 +685,23 @@ if ($bahan) {
                 }
                 $bahan->save();
             } else {
-                // BUAT BAHAN BARU
+                // ===== KOMBINASI BARU → BUAT VARIAN BARU =====
+                
+                // LANGKAH B: Cek apakah nama_material sudah ada dengan warna lain
+                // Jika ya, gunakan kode_material yang sama. Jika belum, generate baru.
+                $existingMaster = BahanBaku::where('nama_material', $validated['nama_material'])
+                    ->lockForUpdate()
+                    ->first();
+                
+                $kodeMaterial = $validated['kode_material'] ?? null;
+                
+                if ($existingMaster) {
+                    $kodeMaterial = $existingMaster->kode_material;
+                } else {
+                    $kodeMaterial = $kodeMaterial ?: $this->generateKodeMaterial();
+                }
+
+                // LANGKAH C: Buat baris data baru untuk varian warna ini
                 $bahan = BahanBaku::create([
                     'kode_material' => $kodeMaterial,
                     'nama_material' => $validated['nama_material'],
@@ -609,12 +712,15 @@ if ($bahan) {
                     'harga_satuan' => $isInventory ? $validated['harga_satuan'] : 0,
                     'supplier' => $validated['supplier'] ?? null,
                     'ref_no' => $validated['ref_no'] ?? null,
+                    'warna' => $warna,
+                    'detail' => $detail,
+                    'foto' => $fotoVarian,
                     'is_inventory' => $isInventory,
-                    'foto_nota_terakhir' => $pathNota, // Simpan bukti nota
+                    'foto_nota_terakhir' => $pathNota,
                 ]);
             }
 
-            // 2. BUAT LAYER FIFO (PENTING UNTUK HARGA BELI & VERIFIKASI)
+            // 2. BUAT LAYER FIFO (hanya jika inventory)
             if ($isInventory && Schema::hasTable('bahan_stok_layers')) {
                 \App\Models\BahanStokLayer::create([
                     'bahan_baku_id' => $bahan->id,
@@ -624,7 +730,7 @@ if ($bahan) {
                     'harga_beli' => (float) $validated['harga_satuan'],
                     'supplier' => $validated['supplier'] ?? $bahan->supplier,
                     'ref_no' => $validated['ref_no'] ?? $bahan->ref_no,
-                    'foto_nota' => $pathNota, // Simpan nota di layer ini
+                    'foto_nota' => $pathNota,
                 ]);
             }
 
@@ -635,7 +741,7 @@ if ($bahan) {
                 'operator_id' => Auth::id(),
                 'jenis_transaksi' => $jenisTransaksi,
                 'jumlah' => $qty,
-                'keterangan' => 'Ditambah via Scan Nota (Verifikasi Diperlukan)',
+                'keterangan' => $warna ? "Ditambah via Scan Nota (Warna: {$warna})" : 'Ditambah via Scan Nota (Verifikasi Diperlukan)',
                 'created_at' => now(),
             ]);
 
@@ -644,10 +750,10 @@ if ($bahan) {
                 $admins = \App\Models\User::where('role', 'admin')->get();
                 foreach ($admins as $admin) {
                     $admin->notify(new \App\Notifications\SystemNotification(
-                        '📸 Verifikasi Scan Nota Baru', // Judul berbeda dengan bahan masuk biasa
-                        "Operator " . Auth::user()->name . " mengunggah nota belanja {$bahan->nama_material}. Klik untuk verifikasi.",
+                        '📸 Verifikasi Scan Nota Baru',
+                        "Operator " . Auth::user()->name . " mengunggah nota belanja {$bahan->nama_material}" . ($warna ? " (Warna: {$warna})" : "") . ". Klik untuk verifikasi.",
                         'info',
-                        route('admin.bahan.index'), // Arahkan Admin ke dashboard untuk cek data
+                        route('admin.bahan.index'),
                         'admin'
                     ));
                 }
@@ -729,6 +835,93 @@ if ($bahan) {
             'total_asset_value' => $totalAssetValue,
             'sync_error' => false,
         ]);
+    }
+
+    /**
+     * API: Cek bahan (Auto-fill deskripsi & preview foto BAHAN/INDUK)
+     * - Deskripsi: dari induk (nama_material, warna apapun)
+     * - Foto: dari INDUK (nama_material saja) — cari varian manapun yang punya foto
+     * - Stok & harga: dari kombinasi nama_material + warna spesifik
+     */
+    public function cekBahanApi(Request $request)
+    {
+        $nama = $request->query('nama_material');
+        $warna = $request->query('warna');
+
+        if (empty($nama)) {
+            return response()->json(null);
+        }
+
+        // 1. Cari detail/deskripsi & FOTO dari INDUK (nama_material saja, warna apapun)
+        // Ambil varian PERTAMA yang punya foto (untuk preview foto bahan)
+        $induk = BahanBaku::where('nama_material', $nama)
+            ->whereNotNull('foto')
+            ->where('foto', '!=', '')
+            ->first();
+
+        // Jika tidak ada yang punya foto, ambil varian pertama untuk detail
+        if (!$induk) {
+            $induk = BahanBaku::where('nama_material', $nama)->first();
+        }
+        
+        // 2. Cari data spesifik dari kombinasi nama + warna (untuk stok & harga)
+        $varianSpesifik = null;
+        if (!empty($warna)) {
+            $varianSpesifik = BahanBaku::where('nama_material', $nama)
+                ->where('warna', $warna)
+                ->first();
+        }
+
+        $detail = null;
+        $fotoUrl = null;
+
+        if ($induk) {
+            $detail = $induk->detail ?? $induk->deskripsi_bahan ?? null;
+            if ($induk->foto) {
+                $fotoUrl = asset('storage/' . $induk->foto);
+            }
+        }
+
+        return response()->json([
+            'detail' => $detail,
+            'deskripsi_bahan' => $detail,
+            'foto_url' => $fotoUrl,
+            'stok' => $varianSpesifik ? $varianSpesifik->stok : 0,
+            'harga_satuan' => $varianSpesifik ? $varianSpesifik->harga_satuan : 0,
+        ]);
+    }
+
+    /**
+     * Update varian warna (hanya warna & foto saja)
+     */
+    public function updateVarian(Request $request, $id)
+    {
+        $bahan = BahanBaku::findOrFail($id);
+
+        $request->validate([
+            'warna' => 'nullable|string|max:255',
+            'foto' => 'nullable|image|max:20480',
+        ]);
+
+        $data = [];
+
+        if ($request->filled('warna')) {
+            $data['warna'] = $request->warna;
+        }
+
+        if ($request->hasFile('foto')) {
+            // Hapus foto lama jika ada
+            if ($bahan->foto && Storage::disk('public')->exists($bahan->foto)) {
+                Storage::disk('public')->delete($bahan->foto);
+            }
+            $data['foto'] = $request->file('foto')->store('bahan_baku', 'public');
+        }
+
+        if (!empty($data)) {
+            $bahan->update($data);
+        }
+
+        return redirect()->route('admin.bahan.show', $id)->with('success', 'Varian berhasil diperbarui!');
     }
 
     /**

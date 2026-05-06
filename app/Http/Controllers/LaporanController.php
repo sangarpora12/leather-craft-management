@@ -106,10 +106,11 @@ $pengadaans = DB::table('log_stok')
     'bahan_bakus.nama_material',
     'bahan_bakus.kode_material',
     'bahan_bakus.satuan',
+    'bahan_bakus.warna',
     DB::raw('SUM(log_stok.jumlah) as jumlah'),
     DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as user_name")
 )
-->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan')
+->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan', 'bahan_bakus.warna')
 ->orderByDesc('jumlah')
 ->get();
                 
@@ -126,6 +127,7 @@ $materialUsage = DB::table('produksis')
     'bahan_bakus.nama_material',
     'bahan_bakus.kode_material',
     'bahan_bakus.satuan',
+    'bahan_bakus.warna',
     DB::raw('SUM(produksis.jumlah_selesai * bom.jumlah_kebutuhan) as jumlah'),
     DB::raw("GROUP_CONCAT(DISTINCT produk_jadis.nama_produk SEPARATOR ', ') as nama_produk"), // Nama produk tetap kita ambil
     DB::raw('MAX(DATE(produksis.created_at)) as tanggal_terakhir'), 
@@ -135,7 +137,7 @@ $materialUsage = DB::table('produksis')
     DB::raw("'-' as keterangan"), 
     DB::raw('"Dipakai" as jenis_mutasi')
 )
-->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan')
+->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan', 'bahan_bakus.warna')
 ->orderByDesc('jumlah')
 ->get();
         // Summary for production/produk

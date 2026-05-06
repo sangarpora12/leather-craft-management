@@ -219,6 +219,8 @@ async function processOCR(base64) {
         const result = await response.json();
         if (result.success) {
             loadingText.textContent = 'OCR Berhasil!';
+            // Set warna default "Tidak Ada Warna" jika ada dropdown warna
+            // dan alihkan ke halaman result
             setTimeout(() => { window.location.href = result.redirect_url || '/operator/scan/result'; }, 500);
         } else {
             loadingOverlay.classList.add('hidden');
@@ -235,29 +237,6 @@ async function processOCR(base64) {
 // ==========================================
 document.getElementById('cancelManualBtn').addEventListener('click', () => switchTab(tabScan, contentScan));
 document.getElementById('cancelPelengkapBtn').addEventListener('click', () => switchTab(tabScan, contentScan));
-
-// ==========================================
-// FOTO BUKTI
-// ==========================================
-const fotoBuktiInput     = document.getElementById('fotoBuktiInput');
-const btnFotoBukti       = document.getElementById('btnFotoBukti');
-const fotoBuktiPreview   = document.getElementById('fotoBuktiPreview');
-const fotoBuktiThumbnail = document.getElementById('fotoBuktiThumbnail');
-const textFotoBukti      = document.getElementById('textFotoBukti');
-
-btnFotoBukti.addEventListener('click', () => fotoBuktiInput.click());
-fotoBuktiInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        fotoBuktiThumbnail.src = event.target.result;
-        fotoBuktiPreview.classList.remove('hidden');
-        textFotoBukti.textContent = 'Ganti Foto Bukti';
-        btnFotoBukti.classList.add('bg-blue-500/20', 'border-blue-500/50');
-    };
-    reader.readAsDataURL(file);
-});
 
 // ==========================================
 // HELPERS
@@ -280,9 +259,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ==========================================
-// AUTOCOMPLETE — FIX utama:
-// 1. Pakai getElementById bukan querySelector (agar tidak ambil select pelengkap)
-// 2. Handle kategori/satuan yang mungkin object atau string
+// AUTOCOMPLETE & RESET FUNCTIONS (GLOBAL)
 // ==========================================
 function selectMaterial(itemElement) {
     document.getElementById('nama_material').value = itemElement.dataset.nama;
@@ -290,14 +267,6 @@ function selectMaterial(itemElement) {
     document.getElementById('supplierInput').value = itemElement.dataset.supplier || '';
     document.getElementById('refNoInput').value    = itemElement.dataset.refNo || '';
 
-    // Disable tombol foto
-    btnFotoBukti.disabled = true;
-    btnFotoBukti.classList.add('opacity-50', 'cursor-not-allowed');
-    btnFotoBukti.classList.remove('hover:bg-gray-700/50');
-    textFotoBukti.textContent = 'Master Foto Sudah Ada';
-    fotoBuktiInput.disabled = true;
-
-    // FIX: getElementById bukan querySelector — hindari ambil select pelengkap
     const kategoriSelect = document.getElementById('kategoriSelect');
     const satuanSelect   = document.getElementById('satuanSelect');
 
@@ -326,13 +295,29 @@ function selectMaterial(itemElement) {
     document.getElementById('suggestions').innerHTML = '';
 }
 
-// Reset saat user ketik ulang (bahan baru)
-document.getElementById('nama_material').addEventListener('input', function() {
-    // If user types, it's a new material or a search, so reset dependent fields
-    if (document.getElementById('kodeMaterial').value) {
-        resetManualForm(false); // false to not clear the typed name
+function resetManualForm(clearName = true) {
+    const manualForm = document.getElementById('manualForm');
+    if (!manualForm) return;
+    if (clearName) {
+        manualForm.reset();
+    } else {
+        Array.from(manualForm.elements).forEach(el => {
+            if (el.name !== 'nama_material' && el.type !== 'hidden' && el.type !== 'submit' && el.type !== 'button') {
+                if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+                else el.value = '';
+            }
+        });
+        manualForm.querySelector('[name="is_inventory"]').checked = true;
     }
-});
+    document.getElementById('suggestions').innerHTML = '';
+    document.getElementById('suggestions').classList.add('hidden');
+    document.getElementById('lastPriceInfo').classList.add('hidden');
+}
+
+function resetPelengkapForm() {
+    const pelengkapForm = document.getElementById('pelengkapForm');
+    if (pelengkapForm) pelengkapForm.reset();
+}
 
 // FIX: Satu DOMContentLoaded saja
 document.addEventListener('DOMContentLoaded', function() {
@@ -343,6 +328,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     input.addEventListener('input', function() {
         document.getElementById('lastPriceInfo').classList.add('hidden');
+        if (document.getElementById('kodeMaterial').value) {
+            resetManualForm(false);
+        }
         const query = this.value.trim();
         if (query.length < 1) { suggestions.classList.add('hidden'); suggestions.innerHTML = ''; return; }
         clearTimeout(timeout);
@@ -368,10 +356,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="flex-1 min-w-0">
                                 <div class="font-bold text-white text-base truncate">${item.nama_material || '-'}</div>
                                 <div class="text-xs text-yellow-400 font-mono">${item.kode_material || '-'}</div>
-                                <div class="text-xs text-gray-400">Stok: ${item.stok} ${item.satuan}</div>
+                                <div class="flex flex-wrap gap-1 mt-0.5">
+                                    ${item.warna ? `<span class="text-[9px] px-1.5 py-0.5 bg-blue-600/20 text-blue-400 rounded border border-blue-600/30">${item.warna}</span>` : ''}
+                                    <span class="text-xs text-gray-400">Stok: ${item.stok} ${item.satuan}</span>
+                                </div>
                             </div>`;
 
-                        // FIX: pastikan kategori & satuan selalu string, bukan object
                         itemDiv.dataset.nama     = item.nama_material || '';
                         itemDiv.dataset.kode     = item.kode_material || '';
                         itemDiv.dataset.kategori = (item.kategori && typeof item.kategori === 'object')
@@ -400,85 +390,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-     // Bahan Pelengkap - SELALU BARU, TIDAK ADA CARI / AUTOCOMPLETE
-     document.getElementById('nama_pelengkap').addEventListener('input', function() {
-         // Setiap input adalah bahan baru, reset kode material
-         document.getElementById('kodePelengkap').value = '';
-     });
+    const namaPelengkap = document.getElementById('nama_pelengkap');
+    if (namaPelengkap) {
+        namaPelengkap.addEventListener('input', function() {
+            document.getElementById('kodePelengkap').value = '';
+        });
+    }
 });
-
-
-
-function resetFotoBukti() {
-    fotoBuktiInput.value = '';
-    fotoBuktiThumbnail.src = '';
-    fotoBuktiPreview.classList.add('hidden');
-    textFotoBukti.textContent = 'Tambah Foto Bukti Fisik';
-    btnFotoBukti.classList.remove('bg-blue-500/20', 'border-blue-500/50');
-    btnFotoBukti.disabled = false;
-    btnFotoBukti.classList.remove('opacity-50', 'cursor-not-allowed');
-    btnFotoBukti.classList.add('hover:bg-gray-700/50');
-    fotoBuktiInput.disabled = false;
-}
-
-function resetManualForm(clearName = true) {
-    const manualForm = document.getElementById('manualForm');
-    if (clearName) {
-        manualForm.reset();
-    } else {
-        // Reset all fields except the name
-        Array.from(manualForm.elements).forEach(el => {
-            if (el.name !== 'nama_material' && el.type !== 'hidden' && el.type !== 'submit' && el.type !== 'button') {
-                if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
-                else el.value = '';
-            }
-        });
-        // Restore defaults for specific fields
-        manualForm.querySelector('[name="is_inventory"]').checked = true;
-    }
-    document.getElementById('suggestions').innerHTML = '';
-    document.getElementById('suggestions').classList.add('hidden');
-    document.getElementById('lastPriceInfo').classList.add('hidden');
-    resetFotoBukti();
-}
-
-function resetPelengkapForm() {
-    document.getElementById('pelengkapForm').reset();
-}
-
-function resetFotoBukti() {
-    fotoBuktiInput.value = '';
-    fotoBuktiThumbnail.src = '';
-    fotoBuktiPreview.classList.add('hidden');
-    textFotoBukti.textContent = 'Tambah Foto Bukti Fisik';
-    btnFotoBukti.classList.remove('bg-blue-500/20', 'border-blue-500/50');
-    btnFotoBukti.disabled = false;
-    btnFotoBukti.classList.remove('opacity-50', 'cursor-not-allowed');
-    btnFotoBukti.classList.add('hover:bg-gray-700/50');
-    fotoBuktiInput.disabled = false;
-}
-
-function resetManualForm(clearName = true) {
-    const manualForm = document.getElementById('manualForm');
-    if (clearName) {
-        manualForm.reset();
-    } else {
-        // Reset all fields except the name
-        Array.from(manualForm.elements).forEach(el => {
-            if (el.name !== 'nama_material' && el.type !== 'hidden' && el.type !== 'submit' && el.type !== 'button') {
-                if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
-                else el.value = '';
-            }
-        });
-        // Restore defaults for specific fields
-        manualForm.querySelector('[name="is_inventory"]').checked = true;
-    }
-    document.getElementById('suggestions').innerHTML = '';
-    document.getElementById('suggestions').classList.add('hidden');
-    document.getElementById('lastPriceInfo').classList.add('hidden');
-    resetFotoBukti();
-}
-
 
 </script>
 

@@ -119,104 +119,53 @@ $bahans = $queryBuilder->select('id', 'kode_bahan', 'nama_bahan', 'stok', 'satua
             $validator = Validator::make($request->all(), [
                 'nama_bahan' => 'required|string|max:255',
                 'jumlah' => 'required|numeric|min:0.01',
-                'satuan' => 'required|string|in:pcs,kg,meter,liter',
-                'no_nota' => 'nullable|string|max:100',
-                'supplier' => 'nullable|string|max:255',
-                'foto' => 'nullable|string',
+                'satuan' => 'required|string',
+                'warna' => 'required|string', // Tambahkan validasi warna
                 'action' => 'required|string|in:update_stok,create_new',
-                'kode_bahan' => 'nullable|string|max:50'
+                // ... validasi lainnya ...
             ]);
-            
+
             if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validasi gagal',
-                    'errors' => $validator->errors()
-                ], 422);
+                return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
             }
-            
-            $action = $request->input('action');
-            $namaBahan = $request->input('nama_bahan');
+
+            // OTOMATIS: Gabungkan Nama + Warna seperti di Controller Web
+            $namaLengkap = $request->input('nama_bahan') . " (" . $request->input('warna') . ")";
             $jumlah = $request->input('jumlah');
-            $satuan = $request->input('satuan');
-            $noNota = $request->input('no_nota');
-            $supplier = $request->input('supplier');
-            $foto = $request->input('foto');
-            
-            if ($action === 'update_stok') {
-                // Update stok bahan yang sudah ada
-                $kodeBahan = $request->input('kode_bahan');
-                
-                if (empty($kodeBahan)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Kode bahan harus diisi untuk update stok'
-                    ], 400);
-                }
-                
-                $bahan = BahanBaku::where('kode_bahan', $kodeBahan)->first();
-                
+
+            if ($request->input('action') === 'update_stok') {
+                // Cari berdasarkan nama lengkap (varian spesifik)
+                $bahan = BahanBaku::where('nama_bahan', $namaLengkap)->first();
+
                 if (!$bahan) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Bahan dengan kode ' . $kodeBahan . ' tidak ditemukan'
-                    ], 404);
+                    return response()->json(['success' => false, 'message' => 'Varian ' . $namaLengkap . ' tidak ditemukan'], 404);
                 }
-                
-                // Update stok
+
                 $bahan->stok += $jumlah;
                 $bahan->save();
-                
-                // Catat log stok
-                $this->catatLogStok($bahan->id, 'masuk', $jumlah, $noNota, $supplier, $foto);
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Stok bahan berhasil diperbarui',
-                    'redirect_url' => route('operator.dashboard')
-                ]);
-                
+
+                $this->catatLogStok($bahan->id, 'masuk', $jumlah, $request->no_nota, $request->supplier, $request->foto);
+
+                return response()->json(['success' => true, 'message' => 'Stok varian berhasil diperbarui']);
             } else {
-                // Buat bahan baru
-                $kodeBahan = $this->generateKodeBahanOtomatis($namaBahan);
-                
-                // Cek apakah nama bahan sudah ada
-                $existing = BahanBaku::where('nama_bahan', $namaBahan)->first();
-                
-                if ($existing) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Nama bahan sudah ada, gunakan nama yang berbeda'
-                    ], 400);
-                }
-                
-                // Buat bahan baru
+                // Buat bahan/varian baru
                 $bahan = new BahanBaku();
-                $bahan->kode_bahan = $kodeBahan;
-                $bahan->nama_bahan = $namaBahan;
+                $bahan->kode_bahan = $this->generateKodeBahanOtomatis($request->nama_bahan);
+                $bahan->nama_bahan = $namaLengkap; // Simpan Nama (Warna)
+                $bahan->warna_id = $request->input('warna'); // Pastikan kolom ini ada di DB
                 $bahan->stok = $jumlah;
-                $bahan->satuan = $satuan;
+                $bahan->satuan = $request->input('satuan');
                 $bahan->status = 'aktif';
                 $bahan->save();
-                
-                // Catat log stok
-                $this->catatLogStok($bahan->id, 'masuk', $jumlah, $noNota, $supplier, $foto);
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Bahan baru berhasil ditambahkan',
-                    'redirect_url' => route('operator.dashboard')
-                ]);
+
+                $this->catatLogStok($bahan->id, 'masuk', $jumlah, $request->no_nota, $request->supplier, $request->foto);
+
+                return response()->json(['success' => true, 'message' => 'Varian baru berhasil ditambahkan']);
             }
-            
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
-    
     /**
      * Generate kode bahan otomatis berdasarkan pengaturan gudang
      * ✅ UNIVERSAL INCREMENT COUNTER - SEMUA BAHAN MENGGUNAKAN NOMOR URUT YANG SAMA

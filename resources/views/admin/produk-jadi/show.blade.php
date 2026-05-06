@@ -268,7 +268,12 @@
                     <tr class="hover:bg-white/[0.02]">
                         <td class="p-3 pl-4 font-medium text-white">
                             {{ $bom->material->nama_material ?? 'Material Terhapus' }}
-                            <div class="text-[9px] text-gray-500">{{ $bom->material->kode_material ?? '-' }}</div>
+                            <div class="flex items-center gap-1 mt-0.5">
+                                <span class="text-[9px] text-gray-500">{{ $bom->material->kode_material ?? '-' }}</span>
+                                @if(($bom->material->warna ?? false) && $bom->material->warna !== 'Tidak Ada Warna')
+                                    <span class="text-[8px] px-1 py-0.5 bg-blue-600/20 text-blue-400 rounded border border-blue-600/30">{{ $bom->material->warna }}</span>
+                                @endif
+                            </div>
                         </td>
                         <td class="p-3 text-center text-gray-400">{{ $bom->jumlah_kebutuhan + 0 }} {{ $bom->satuan }}</td>
                         <td class="p-3 text-center text-white">{{ ($bom->material->stok ?? 0) + 0 }} {{ $bom->material->satuan ?? '' }}</td>

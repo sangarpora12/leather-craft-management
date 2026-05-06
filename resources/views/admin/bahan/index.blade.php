@@ -141,11 +141,12 @@
                 <tbody class="divide-y divide-[#2D3139] text-sm">
                     @forelse($bahans as $b)
                     @php
-                        // Cek status kritis
+                        // Cek status kritis berdasarkan total_stok (SUM dari semua varian)
                         // IKUTI PENGATURAN GUDANG: stok_minimum_global adalah acuan utama
                         // (fallback 5 bila belum diset)
                         $batasStokItem = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5);
-                        $isKritis = ((float) $b->stok) <= $batasStokItem;
+                        $stokItem = (float) ($b->total_stok ?? $b->stok ?? 0);
+                        $isKritis = $stokItem <= $batasStokItem;
                     @endphp
                     <tr class="hover:bg-[#20232A]/80 transition-colors cursor-pointer {{ $isKritis ? 'bg-[#FF5252]/5' : '' }}"
     data-href="{{ route('admin.bahan.show', $b->id) }}">
@@ -170,7 +171,7 @@
                         </td>
                         
                         <td class="px-6 py-4 text-center">
-                            <span class="{{ $isKritis ? 'text-[#FF5252]' : 'text-[#00BFA5]' }} font-extrabold text-base">{{ (float) $b->stok }}</span>
+                            <span class="{{ $isKritis ? 'text-[#FF5252]' : 'text-[#00BFA5]' }} font-extrabold text-base">{{ number_format($stokItem, 2) }}</span>
                         </td>
                         
                         <td class="px-6 py-4 text-center">

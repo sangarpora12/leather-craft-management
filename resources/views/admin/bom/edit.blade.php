@@ -64,8 +64,16 @@
                 <label class="block text-sm font-semibold text-gray-300 mb-2">Sketsa Produk <span class="text-xs text-gray-500">(Maksimal 4 foto)</span></label>
 
                 {{-- Gallery Sketsa Existing --}}
-                @php $existingSketsas = $product->sketsa ?? []; @endphp
-                @if(count($existingSketsas) > 0)
+                @php 
+                    $sketsaRaw = $product->sketsa ?? [];
+                    if (is_string($sketsaRaw)) {
+                        $decoded = json_decode($sketsaRaw, true);
+                        $existingSketsas = is_array($decoded) ? $decoded : [$sketsaRaw];
+                    } else {
+                        $existingSketsas = $sketsaRaw;
+                    }
+                @endphp
+                @if(is_array($existingSketsas) && count($existingSketsas) > 0)
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         @foreach($existingSketsas as $index => $sketsaPath)
                             <div class="relative group">
@@ -154,7 +162,10 @@
                                             <div class="py-1">
                                                 <template x-for="mat in filteredMaterials(search, row.material_id)" :key="mat.id">
                                                     <div @click="row.material_id = mat.id; updateUnit(index); open = false" class="px-3 py-2 cursor-pointer hover:bg-orange-600/20 hover:text-orange-400 transition border-b border-white/5 last:border-0">
-                                                        <div class="font-bold text-sm text-gray-200" x-text="mat.nama_material"></div>
+                                                        <div class="font-bold text-sm text-gray-200">
+                                                            <span x-text="mat.nama_material"></span>
+                                                            <span x-show="mat.warna" class="text-blue-400 text-[10px] ml-1" x-text="'(' + mat.warna + ')'"></span>
+                                                        </div>
                                                         <div class="flex justify-between mt-0.5"><span class="text-[10px] text-gray-500" x-text="'Stok: ' + mat.stok + ' ' + mat.satuan"></span><span class="text-[10px] text-gray-500" x-text="formatRupiah(mat.harga_satuan)"></span></div>
                                                     </div>
                                                 </template>
@@ -347,7 +358,9 @@ function bomForm() {
         getMaterialName(id) {
             if (!id) return '-- Pilih Bahan --';
             let mat = this.materials.find(m => m.id == id);
-            return mat ? mat.nama_material : 'Bahan Tidak Ditemukan';
+            if (!mat) return 'Bahan Tidak Ditemukan';
+            let warna = mat.warna || '';
+            return warna ? mat.nama_material + ' (' + warna + ')' : mat.nama_material;
         },
 
         filteredMaterials(search, currentId) {
