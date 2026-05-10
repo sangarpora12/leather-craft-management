@@ -88,6 +88,7 @@ public function index(Request $request)
             'supplier' => 'nullable|string',
             'ref_no' => 'nullable|string',
             'kategori' => 'nullable|string',
+            'foto' => 'nullable|image|max:20480',
         ]);
         
         if ($validator->fails()) {
@@ -149,6 +150,22 @@ public function index(Request $request)
                 $existingMaster = BahanBaku::where('nama_material', $namaMaterial)->first();
                 $kodeMaterial = $existingMaster ? $existingMaster->kode_material : BahanBaku::generateKodeMaterial($request->kategori);
                 
+                // Handle upload foto bahan jika ada (base64 atau file)
+                $fotoPath = null;
+                if ($request->has('foto') && !empty($request->foto)) {
+                    // Foto dikirim sebagai base64
+                    $fotoData = $request->foto;
+                    if (preg_match('/^data:image(+);base64,/', $fotoData, $matches)) {
+                        $fotoData = substr($fotoData, strpos($fotoData, ',') + 1);
+                        $fotoData = str_replace(' ', '+', $fotoData);
+                        $fotoPath = 'bahan/' . uniqid() . '.jpg';
+                        Storage::disk('public')->put($fotoPath, base64_decode($fotoData));
+                    }
+                } elseif ($request->hasFile('foto')) {
+                    // Foto dikirim sebagai file upload
+                    $fotoPath = $request->file('foto')->store('bahan', 'public');
+                }
+                
                 $bahan = BahanBaku::create([
                     'kode_material' => $kodeMaterial,
                     'nama_material' => $namaMaterial,
@@ -158,6 +175,7 @@ public function index(Request $request)
                     'kategori'      => $request->kategori ?? 'Bahan Utama',
                     'harga_satuan'  => $request->harga_satuan ?? 0,
                     'is_inventory'  => true,
+                    'foto'          => $fotoPath,
                 ]);
             }
 

@@ -69,11 +69,27 @@
         @forelse($bahanBakus as $bahan)
         <div class="rounded-xl mb-3 overflow-hidden relative @if($bahan->stok <= $bahan->stok_minimum) bg-red-500/10 border border-red-500/40 @else bg-[#1C222D] border border-white/5 @endif">
             <!-- ICON EDIT POJOK KANAN ATAS -->
-            <a href="{{ route('operator.bahan.edit', $bahan->id) }}" 
-               onclick="event.stopPropagation();"
-               class="absolute top-3 right-3 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg p-1.5 z-10 transition touch-manipulation">
-                <i class="fas fa-pencil-alt"></i>
-            </a>
+            <div class="absolute top-3 right-3 flex gap-1 z-10">
+                <a href="{{ route('operator.bahan.edit', $bahan->id) }}" 
+                   onclick="event.stopPropagation();"
+                   class="text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg p-1.5 transition touch-manipulation">
+                    <i class="fas fa-pencil-alt"></i>
+                </a>
+                @if(isset($bahan->jenis_bahan) && $bahan->jenis_bahan == 0)
+                    {{-- Tombol hapus untuk bahan pelengkap --}}
+                    <form action="{{ route('operator.bahan.destroy', $bahan->id) }}" method="POST" 
+                          onsubmit="return confirm('Yakin ingin menghapus bahan pelengkap ini?');"
+                          class="inline">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" 
+                                onclick="event.stopPropagation();"
+                                class="text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg p-1.5 transition touch-manipulation">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </form>
+                @endif
+            </div>
         
             <!-- SELURUH KARTU ADALAH LINK DETAIL -->
             <a href="{{ route('operator.bahan.show', $bahan->id) }}" class="block p-4 hover:bg-white/5 transition">
@@ -95,20 +111,28 @@
                         <div class="text-xs text-gray-400 mb-1">{{ $bahan->kode_material }}</div>
                         <div class="flex items-center gap-2">
                             <span class="px-1.5 py-0.5 bg-gray-700 text-gray-300 text-[10px] rounded">{{ $bahan->kategori }}</span>
-                            @php
-    $stokTampil = $bahan->total_stok ?? $bahan->stok;
-    // Gunakan batas stok global seperti admin (fallback ke 5)
-    $batasKritis = $batasStokGlobal ?? 5;
-    // Format cerdas: 150.50 -> 150.5, 150.00 -> 150
-    $formatStokIdx = function($val) {
-        $val = (float) $val;
-        if ($val == (int) $val) return number_format($val, 0);
-        return rtrim(rtrim(number_format($val, 2, '.', ''), '0'), '.');
-    };
-@endphp
-<span class="text-xs font-bold {{ $stokTampil <= $batasKritis ? 'text-red-400' : 'text-green-400' }}">
-    {{ $formatStokIdx($stokTampil) }} <span class="font-normal text-gray-400">{{ strtolower($bahan->satuan) }}</span>
-</span>
+                            @if(isset($bahan->jenis_bahan) && $bahan->jenis_bahan == 0)
+                                {{-- Bahan Pelengkap --}}
+                                <span class="px-1.5 py-0.5 bg-yellow-600/20 text-yellow-400 text-[10px] rounded border border-yellow-600/30">
+                                    Pelengkap
+                                </span>
+                            @else
+                                {{-- Bahan Inventory --}}
+                                @php
+        $stokTampil = $bahan->total_stok ?? $bahan->stok;
+        // Gunakan batas stok global seperti admin (fallback ke 5)
+        $batasKritis = $batasStokGlobal ?? 5;
+        // Format cerdas: 150.50 -> 150.5, 150.00 -> 150
+        $formatStokIdx = function($val) {
+            $val = (float) $val;
+            if ($val == (int) $val) return number_format($val, 0);
+            return rtrim(rtrim(number_format($val, 2, '.', ''), '0'), '.');
+        };
+    @endphp
+    <span class="text-xs font-bold {{ $stokTampil <= $batasKritis ? 'text-red-400' : 'text-green-400' }}">
+        {{ $formatStokIdx($stokTampil) }} <span class="font-normal text-gray-400">{{ strtolower($bahan->satuan) }}</span>
+    </span>
+                            @endif
                         </div>
                     </div>
                 </div>

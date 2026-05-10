@@ -22,7 +22,7 @@ class PengadaanController extends Controller
     public function index(Request $request)
     {
         $query = Pengadaan::with('bahan', 'operator')->orderBy('tanggal_dibutuhkan', 'asc');
-
+    
         if ($request->filled('search')) {
             $search = $request->search;
             $query->whereHas('bahan', function($q) use ($search) {
@@ -30,22 +30,36 @@ class PengadaanController extends Controller
                   ->orWhere('kode_material', 'like', "%{$search}%");
             });
         }
-
+    
         if ($request->filled('status') && $request->status != 'semua') {
             $query->where('status', $request->status);
         }
-
+    
         $pengadaans = $query->paginate(15)->withQueryString();
-
+    
         $kategories = \App\Models\Kategori::all();
         $suppliers = Supplier::all();
         $operators = User::where('role', 'operator')->get();
-
-        $allBahanBakus = BahanBaku::all();
+    
+        // 1. Ambil data mentah untuk Alpine.js
+        // Ambil semua bahan baku KECUALI yang kategorinya Bahan Pelengkap
+// (Pakai LOWER buat jaga-jaga kalau pas ngetik di database hurufnya besar/kecil)
+$allBahanBakus = BahanBaku::whereRaw('LOWER(kategori) != ?', ['bahan pelengkap'])->get(); // <--- Pastikan baris ini ada!
         $uniqueBahanBakus = $allBahanBakus->unique(function ($item) {
             return $item['nama_material'] . $item['warna'] . $item['harga_satuan'];
         });
-        $bahanBakus = $uniqueBahanBakus->groupBy('kode_material');
+    
+        // 2. Buat variabel $bahanBakus untuk Katalog (Urutkan yang ada fotonya dulu)
+        $bahanBakus = $uniqueBahanBakus->groupBy('kode_material')->map(function ($group) {
+            return $group->sort(function ($a, $b) {
+                // Prioritas utama: item dengan foto harus selalu di atas.
+                if (!empty($a->foto) && empty($b->foto)) return -1;
+                if (empty($a->foto) && !empty($b->foto)) return 1;
+
+                // Prioritas kedua: jika status foto sama, urutkan berdasarkan tanggal terbaru.
+                return $b->updated_at <=> $a->updated_at;
+            })->values(); // Re-index array setelah sorting
+        });
 
         $batasStokGlobal = (int) (Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 10);
         $criticalQuery = BahanBaku::where('is_inventory', 1);
@@ -55,9 +69,16 @@ class PengadaanController extends Controller
             $criticalQuery->where('stok', '<=', $batasStokGlobal);
         }
         $lowStockMaterials = $criticalQuery->get()->groupBy('kode_material');
-
+    
+        // 4. Kirim semua ke view
         return view('admin.pengadaan.index', compact(
-            'pengadaans', 'kategories', 'suppliers', 'operators', 'bahanBakus', 'lowStockMaterials'
+            'pengadaans', 
+            'kategories', 
+            'suppliers', 
+            'operators', 
+            'bahanBakus',        // <--- Pastikan namanya persis
+            'lowStockMaterials', 
+            'allBahanBakus'      // <--- Tambahkan ini juga buat Alpine.js
         ));
     }
 
@@ -69,8 +90,9 @@ class PengadaanController extends Controller
     public function showOperatorGroup($nama_material)
     {
         $user = Auth::user();
-        $nama_material_decoded = urldecode($nama_material);
-
+        // Gunakan trim untuk jaga-jaga ada spasi di database
+        $nama_material_decoded = trim(urldecode($nama_material));
+    
         $items = Pengadaan::where('operator_id', $user->id)
             ->where('status', 'PENDING')
             ->whereHas('bahan', function ($query) use ($nama_material_decoded) {
@@ -79,17 +101,28 @@ class PengadaanController extends Controller
             ->with('bahan')
             ->orderBy('tanggal_dibutuhkan', 'asc')
             ->get();
-
+    
+        // Debugging sementara: Kalau diklik muncul data mentah (JSON), 
+        // berarti masalahnya murni di file .blade.php kamu
+        // return $items; 
+    
         if ($items->isEmpty()) {
             return redirect()->route('operator.belanja.index')->with('error', 'Grup belanja tidak ditemukan.');
         }
-
+    
         $firstItem = $items->first();
-        $totalJumlah = $items->sum('jumlah');
-        $totalReceived = $items->sum('received');
+        $totalJumlah = (float) $items->sum('jumlah');
+        $totalReceived = (float) $items->sum('received');
         $totalSisa = $totalJumlah - $totalReceived;
-
-        return view('operator.belanja.show-group', compact('items', 'firstItem', 'totalJumlah', 'totalReceived', 'totalSisa', 'nama_material_decoded'));
+    
+        return view('operator.belanja.show-group', compact(
+            'items', 
+            'firstItem', 
+            'totalJumlah', 
+            'totalReceived', 
+            'totalSisa', 
+            'nama_material_decoded'
+        ));
     }
 
     public function indexOperator(Request $request)
@@ -97,7 +130,7 @@ class PengadaanController extends Controller
         $user = Auth::user();
 
         $query = Pengadaan::where('operator_id', $user->id)
-            ->where('status', 'PENDING')
+        ->whereIn('status', ['PENDING', 'PROSES'])
             ->whereHas('bahan') // hanya tampilkan yang bahannya masih ada
             ->with('bahan')
             ->orderBy('prioritas', 'desc')
@@ -351,6 +384,34 @@ class PengadaanController extends Controller
 
             $path = $request->file('photo')->store('bahan-photos', 'public');
             BahanBaku::where('kode_material', $kode_material)->update(['foto' => $path]);
+
+            return response()->json([
+                'success' => 'Foto berhasil diperbarui.',
+                'new_photo_url' => asset('storage/' . $path)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Gagal memperbarui foto: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function updatePhotoById(Request $request, $id)
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+        ]);
+
+        try {
+            $material = BahanBaku::find($id);
+            if (!$material) {
+                return response()->json(['error' => 'Material tidak ditemukan.'], 404);
+            }
+
+            if ($material->foto) {
+                Storage::disk('public')->delete($material->foto);
+            }
+
+            $path = $request->file('photo')->store('bahan-photos', 'public');
+            $material->update(['foto' => $path]);
 
             return response()->json([
                 'success' => 'Foto berhasil diperbarui.',

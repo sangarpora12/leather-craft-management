@@ -79,10 +79,11 @@
                     <span class="text-xs font-normal {{ $isOverdue ? 'text-red-400 font-bold' : 'text-gray-400' }}">Deadline Terdekat: {{ \Carbon\Carbon::parse($deadlineTerdekat)->format('d M Y') }}</span>
                 </div>
                 @if(!empty($namaMaterial))
-                <a href="{{ route('operator.belanja.show', ['nama_material' => urlencode($namaMaterial)]) }}" class="text-xs px-3 py-2 rounded-lg font-normal bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">
-                    Lihat Rincian
-                </a>
-                @endif
+<a href="{{ route('operator.belanja.show', $namaMaterial) }}" 
+   class="relative z-10 text-xs px-3 py-2 rounded-lg font-normal bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all">
+    Lihat Rincian
+</a>
+@endif
             </div>
         </div>
         @empty

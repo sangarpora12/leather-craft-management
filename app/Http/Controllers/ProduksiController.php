@@ -137,85 +137,95 @@ class ProduksiController extends Controller
             $createdSpks = [];
             $operatorId  = $validated['operator_id'] === 'all' ? null : $validated['operator_id'];
 
-            // ── Validasi ketersediaan bahan baku ──────────────────────────
-            $bahanDibutuhkan = [];
-            foreach ($validated['products'] as $productData) {
-                $mainBom   = Bom::findOrFail($productData['bom_id']);
-                $productId = $mainBom->id_produk;
-                $bomItems  = Bom::where('id_produk', $productId)->with('bahanBaku')->get();
+// ── Validasi ketersediaan bahan baku ──────────────────────────
+$bahanDibutuhkan = [];
+foreach ($validated['products'] as $productData) {
+    $mainBom   = Bom::findOrFail($productData['bom_id']);
+    $productId = $mainBom->id_produk;
+    $bomItems  = Bom::where('id_produk', $productId)->with('bahanBaku')->get();
 
-                if ($bomItems->isEmpty()) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'products' => 'Produk dengan BOM ID ' . $productData['bom_id'] . ' tidak memiliki resep bahan baku.',
-                    ]);
-                }
+    if ($bomItems->isEmpty()) {
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'products' => 'Produk dengan BOM ID ' . $productData['bom_id'] . ' tidak memiliki resep bahan baku.',
+        ]);
+    }
 
-                foreach ($bomItems as $item) {
-                    if (!$item->bahanBaku) continue;
+    foreach ($bomItems as $item) {
+        if (!$item->bahanBaku) continue;
 
-                    $totalKebutuhan = $item->jumlah_kebutuhan * $productData['jumlah'];
-                    if (!isset($bahanDibutuhkan[$item->id_bahan])) {
-                        $bahanDibutuhkan[$item->id_bahan] = [
-                            'nama'  => $item->bahanBaku->nama_material,
-                            'total' => 0,
-                            'stok'  => $item->bahanBaku->stok ?? 0,
-                        ];
-                    }
-                    $bahanDibutuhkan[$item->id_bahan]['total'] += $totalKebutuhan;
-                }
-            }
+        $totalKebutuhan = $item->jumlah_kebutuhan * $productData['jumlah'];
+        if (!isset($bahanDibutuhkan[$item->id_bahan])) {
+            $bahanDibutuhkan[$item->id_bahan] = [
+                'nama'  => $item->bahanBaku->nama_material,
+                'total' => 0,
+                'stok'  => $item->bahanBaku->stok ?? 0,
+                'is_inventory' => $item->bahanBaku->is_inventory ?? 1,
+                'kategori' => $item->bahanBaku->kategori ?? '', // 1. ✅ TANGKAP DATA KATEGORI DI SINI
+            ];
+        }
+        $bahanDibutuhkan[$item->id_bahan]['total'] += $totalKebutuhan;
+    }
+}
 
-            foreach ($bahanDibutuhkan as $id => $bahan) {
-                if ($bahan['stok'] < $bahan['total']) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'products' => 'Stok bahan "' . $bahan['nama'] . '" tidak mencukupi. Dibutuhkan ' . $bahan['total'] . ', tersedia ' . $bahan['stok'] . '.',
-                    ]);
-                }
-            }
+foreach ($bahanDibutuhkan as $id => $bahan) {
+    // Skip validasi stok untuk bahan pelengkap (is_inventory = 0)
+    if (($bahan['is_inventory'] ?? 1) == 0) {
+        continue;
+    }
+    
+    if ($bahan['stok'] < $bahan['total']) {
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'products' => 'Stok bahan "' . $bahan['nama'] . '" tidak mencukupi. Dibutuhkan ' . $bahan['total'] . ', tersedia ' . $bahan['stok'] . '.',
+        ]);
+    }
+}
 
-            // ── Potong stok (Dengan Logika FIFO yang Benar) ───────────────
-            foreach ($bahanDibutuhkan as $id => $bahan) {
-                $sisaKebutuhan = $bahan['total'];
+// ── Potong stok (Dengan Logika FIFO yang Benar) ───────────────
+foreach ($bahanDibutuhkan as $id => $bahan) {
+    // Skip pengurangan stok untuk bahan pelengkap (is_inventory = 0)
+    if (($bahan['is_inventory'] ?? 1) == 0) {
+        continue;
+    }
 
-                // 1. Ambil layer stok yang masih ada isinya (FIFO: urut dari tanggal masuk terlama)
-                $layers = \App\Models\BahanStokLayer::where('bahan_baku_id', $id)
-                    ->where('qty_sisa', '>', 0)
-                    ->orderBy('tanggal_masuk', 'asc')
-                    ->orderBy('id', 'asc')
-                    ->lockForUpdate()
-                    ->get();
+    $sisaKebutuhan = $bahan['total'];
 
-                // 2. Kurangi qty_sisa di tiap layer sampai sisaKebutuhan = 0
-                foreach ($layers as $layer) {
-                    if ($sisaKebutuhan <= 0) break;
+    // 1. Ambil layer stok yang masih ada isinya (FIFO: urut dari tanggal masuk terlama)
+    $layers = \App\Models\BahanStokLayer::where('bahan_baku_id', $id)
+        ->where('qty_sisa', '>', 0)
+        ->orderBy('tanggal_masuk', 'asc')
+        ->orderBy('id', 'asc')
+        ->lockForUpdate()
+        ->get();
 
-                    if ($layer->qty_sisa >= $sisaKebutuhan) {
-                        // Layer ini cukup untuk menutupi semua sisa kebutuhan
-                        $layer->qty_sisa -= $sisaKebutuhan;
-                        $layer->save();
-                        $sisaKebutuhan = 0;
-                    } else {
-                        // Layer ini kurang, habiskan layer ini dan lanjut memotong layer berikutnya
-                        $sisaKebutuhan -= $layer->qty_sisa;
-                        $layer->qty_sisa = 0;
-                        $layer->save();
-                    }
-                }
+    // 2. Kurangi qty_sisa di tiap layer sampai sisaKebutuhan = 0
+    foreach ($layers as $layer) {
+        if ($sisaKebutuhan <= 0) break;
 
-                // 3. Potong stok di tabel master bahan_bakus
-                BahanBaku::where('id', $id)->decrement('stok', $bahan['total']);
+        if ($layer->qty_sisa >= $sisaKebutuhan) {
+            $layer->qty_sisa -= $sisaKebutuhan;
+            $layer->save();
+            $sisaKebutuhan = 0;
+        } else {
+            $sisaKebutuhan -= $layer->qty_sisa;
+            $layer->qty_sisa = 0;
+            $layer->save();
+        }
+    }
 
-                // 4. Catat aktivitas di log_stok
-                DB::table('log_stok')->insert([
-                    'bahan_baku_id'    => $id,
-                    'operator_id'      => auth()->id(), // Tambahkan pencatat (Admin)
-                    'jenis_transaksi'  => 'PENGELUARAN_PRODUKSI',
-                    'jumlah'           => $bahan['total'],
-                    'keterangan'       => 'Pengeluaran otomatis untuk pembuatan SPK Baru',
-                    'created_at'       => now(),
-                    'updated_at'       => now(),
-                ]);
-            }
+    // 3. Potong stok di tabel master bahan_bakus
+    BahanBaku::where('id', $id)->decrement('stok', $bahan['total']);
+
+    // 4. Catat aktivitas di log_stok
+    DB::table('log_stok')->insert([
+        'bahan_baku_id'    => $id,
+        'operator_id'      => auth()->id(), 
+        'jenis_transaksi'  => 'PENGELUARAN_PRODUKSI',
+        'jumlah'           => $bahan['total'],
+        'keterangan'       => 'Pengeluaran otomatis untuk pembuatan SPK Baru',
+        'created_at'       => now(),
+        'updated_at'       => now(),
+    ]);
+}
 
             // ── Buat SPK per produk ───────────────────────────────────────
             foreach ($validated['products'] as $productData) {

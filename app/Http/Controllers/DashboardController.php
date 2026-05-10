@@ -243,6 +243,7 @@ class DashboardController extends Controller
 
         // Total tugas pengadaan operator (hitung yang bahannya masih ada)
         $totalPengadaan = \App\Models\Pengadaan::where('operator_id', $user->id)
+            ->where('status', 'PENDING')
             ->whereHas('bahan')
             ->count();
 

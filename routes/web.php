@@ -103,7 +103,7 @@ Route::middleware(['auth'])->group(function () {
         request()->session()->regenerateToken();
         return redirect()->route('login');
     })->name('logout');
-    
+
     // ------------------------------------------
     // GRUP A: ADMIN
     // ------------------------------------------
@@ -207,6 +207,7 @@ Route::get('/satuan', [\App\Http\Controllers\Admin\SatuanController::class, 'ind
         Route::get('/pengadaan', [PengadaanController::class, 'index'])->name('pengadaan.index');
         Route::post('/pengadaan', [PengadaanController::class, 'store'])->name('pengadaan.store');
         Route::delete('/pengadaan/{id}', [PengadaanController::class, 'destroy'])->name('pengadaan.destroy');
+        Route::post('/pengadaan/update-photo-id/{id}', [PengadaanController::class, 'updatePhotoById'])->name('pengadaan.update-photo-id');
 
         // --- MONITORING & LAPORAN ---
         Route::get('/ringkasan-operasional', [LaporanController::class, 'index'])->name('ringkasan-operasional');

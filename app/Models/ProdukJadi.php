@@ -126,6 +126,13 @@ class ProdukJadi extends Model
     /**
      * Menghitung maksimal produk yang bisa dibuat berdasarkan stok bahan baku saat ini.
      * (Mencari bahan baku mana yang paling membatasi / bottleneck)
+     */// ====================================================================
+    // RUMUS PENGECEKAN KESIAPAN BAHAN BAKU UNTUK SPK (VERSI ANTI NGELES)
+    // ====================================================================
+
+    /**
+     * Menghitung maksimal produk yang bisa dibuat berdasarkan stok bahan baku saat ini.
+     * (Mencari bahan baku mana yang paling membatasi / bottleneck)
      */
     public function getMaxProductionAttribute()
     {
@@ -142,6 +149,11 @@ class ProdukJadi extends Model
                 return 0; 
             }
 
+            // ✅ BYPASS: Abaikan jika kategorinya Bahan Pelengkap atau is_inventory = 0
+            if (($bom->bahanBaku->is_inventory == 0) || strtolower($bom->bahanBaku->kategori) === 'bahan pelengkap') {
+                continue;
+            }
+
             // Rumus: Stok di Gudang dibagi Kebutuhan per Resep (HASIL INTEGER TANPA DESIMAL)
             $possible = (int) floor($bom->bahanBaku->stok / $bom->jumlah_kebutuhan);
             
@@ -151,7 +163,8 @@ class ProdukJadi extends Model
             }
         }
 
-        return $maxQty ?? 0;
+        // Jika semua bahan ternyata pelengkap (kemungkinan kecil), anggap bisa produksi tak terbatas (999)
+        return $maxQty ?? 999;
     }
 
     /**
@@ -182,6 +195,11 @@ class ProdukJadi extends Model
                 return "ERROR: Jumlah kebutuhan bahan di BOM adalah 0. Silakan edit resep BOM.";
             }
 
+            // ✅ BYPASS: Abaikan error stok kalau kategorinya Bahan Pelengkap
+            if (($bom->bahanBaku->is_inventory == 0) || strtolower($bom->bahanBaku->kategori) === 'bahan pelengkap') {
+                continue;
+            }
+
             // 3. Cek kasus stok murni kurang
             if ($bom->bahanBaku->stok < $bom->jumlah_kebutuhan) {
                 return "Stok '{$bom->bahanBaku->nama_material}' kurang. Butuh: {$bom->jumlah_kebutuhan}, Sisa: {$bom->bahanBaku->stok}.";
@@ -190,7 +208,6 @@ class ProdukJadi extends Model
 
         return "Siap diproduksi.";
     }
-
     /**
      * ✅ DYNAMIC PRICING: Hitung Harga Jual Otomatis
      * Harga Jual = HPP (Harga Pokok Produksi) + (HPP * Margin / 100)

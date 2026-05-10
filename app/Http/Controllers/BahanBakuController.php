@@ -83,7 +83,7 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             DB::raw('MAX(harga_satuan) as harga_satuan'),
             DB::raw('MAX(id) as id'),
             DB::raw('(SELECT bb.foto FROM bahan_bakus AS bb WHERE bb.kode_material = bahan_bakus.kode_material AND bb.foto IS NOT NULL AND bb.foto != "" ORDER BY bb.id DESC LIMIT 1) as foto'),
-        ])->where('is_inventory', 1); // Hanya tampilkan bahan inventory
+        ]); // Hanya tampilkan bahan inventory
     
         // Filter Pencarian (Kode/Nama Material)
         $query->when($request->filled('search'), function ($q) use ($request) {
@@ -310,6 +310,12 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             $msg = $isInventory 
                 ? 'Stok material "' . $bahan->nama_material . '" berhasil ditambahkan! (Restock)' 
                 : 'Material non-stok "' . $bahan->nama_material . '" berhasil diupdate!';
+            
+            // Cek apakah request dari operator atau admin
+            if (request()->is('operator/*')) {
+                return redirect()->route('operator.bahan.index')->with('success', $msg);
+            }
+            
             return redirect()->route('admin.bahan.index')->with('success', $msg);
         } else {
             // ===== BAHAN BARU (INSERT BARU) =====
@@ -356,6 +362,12 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             $msg = $isInventory 
                 ? 'Material baru "' . $bahan->nama_material . '" berhasil ditambahkan dengan kode ' . $kode . '!' 
                 : 'Material non-stok "' . $bahan->nama_material . '" berhasil ditambahkan!';
+            
+            // Cek apakah request dari operator atau admin
+            if (request()->is('operator/*')) {
+                return redirect()->route('operator.bahan.index')->with('success', $msg);
+            }
+            
             return redirect()->route('admin.bahan.index')->with('success', $msg);
         }
     }
@@ -473,8 +485,8 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
      */
     public function indexOperator(Request $request)
     {
-        // Query utama: GROUP BY master material, SUM stok dari semua varian warna
-        $query = BahanBaku::select([
+        // Query untuk bahan inventory (stok habis pakai)
+        $queryInventory = BahanBaku::select([
             'kode_material',
             'nama_material',
             'kategori',
@@ -483,11 +495,12 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             DB::raw('SUM(stok) as total_stok'),
             DB::raw('MAX(id) as id'),
             DB::raw('(SELECT bb.foto FROM bahan_bakus AS bb WHERE bb.kode_material = bahan_bakus.kode_material AND bb.foto IS NOT NULL AND bb.foto != "" ORDER BY bb.id DESC LIMIT 1) as foto'),
+            DB::raw('1 as jenis_bahan'), // 1 = inventory
         ])->where('is_inventory', 1); // Hanya tampilkan bahan inventory
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
-            $query->where(function($q) use ($search) {
+            $queryInventory->where(function($q) use ($search) {
                 $q->where('nama_material', 'LIKE', "%{$search}%")
                   ->orWhere('kode_material', 'LIKE', "%{$search}%")
                   ->orWhere('kategori', 'LIKE', "%{$search}%");
@@ -495,41 +508,93 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
         }
 
         if ($request->filled('kategori')) {
-            $query->where('kategori', $request->kategori);
+            $queryInventory->where('kategori', $request->kategori);
         }
 
         if ($request->filled('satuan')) {
-            $query->where('satuan', $request->satuan);
+            $queryInventory->where('satuan', $request->satuan);
         }
 
         // GROUP BY untuk menggabungkan bahan yang sama
-        $query->groupBy('kode_material', 'nama_material', 'kategori', 'satuan', 'stok_minimum');
+        $queryInventory->groupBy('kode_material', 'nama_material', 'kategori', 'satuan', 'stok_minimum');
 
+        // Query untuk bahan pelengkap (non-inventory)
+        $queryPelengkap = BahanBaku::select([
+            'kode_material',
+            'nama_material',
+            'kategori',
+            'satuan',
+            DB::raw('0 as stok_minimum'), // Bahan pelengkap tidak punya stok minimum
+            DB::raw('stok as total_stok'), // ✅ BACA STOK ASLI BIAR BISA DIEDIT (Bukan selalu 1)
+            DB::raw('MAX(id) as id'),
+            // ✅ SIMPLIFIKASI LOGIKA FOTO: Langsung baca kolom foto saja
+            DB::raw('MAX(foto) as foto'), 
+            DB::raw('0 as jenis_bahan'), // 0 = pelengkap
+        ])->where('is_inventory', 0); // Bahan pelengkap
+
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
+            $queryPelengkap->where(function($q) use ($search) {
+                $q->where('nama_material', 'LIKE', "%{$search}%")
+                  ->orWhere('kode_material', 'LIKE', "%{$search}%")
+                  ->orWhere('kategori', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('kategori')) {
+            $queryPelengkap->where('kategori', $request->kategori);
+        }
+
+        if ($request->filled('satuan')) {
+            $queryPelengkap->where('satuan', $request->satuan);
+        }
+
+        $queryPelengkap->groupBy('kode_material', 'nama_material', 'kategori', 'satuan');
+
+        // Gabungkan kedua query menggunakan UNION
+        $inventoryResults = $queryInventory->get();
+        $pelengkapResults = $queryPelengkap->get();
+        
+        // Gabungkan dan urutkan
+        $combinedResults = $inventoryResults->concat($pelengkapResults);
+        
         // SORTING
         if ($request->filled('sort')) {
             if ($request->sort == 'stok_terendah') {
-                $query->orderBy('total_stok', 'ASC');
+                $combinedResults = $combinedResults->sortBy('total_stok')->values();
             } elseif ($request->sort == 'nama_asc') {
-                $query->orderBy('nama_material', 'ASC');
+                $combinedResults = $combinedResults->sortBy('nama_material')->values();
             } else {
-                $query->orderBy(DB::raw('MAX(id)'), 'DESC');
+                $combinedResults = $combinedResults->sortByDesc('id')->values();
             }
         } else {
-            $query->orderBy('nama_material');
+            $combinedResults = $combinedResults->sortBy('nama_material')->values();
         }
 
-        $bahanBakus = $query->paginate(12)->withQueryString();
+        // Pagination manual
+        $perPage = 12;
+        $currentPage = $request->get('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        $bahanBakus = new \Illuminate\Pagination\LengthAwarePaginator(
+            $combinedResults->slice($offset, $perPage)->values(),
+            $combinedResults->count(),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         $batasStokGlobal = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5);
 
-        // Menghitung Total SKU dari grup master
-        $totalSKU = BahanBaku::select('kode_material')->where('is_inventory', 1)->groupBy('kode_material')->get()->count();
+        // Menghitung Total SKU dari grup master (inventory + pelengkap)
+        $totalSKUInventory = BahanBaku::select('kode_material')->where('is_inventory', 1)->groupBy('kode_material')->get()->count();
+        $totalSKUPelengkap = BahanBaku::select('kode_material')->where('is_inventory', 0)->groupBy('kode_material')->get()->count();
+        $totalSKU = $totalSKUInventory + $totalSKUPelengkap;
         
         // Menghitung Stok Kritis (sama seperti admin) - hitung per varian seperti admin
         $batasStokGlobal = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 10);
         
         // Hitung stok kritis per VARIAN (bukan per master) - SAMA SEPERTI ADMIN
-        $criticalQuery = BahanBaku::where('is_inventory', 1);
+        $criticalQuery = BahanBaku::where('is_inventory', 1); // Stok kritis hanya untuk bahan inventory
         if ($batasStokGlobal == 0) {
             $criticalQuery->where('stok', '=', 0);
         } else {
@@ -557,10 +622,8 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
         $satuans = \App\Models\Satuan::all();
         $warnas = \App\Models\Warna::all();
 
-        // Pecah string menjadi array untuk multi-select
-        $bahan->kategori = !is_null($bahan->kategori) ? explode(',', $bahan->kategori) : [];
-        $bahan->warna = !is_null($bahan->warna) ? explode(',', $bahan->warna) : [];
-
+        // Untuk operator, kategori dan warna tetap sebagai string (single select)
+        // Tidak perlu dipecah menjadi array seperti di admin
         return view('operator.bahan-baku.edit', compact('bahan', 'kategories', 'satuans', 'warnas'));
     }
 
@@ -648,6 +711,8 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
      */
     public function storeOperator(Request $request)
     {
+        $isInventory = $request->has('is_inventory') ? (bool) $request->is_inventory : true;
+        
         $validated = $request->validate([
             'kode_material' => 'nullable|string|max:255',
             'nama_material' => 'required|string|max:255',
@@ -738,7 +803,7 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
                     'kategori' => $validated['kategori'],
                     'satuan' => $validated['satuan'],
                     'stok' => $isInventory ? $qty : 0,
-                    'stok_minimum' => 10,
+                    'stok_minimum' => $isInventory ? 10 : 0,
                     'harga_satuan' => $isInventory ? $validated['harga_satuan'] : 0,
                     'supplier' => $validated['supplier'] ?? null,
                     'ref_no' => $validated['ref_no'] ?? null,
@@ -809,7 +874,12 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
                 }
             }
 
-            return redirect()->route('operator.pengadaan')->with('success', 'Bahan & Nota berhasil masuk!');
+            // Redirect ke halaman yang sesuai berdasarkan role
+            if (request()->is('operator/*')) {
+                return redirect()->route('operator.bahan.index')->with('success', 'Bahan & Nota berhasil masuk!');
+            }
+            
+            return redirect()->route('admin.bahan.index')->with('success', 'Bahan & Nota berhasil masuk!');
         });
     }
 
