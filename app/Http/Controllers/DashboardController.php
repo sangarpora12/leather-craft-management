@@ -83,8 +83,8 @@ class DashboardController extends Controller
         $globalMinStok = Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 0;
 
         // 2. Data Ringkasan (KPI Cards)
-        $totalBahan = BahanBaku::count();
-        $totalStokBahan = BahanBaku::count();
+        $totalBahan = BahanBaku::distinct('kode_material')->count('kode_material');
+        $totalStokBahan = BahanBaku::distinct('kode_material')->count('kode_material');
         // Produk jadi yang valid: sudah ada BOM & sudah pernah produksi selesai
         $produkSelesaiIds = Produksi::query()
             ->where('status', 'SELESAI')
@@ -266,7 +266,7 @@ class DashboardController extends Controller
             ->value('total') ?? 0;
             
         // ✅ Total JENIS BAHAN (jumlah kode produk bahan yang berbeda)
-        $totalStokBahan = BahanBaku::count();
+        $totalStokBahan = BahanBaku::distinct('kode_material')->count('kode_material');
 
         return view('operator.dashboard', compact(
             'unreadCount',

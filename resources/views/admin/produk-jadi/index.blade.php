@@ -32,6 +32,17 @@
                 </select>
             </div>
 
+            {{-- FILTER KATEGORI --}}
+            <div class="flex items-center gap-3">
+                <span class="text-gray-400 text-sm font-medium min-w-[50px]">Kategori:</span>
+                <select onchange="window.location.href = this.value" class="bg-[#2A3140] text-white px-4 py-2 rounded-lg border-0 outline-none cursor-pointer text-sm min-w-[150px]">
+                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('kategori', 'page'))) }}" {{ !request('kategori') ? 'selected' : '' }}>Semua Kategori</option>
+                    @foreach($allCategories as $kategori)
+                        <option value="{{ route('admin.produk-jadi.index', array_merge(request()->query(), ['kategori' => $kategori, 'page' => 1])) }}" {{ request('kategori') == $kategori ? 'selected' : '' }}>{{ $kategori }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             <div class="h-8 w-px bg-[#2A3140]"></div>
 
             {{-- URUTKAN HARGA --}}

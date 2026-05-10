@@ -93,14 +93,14 @@
                     @endif
 
                     {{-- ✅ FIX: x-data ditulis di tag div terpisah, BUKAN di dalam atribut yang campur PHP --}}
-                    {{-- Semua nilai PHP di-pass lewat data-attribute agar tidak ada konflik quote --}}
+                        {{-- Semua nilai PHP di-pass lewat data-attribute agar tidak ada konflik quote --}}
                     <div
                         id="product-edit-wrapper"
                         x-data="productEditData()"
                         x-init="init()"
                         data-harga="{{ $product->harga_jual }}"
                         data-margin="{{ $margin }}"
-                        data-foto="{{ $product->foto ? asset('storage/' . $product->foto) : '' }}"
+                        data-foto="{{ $product->foto }}"
                         data-produk-id="{{ $product->id }}"
                     >
 
@@ -279,29 +279,64 @@
                                     </div>
                                     <p class="text-xs text-gray-500">Contoh: biaya packaging, stiker, dll. (Opsional)</p>
                                 </div>
-
                                 {{-- Foto --}}
-                                <div class="space-y-3">
-                                    <label class="block text-sm font-semibold text-gray-300">Foto Produk</label>
-                                    <div class="space-y-3">
-                                        <div x-show="filePreview" class="w-full h-32 rounded-2xl overflow-hidden border-2 border-dashed border-white/20 bg-black/30 flex items-center justify-center shadow-lg" x-cloak>
-                                            <img x-bind:src="filePreview" class="w-full h-full object-cover" alt="Preview">
-                                        </div>
-                                        <div x-show="!filePreview" class="group relative w-full h-32 border-2 border-dashed border-white/20 hover:border-yellow-400 hover:bg-white/5 rounded-2xl flex flex-col items-center justify-center p-6 cursor-pointer transition-all duration-300 shadow-lg bg-black/30 backdrop-blur-sm">
-                                            <svg class="w-10 h-10 text-gray-400 group-hover:text-yellow-400 mb-2 transition" fill="none" stroke="currentColor" viewBox="0 0 48 48">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"/>
-                                            </svg>
-                                            <p class="text-white font-medium text-sm mb-1">Klik atau drag gambar ke sini</p>
-                                            <p class="text-xs text-gray-400">PNG, JPG hingga 10MB</p>
-                                            <input type="file" name="foto" accept="image/*"
-                                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                x-on:change="handleFile($event)">
-                                        </div>
-                                    </div>
-                                </div>
+<div class="space-y-3">
+    <label class="block text-sm font-semibold text-gray-300">Foto Produk</label>
+    <div class="space-y-3">
+        
+        {{-- ✅ Pindahkan input file ke luar logic x-show agar dapat dipanggil dari mana saja --}}
+        <input type="file" name="foto" id="input_foto_produk" accept="image/*" class="hidden" x-on:change="handleFile($event)">
 
-                            </div>
-                        </div>
+        {{-- Preview Foto Lama --}}
+        <div x-show="!filePreview && hasOldPhoto" class="relative w-full h-40 rounded-2xl overflow-hidden border-2 border-white/20 bg-black/30 flex items-center justify-center shadow-lg">
+            <img src="{{ $product->foto ? asset('storage/' . $product->foto) : '' }}" class="w-full h-full object-cover" alt="Foto Produk">
+            {{-- Tombol Hapus Foto --}}
+            <button type="button" 
+                    class="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-2 transition-all duration-300 backdrop-blur-sm"
+                    x-on:click="clearFile()">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        {{-- Area Upload Foto Baru (Dropzone tampil JIKA tidak ada foto lama dan baru) --}}
+        <div x-show="!filePreview && !hasOldPhoto" 
+             onclick="document.getElementById('input_foto_produk').click()"
+             class="group relative w-full h-32 border-2 border-dashed border-white/20 hover:border-yellow-400 hover:bg-white/5 rounded-2xl flex flex-col items-center justify-center p-6 cursor-pointer transition-all duration-300 shadow-lg bg-black/30 backdrop-blur-sm">
+            <svg class="w-10 h-10 text-gray-400 group-hover:text-yellow-400 mb-2 transition" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"/>
+            </svg>
+            <p class="text-white font-medium text-sm mb-1">Klik untuk upload gambar</p>
+            <p class="text-xs text-gray-400">PNG, JPG hingga 10MB</p>
+        </div>
+        
+        {{-- Preview Foto Baru (Hanya tampil jika ada file yang baru dipilih via input box) --}}
+        <div x-show="filePreview" class="relative w-full h-40 rounded-2xl overflow-hidden border-2 border-dashed border-yellow-400 bg-black/30 flex items-center justify-center shadow-lg" x-cloak>
+            <img x-bind:src="filePreview" class="w-full h-full object-cover" alt="Preview Foto Baru">
+            {{-- Tombol Batal/Hapus Preview --}}
+            <button type="button" 
+                    class="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-2 transition-all duration-300 backdrop-blur-sm"
+                    x-on:click="clearFile()">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        {{-- Tombol Ganti Foto (Tampil di bawah foto lama) --}}
+        <div x-show="!filePreview && hasOldPhoto" class="w-full">
+            <button type="button" 
+                    onclick="document.getElementById('input_foto_produk').click()"
+                    class="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-2xl text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30 hover:shadow-blue-900/50">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                Ganti Foto Produk
+            </button>
+        </div>
+    </div>
+</div>
 
                         {{-- Deskripsi --}}
                         <div class="space-y-3 mb-6">
@@ -355,13 +390,24 @@ function productEditData() {
         biayaLain: 0,
         biayaLainFormatted: '0',
         filePreview: '',
+        hasOldPhoto: false,
         produkId: '',
 
         init() {
             const el = document.getElementById('product-edit-wrapper');
+            if (!el) return;
+            
             const hargaRaw  = el.dataset.harga   || '0';
             this.margin     = parseFloat(el.dataset.margin)  || {{ $margin }};
-            this.filePreview = el.dataset.foto    || '';
+            
+            // Handle foto yang sudah ada
+            const existingFoto = el.dataset.foto;
+            if (existingFoto && existingFoto !== 'null' && existingFoto !== '') {
+                this.filePreview = '{{ asset('storage') }}/' + existingFoto;
+            } else {
+                this.filePreview = '';
+            }
+            
             this.produkId   = el.dataset.produkId || '';
 
             // Format harga awal
@@ -391,6 +437,35 @@ function productEditData() {
             const reader = new FileReader();
             reader.onload = (ev) => { this.filePreview = ev.target.result; };
             reader.readAsDataURL(file);
+            
+            // Hapus input hidden delete_foto jika ada (karena user upload foto baru)
+            const deleteInput = document.querySelector('input[name="delete_foto"]');
+            if (deleteInput) {
+                deleteInput.remove();
+            }
+        },
+
+        clearFile() {
+            this.filePreview = '';
+            // Clear the file input
+            const fileInput = document.querySelector('input[name="foto"]');
+            if (fileInput) fileInput.value = '';
+            
+            // Jika ini foto yang sudah ada, kita perlu menghapusnya dari server
+            // Kita akan tambahkan input hidden untuk menandai bahwa foto harus dihapus
+            const existingFoto = '{{ $product->foto }}';
+            if (existingFoto && existingFoto !== 'null' && existingFoto !== '') {
+                // Cek apakah sudah ada input hidden untuk penghapusan
+                let deleteInput = document.querySelector('input[name="delete_foto"]');
+                if (!deleteInput) {
+                    deleteInput = document.createElement('input');
+                    deleteInput.type = 'hidden';
+                    deleteInput.name = 'delete_foto';
+                    deleteInput.value = '1';
+                    const form = document.querySelector('form');
+                    if (form) form.appendChild(deleteInput);
+                }
+            }
         },
 
         async hitungHargaOtomatis() {

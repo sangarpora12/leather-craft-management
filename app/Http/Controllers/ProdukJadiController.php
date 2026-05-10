@@ -33,6 +33,23 @@ class ProdukJadiController extends Controller
             ->orderBy('warna')
             ->pluck('warna');
 
+        // Ambil daftar kategori produk dari tabel kategori (sama seperti bahan baku)
+        $kategories = Kategori::where('tipe', 'produk')
+            ->orderBy('nama_kategori')
+            ->get();
+            
+        // Ambil juga kategori yang sudah ada di produk untuk kompatibilitas
+        $existingCategories = ProdukJadi::query()
+            ->whereNotNull('kategori')
+            ->where('kategori', '!=', '[]')
+            ->get()
+            ->flatMap(function ($product) {
+                return is_array($product->kategori) ? $product->kategori : [];
+            })
+            ->unique()
+            ->sort()
+            ->values();
+
         // 2. Mulai query builder
         $query = ProdukJadi::query();
 
@@ -65,6 +82,11 @@ class ProdukJadiController extends Controller
         // Filter Warna
         $query->when($request->filled('warna'), function ($q) use ($request) {
             $q->where('warna', $request->warna);
+        });
+
+        // Filter Kategori
+        $query->when($request->filled('kategori'), function ($q) use ($request) {
+            $q->whereJsonContains('kategori', $request->kategori);
         });
 
         // Filter Status Stok
@@ -107,7 +129,10 @@ class ProdukJadiController extends Controller
         $produk_jadi = $query->paginate(12)->withQueryString();
 
         // 6. Kirim data ke view
-        return view('admin.produk-jadi.index', compact('produk_jadi', 'warnaList'));
+        $allCategories = $kategories->pluck('nama_kategori')->merge($existingCategories)->unique()->sortBy(function ($item) {
+            return $item;
+        })->values();
+        return view('admin.produk-jadi.index', compact('produk_jadi', 'warnaList', 'allCategories'));
     }
 
     /**
@@ -287,6 +312,7 @@ class ProdukJadiController extends Controller
             'deskripsi'    => ['nullable', 'string'],
             'keterangan'   => ['nullable', 'string'],
             'foto'         => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:10240'],
+            'delete_foto'  => ['nullable', 'string', 'in:1'],
             'panjang'      => ['nullable', 'numeric', 'min:0'],
             'lebar'        => ['nullable', 'numeric', 'min:0'],
             'tinggi'       => ['nullable', 'numeric', 'min:0'],
@@ -323,10 +349,18 @@ class ProdukJadiController extends Controller
         }
 
         $pathFoto = $product->foto;
-        if ($request->hasFile('foto')) {
-            if ($product->foto) Storage::disk('public')->delete($product->foto);
-            $pathFoto = $request->file('foto')->store('produk-jadi', 'public');
-        }
+         
+         // Handle upload foto baru (prioritas lebih tinggi dari penghapusan)
+         if ($request->hasFile('foto')) {
+             if ($product->foto) Storage::disk('public')->delete($product->foto);
+             $pathFoto = $request->file('foto')->store('produk-jadi', 'public');
+         } elseif ($request->has('delete_foto') && $request->delete_foto == '1') {
+             // Handle penghapusan foto hanya jika tidak ada upload baru
+             if ($product->foto) {
+                 Storage::disk('public')->delete($product->foto);
+                 $pathFoto = null;
+             }
+         }
 
         $pathsSketsa = $product->sketsa ? json_decode($product->sketsa, true) : [];
         if ($request->hasFile('sketsa')) {

@@ -97,7 +97,8 @@
                             <span class="px-1.5 py-0.5 bg-gray-700 text-gray-300 text-[10px] rounded">{{ $bahan->kategori }}</span>
                             @php
     $stokTampil = $bahan->total_stok ?? $bahan->stok;
-    $batasKritis = $bahan->stok_minimum ?? 5;
+    // Gunakan batas stok global seperti admin (fallback ke 5)
+    $batasKritis = $batasStokGlobal ?? 5;
     // Format cerdas: 150.50 -> 150.5, 150.00 -> 150
     $formatStokIdx = function($val) {
         $val = (float) $val;

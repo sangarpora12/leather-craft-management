@@ -78,11 +78,12 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             'nama_material',
             'kategori',
             'satuan',
+            'stok_minimum',
             DB::raw('SUM(stok) as total_stok'),
             DB::raw('MAX(harga_satuan) as harga_satuan'),
             DB::raw('MAX(id) as id'),
             DB::raw('(SELECT bb.foto FROM bahan_bakus AS bb WHERE bb.kode_material = bahan_bakus.kode_material AND bb.foto IS NOT NULL AND bb.foto != "" ORDER BY bb.id DESC LIMIT 1) as foto'),
-        ]);
+        ])->where('is_inventory', 1); // Hanya tampilkan bahan inventory
     
         // Filter Pencarian (Kode/Nama Material)
         $query->when($request->filled('search'), function ($q) use ($request) {
@@ -98,23 +99,10 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             $q->where('kategori', $request->kategori);
         });
     
-        // Filter Status Stok (berdasarkan stok per-item/varian)
-        $query->when($request->filled('status_stok'), function ($q) use ($request) {
-            if ($request->status_stok == 'kritis') {
-                // Logika Kritis: Periksa setiap item secara individual
-                $batasStokGlobal = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 10);
-                if ($batasStokGlobal == 0) {
-                    $q->where('stok', '=', 0);
-                } else {
-                    $q->where('stok', '<=', $batasStokGlobal);
-                }
-            } elseif ($request->status_stok == 'habis') {
-                $q->where('stok', '=', 0);
-            }
-        });
+
     
         // GROUP BY untuk master material (bukan per varian)
-        $query->groupBy('kode_material', 'nama_material', 'kategori', 'satuan');
+        $query->groupBy('kode_material', 'nama_material', 'kategori', 'satuan', 'stok_minimum');
     
         // Sorting / Urutkan
         $query->when($request->filled('sort_by'), function ($q) use ($request) {
@@ -270,7 +258,7 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
         // Upload Foto jika ada
         $fotoPath = null;
         if ($request->hasFile('foto')) {
-            $fotoPath = $request->file('foto')->store('bahan_baku', 'public');
+            $fotoPath = $request->file('foto')->store('bahan', 'public');
         }
 
         // CEK KETERSEDIAAN BAHAN - Apakah material sudah ada?
@@ -452,10 +440,20 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             // Re-enable foreign key checks
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
+            // Cek apakah request dari operator atau admin
+            if (request()->is('operator/*')) {
+                return redirect()->route('operator.bahan.index')->with('success', 'Material berhasil dihapus');
+            }
+            
             return redirect()->route('admin.bahan.index')->with('success', 'Material berhasil dihapus');
         } catch (\Exception $e) {
             // Make sure to re-enable foreign key checks even if error occurs
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            
+            // Cek apakah request dari operator atau admin
+            if (request()->is('operator/*')) {
+                return redirect()->route('operator.bahan.index')->with('error', 'Gagal menghapus material: ' . $e->getMessage());
+            }
             
             return redirect()->route('admin.bahan.index')->with('error', 'Gagal menghapus material: ' . $e->getMessage());
         }
@@ -485,7 +483,7 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             DB::raw('SUM(stok) as total_stok'),
             DB::raw('MAX(id) as id'),
             DB::raw('(SELECT bb.foto FROM bahan_bakus AS bb WHERE bb.kode_material = bahan_bakus.kode_material AND bb.foto IS NOT NULL AND bb.foto != "" ORDER BY bb.id DESC LIMIT 1) as foto'),
-        ]);
+        ])->where('is_inventory', 1); // Hanya tampilkan bahan inventory
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
@@ -527,14 +525,17 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
         // Menghitung Total SKU dari grup master
         $totalSKU = BahanBaku::select('kode_material')->where('is_inventory', 1)->groupBy('kode_material')->get()->count();
         
-        // Menghitung Stok Kritis dari grup master
-        $totalKritis = BahanBaku::select(DB::raw('SUM(stok) as total_stok'))
-            ->where('is_inventory', 1)
-            ->groupBy('kode_material')
-            ->having('total_stok', '<=', $batasStokGlobal)
-            ->having('total_stok', '>', 0)
-            ->get()
-            ->count();
+        // Menghitung Stok Kritis (sama seperti admin) - hitung per varian seperti admin
+        $batasStokGlobal = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 10);
+        
+        // Hitung stok kritis per VARIAN (bukan per master) - SAMA SEPERTI ADMIN
+        $criticalQuery = BahanBaku::where('is_inventory', 1);
+        if ($batasStokGlobal == 0) {
+            $criticalQuery->where('stok', '=', 0);
+        } else {
+            $criticalQuery->where('stok', '<=', $batasStokGlobal);
+        }
+        $totalKritis = $criticalQuery->count();
 
         $unreadCount = Auth::user()->unreadNotifications()->where(function($q) {
             $q->where('data->target', 'operator')->orWhere('data->target', 'all');
@@ -543,7 +544,7 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
         $kategories = \App\Models\Kategori::all();
         $satuans = \App\Models\Satuan::all();
 
-        return view('operator.bahan-baku.index', compact('bahanBakus', 'totalSKU', 'totalKritis', 'unreadCount', 'kategories', 'satuans'));
+        return view('operator.bahan-baku.index', compact('bahanBakus', 'totalSKU', 'totalKritis', 'unreadCount', 'kategories', 'satuans', 'batasStokGlobal'));
     }
 
     /**
@@ -1090,6 +1091,9 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
 
     $warnas = \App\Models\Warna::all();
     
-    return view('operator.bahan-baku.show', compact('bahan', 'riwayatStok', 'varianWarna', 'warnas', 'semuaLayer', 'ringkasanPerHarga'));
+    // Ambil batas stok global untuk konsistensi - pakai stok_minimum_bahan seperti admin
+    $batasStokGlobal = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 10);
+    
+    return view('operator.bahan-baku.show', compact('bahan', 'riwayatStok', 'varianWarna', 'warnas', 'semuaLayer', 'ringkasanPerHarga', 'batasStokGlobal'));
 }
 }

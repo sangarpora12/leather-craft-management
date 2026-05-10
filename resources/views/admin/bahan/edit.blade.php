@@ -280,8 +280,13 @@
                                         class="max-h-32 rounded-lg border border-white/10">
                                 </div>
                             @endif
-                            <input type="file" name="foto" accept="image/*"
+                            <input type="file" name="foto" id="foto_input" accept="image/*"
                                 class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-semibold file:bg-white/10 file:text-gray-300 hover:file:bg-white/20 transition cursor-pointer">
+                            
+                            <!-- Preview Foto Baru -->
+                            <div id="preview-container" class="hidden mt-3">
+                                <img id="preview-img" class="w-full h-40 object-cover rounded-xl border border-white/10">
+                            </div>
                         </div>
 
                     </div>{{-- end space-y-6 --}}
@@ -308,6 +313,26 @@
 
 @push('scripts')
 <script>
-    // Script kustom jika diperlukan di masa mendatang
+    // PREVIEW FOTO SEBELUM UPLOAD
+    const fotoInput = document.getElementById('foto_input');
+    const previewContainer = document.getElementById('preview-container');
+    const previewImg = document.getElementById('preview-img');
+
+    if (fotoInput) {
+        fotoInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    previewContainer.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                previewContainer.classList.add('hidden');
+                previewImg.src = '';
+            }
+        });
+    }
 </script>
 @endpush

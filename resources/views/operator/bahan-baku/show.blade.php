@@ -10,9 +10,14 @@
             </a>
             <h1 class="text-sm font-black uppercase tracking-widest text-white">Detail Material</h1>
         </div>
-        <a href="{{ route('operator.bahan.edit', $bahan->id) }}" class="bg-blue-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter shadow-lg shadow-blue-600/20">
-            Edit Utama
-        </a>
+        <div class="flex gap-2">
+            <a href="{{ route('operator.bahan.edit', $bahan->id) }}" class="bg-blue-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter shadow-lg shadow-blue-600/20">
+                Edit Utama
+            </a>
+            <button type="button" onclick="if(confirm('Yakin ingin menghapus bahan ini?')){document.getElementById('delete-form-{{ $bahan->id }}').submit();}" class="bg-red-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter shadow-lg shadow-red-600/20">
+                Hapus
+            </button>
+        </div>
     </header>
 
     <div class="px-4 py-6 space-y-6">
@@ -50,7 +55,7 @@
                 </div>
                 <div class="text-center border-l border-white/5">
                     <p class="text-[9px] text-gray-500 uppercase font-black tracking-tighter mb-1">Batas Aman</p>
-                    <p class="text-xl font-black text-blue-400">> {{ (int)$bahan->stok_minimum }}</p>
+                    <p class="text-xl font-black text-blue-400">> {{ (int)($batasStokGlobal ?? $bahan->stok_minimum ?? 5) }}</p>
                 </div>
             </div>
         </div>
@@ -63,7 +68,7 @@
             </div>
             <div class="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
                 @foreach($varianWarna as $v)
-                @php $isLow = $v->stok < $bahan->stok_minimum; @endphp
+                @php $isLow = $v->stok <= ($batasStokGlobal ?? $bahan->stok_minimum ?? 5); @endphp
                 <div class="min-w-[140px] bg-[#1C222D] p-5 rounded-[1.5rem] border {{ $isLow ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'border-white/5' }} flex flex-col items-center text-center transition-all">
                     <p class="text-xs font-black {{ $isLow ? 'text-red-400' : 'text-white' }} truncate w-full mb-1">{{ $v->warna ?? 'Polos' }}</p>
                     <p class="text-[10px] font-bold {{ $isLow ? 'text-red-500/70' : 'text-gray-500' }} uppercase mb-4">{{ (float)$v->stok }} {{ $bahan->satuan }}</p>
@@ -159,4 +164,10 @@
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.5; }
 </style>
+
+<!-- Form Hapus -->
+<form id="delete-form-{{ $bahan->id }}" action="{{ route('operator.bahan.destroy', $bahan->id) }}" method="POST" class="hidden">
+    @csrf
+    @method('DELETE')
+</form>
 @endsection

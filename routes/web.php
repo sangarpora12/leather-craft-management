@@ -302,6 +302,7 @@ Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
         Route::get('/bahan/{id}', [BahanBakuController::class, 'show'])->name('bahan.show');
         Route::get('/bahan/{id}/edit', [BahanBakuController::class, 'editOperator'])->name('bahan.edit');
         Route::put('/bahan/{id}', [BahanBakuController::class, 'updateOperator'])->name('bahan.update');
+        Route::delete('/bahan/{id}', [BahanBakuController::class, 'destroy'])->name('bahan.destroy');
 
         // Laporan operator (ringkasan + riwayat)
         Route::get('/laporan', [DashboardController::class, 'operatorLaporan'])->name('laporan.index');

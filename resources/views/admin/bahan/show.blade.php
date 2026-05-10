@@ -17,7 +17,7 @@
                 <a href="{{ route('admin.bahan.edit', $bahan->id) }}" class="bg-orange-500 hover:bg-orange-400 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
                     <i class="fa-solid fa-pen-to-square mr-2"></i>Edit
                 </a>
-                <button onclick="confirmDelete({{ $bahan->id }})" class="bg-red-500/20 hover:bg-red-500/40 text-red-400 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
+                <button type="button" onclick="if(confirm('Yakin ingin menghapus bahan ini?')){document.getElementById('delete-form-{{ $bahan->id }}').submit();}" class="bg-red-500/20 hover:bg-red-500/40 text-red-400 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
                     <i class="fa-solid fa-trash-alt mr-2"></i>Hapus
                 </button>
             </div>
@@ -228,4 +228,39 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+function deleteBahan(event, id) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // SweetAlert2 sederhana tapi elegan
+    Swal.fire({
+        title: 'Hapus Bahan Baku',
+        text: 'Anda akan menghapus bahan ini secara permanen. Tindakan tidak dapat dibatalkan!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal',
+        background: '#1f2937',
+        color: '#ffffff',
+        reverseButtons: true,
+        focusCancel: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('delete-form-' + id).submit();
+        }
+    }).catch(error => {
+        console.error('SweetAlert error:', error);
+        // Fallback ke confirm biasa
+        if (confirm('Yakin ingin menghapus bahan ini?')) {
+            document.getElementById('delete-form-' + id).submit();
+        }
+    });
+}
+</script>
 @endsection

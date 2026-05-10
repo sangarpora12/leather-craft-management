@@ -43,12 +43,18 @@
             </div>
         </div>
 
+        {{-- FILTER KATEGORI DINAMIS --}}
         <div class="flex gap-2 mb-8 overflow-x-auto pb-2 no-scrollbar">
-            <button class="px-5 py-2 bg-white text-black rounded-full text-xs font-bold whitespace-nowrap shadow-md">Semua</button>
-            <button class="px-5 py-2 bg-[#1A1A1A] hover:bg-[#252525] border border-white/10 text-gray-300 rounded-full text-xs font-medium whitespace-nowrap transition">Tas Wanita</button>
-            <button class="px-5 py-2 bg-[#1A1A1A] hover:bg-[#252525] border border-white/10 text-gray-300 rounded-full text-xs font-medium whitespace-nowrap transition">Dompet Pria</button>
-            <button class="px-5 py-2 bg-[#1A1A1A] hover:bg-[#252525] border border-white/10 text-gray-300 rounded-full text-xs font-medium whitespace-nowrap transition">Ikat Pinggang</button>
-            <button class="px-5 py-2 bg-[#1A1A1A] hover:bg-[#252525] border border-white/10 text-gray-300 rounded-full text-xs font-medium whitespace-nowrap transition">Aksesoris</button>
+            <a href="{{ route('admin.produk-jadi.index') }}" 
+               class="px-5 py-2 {{ !request('kategori') ? 'bg-white text-black' : 'bg-[#1A1A1A] hover:bg-[#252525] border border-white/10 text-gray-300' }} rounded-full text-xs font-bold whitespace-nowrap shadow-md transition">
+                Semua
+            </a>
+            @foreach($kategoriList as $kategori)
+                <a href="{{ route('admin.produk-jadi.index', ['kategori' => $kategori]) }}" 
+                   class="px-5 py-2 {{ request('kategori') == $kategori ? 'bg-white text-black' : 'bg-[#1A1A1A] hover:bg-[#252525] border border-white/10 text-gray-300' }} rounded-full text-xs font-medium whitespace-nowrap transition">
+                    {{ $kategori }}
+                </a>
+            @endforeach
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -94,6 +94,11 @@
                     <option value="habis" {{ request('status_stok') == 'habis' ? 'selected' : '' }}>Habis</option>
                 </select>
             </div>
+
+            {{-- Info Stok Minimum --}}
+            <div class="bg-[#2D3139] rounded-lg px-4 py-2.5 flex items-center justify-center">
+                <span class="text-xs text-gray-400 uppercase tracking-wider font-medium">Min. Stok: <span class="text-orange-400 font-bold">{{ \App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5 }}</span></span>
+            </div>
         </div>
         
         <div class="flex justify-between items-center mt-4">
@@ -134,7 +139,7 @@
                         <th class="px-6 py-4 font-bold">Nama Material</th>
                         <th class="px-6 py-4 font-bold text-center">Stok Saat Ini</th>
                         <th class="px-6 py-4 font-bold text-center">Satuan (Unit)</th>
-                        <th class="px-6 py-4 font-bold text-center">Min. Stok</th>
+                        <th class="px-6 py-4 font-bold text-center">Warna</th>
                         <th class="px-6 py-4 font-bold text-right">Harga Beli</th>
                     </tr>
                 </thead>
@@ -186,8 +191,27 @@
                             <span class="inline-block bg-[#2D3139] text-gray-300 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-gray-700/50">{{ $b->satuan }}</span>
                         </td>
                         
-                        <td class="px-6 py-4 text-center text-gray-500 text-xs font-semibold">
-                            {{ $batasStokItem }}
+                        <td class="px-6 py-4 text-center">
+                            @php
+                                // Hitung jumlah warna untuk kode_material ini
+                                $jumlahWarna = DB::table('bahan_bakus')
+                                    ->where('kode_material', $b->kode_material)
+                                    ->where('is_inventory', 1)
+                                    ->whereNotNull('warna')
+                                    ->where('warna', '!=', '')
+                                    ->where('warna', '!=', 'Tidak Ada Warna')
+                                    ->distinct('warna')
+                                    ->count('warna');
+                            @endphp
+                            @if($jumlahWarna > 0)
+                                <span class="inline-block bg-purple-500/20 text-purple-300 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-purple-500/30">
+                                    {{ $jumlahWarna }} Warna
+                                </span>
+                            @else
+                                <span class="inline-block bg-gray-500/20 text-gray-400 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-gray-500/30">
+                                    Tidak Ada
+                                </span>
+                            @endif
                         </td>
                         
                         <td class="px-6 py-4 text-right text-gray-300 text-xs font-semibold">
@@ -197,7 +221,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center py-16 text-gray-500 text-xs italic border-dashed border-t border-[#2D3139]">
+                        <td colspan="7" class="text-center py-16 text-gray-500 text-xs italic border-dashed border-t border-[#2D3139]">
                             Data material belum tersedia.
                         </td>
                     </tr>
