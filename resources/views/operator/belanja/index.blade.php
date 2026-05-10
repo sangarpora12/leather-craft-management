@@ -37,7 +37,7 @@
             $isUrgent = $items->contains('prioritas', 'URGENT');
             $isOverdue = \Carbon\Carbon::parse($deadlineTerdekat)->isPast();
         @endphp
-        <div classa="rounded-xl p-5 mb-4 {{ $isOverdue ? 'bg-red-500/10 border border-red-500/40' : 'bg-[#1C222D] border border-white/5' }}">
+        <div class="rounded-xl p-5 mb-4 {{ $isOverdue ? 'bg-red-500/10 border border-red-500/40' : 'bg-[#1C222D] border border-white/5' }}">
             <div class="flex gap-4 items-start mb-4">
                 <!-- FOTO BAHAN -->
                 <div class="flex-shrink-0">
@@ -78,9 +78,11 @@
                     <svg class="w-4 h-4 mr-2 {{ $isOverdue ? 'text-red-400' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     <span class="text-xs font-normal {{ $isOverdue ? 'text-red-400 font-bold' : 'text-gray-400' }}">Deadline Terdekat: {{ \Carbon\Carbon::parse($deadlineTerdekat)->format('d M Y') }}</span>
                 </div>
+                @if(!empty($namaMaterial))
                 <a href="{{ route('operator.belanja.show', ['nama_material' => urlencode($namaMaterial)]) }}" class="text-xs px-3 py-2 rounded-lg font-normal bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">
                     Lihat Rincian
                 </a>
+                @endif
             </div>
         </div>
         @empty

@@ -35,16 +35,16 @@
         
         {{-- Kartu 1: Total Bahan --}}
         <div class="bg-[#1A1C24] border border-[#2D3139] rounded-2xl p-6 shadow-xl hover:border-[#00BFA5]/50 transition-colors">
-            <p class="text-[10px] font-bold text-white uppercase tracking-widest">Total Bahan</p>
+            <p class="text-[10px] font-bold text-[#00BFA5] uppercase tracking-widest">Total Bahan</p>
             <div class="mt-2 text-xl font-extrabold text-[#00BFA5]">{{ number_format($totalStokBahan, 0, ',', '.') }} Item</div>
-            <p class="mt-1 text-[11px] text-gray-400">Total Kode Bahan Aktif</p>
+            <p class="mt-1 text-[11px] text-gray-200">Total Bahan</p>
         </div>
 
         {{-- Kartu 2: Stok Produk Jadi --}}
         <div class="bg-[#1A1C24] border border-[#2D3139] rounded-2xl p-6 shadow-xl hover:border-[#B388FF]/50 transition-colors">
-            <p class="text-[10px] font-bold text-white uppercase tracking-widest">Total Produk Jadi</p>
+            <p class="text-[10px] font-bold text-[#B388FF] uppercase tracking-widest">Total Produk Jadi</p>
             <div class="mt-2 text-xl font-extrabold text-[#B388FF]">{{ number_format($totalProduk ?? 0, 0, ',', '.') }} Model</div>
-            <p class="mt-1 text-[11px] text-gray-200">Total SKU yang aktif</p>
+            <p class="mt-1 text-[11px] text-gray-200">Total Poduk</p>
         </div>
 
         {{-- Kartu 3: BAHAN BAKU KRITIS --}}
@@ -57,12 +57,12 @@
             
             {{-- PERBAIKAN: ringkasan stok bahan tetap tampil (angka asli), saklar hanya mematikan peringatan. --}}
             <div class="mt-2 text-xl font-extrabold {{ $showAlert ? 'text-red-500' : 'text-white' }}">
-                {{ $kritisCount }} Item
+                {{ $kritisCount }} Bahan
             </div>
 
             <p class="mt-2 text-[11px] font-medium">
                 @if($showAlert)
-                    <span class="text-red-500">⚠️ Segera restock!</span>
+                    <span class="text-red-100">⚠️ Segera restock!</span>
                 @elseif($isNotifAktif === false)
                     <span class="text-gray-500">Peringatan dimatikan (Monitor OFF)</span>
                 @else
@@ -88,7 +88,7 @@
                 @if($isProdukKritis)
                     <span class="text-red-500">⚠️ Stok ≤ {{ $stokMinProduk }} pcs</span>
                 @else
-                    <span class="text-gray-500">Status Aman</span>
+                    <span class="text-gray-500"></span>
                 @endif
             </p>
         </div>
@@ -183,16 +183,16 @@
                     <tr>
                         <td class="py-3 px-3 whitespace-nowrap">
                             <div class="flex items-center gap-3">
-                                <img class="h-10 w-10 rounded-lg object-cover flex-shrink-0" src="{{ $item->bahan->foto ? asset('storage/' . $item->bahan->foto) : asset('images/no-image.png') }}" alt="">
+                                <img class="h-10 w-10 rounded-lg object-cover flex-shrink-0" src="{{ $item->bahan && $item->bahan->foto ? asset('storage/' . $item->bahan->foto) : asset('images/no-image.png') }}" alt="">
                                 <div>
-                                    <div class="font-medium text-white">{{ $item->bahan->nama_material }}</div>
-                                    <div class="text-xs text-gray-400">{{ $item->bahan->warna ?: 'N/A' }}</div>
+                                    <div class="font-medium text-white">{{ $item->bahan ? $item->bahan->nama_material : 'Bahan tidak tersedia' }}</div>
+                                    <div class="text-xs text-gray-400">{{ $item->bahan ? ($item->bahan->warna ?: 'N/A') : 'N/A' }}</div>
                                 </div>
                             </div>
                         </td>
                         <td class="py-3 px-3 whitespace-nowrap">
                             <div class="text-white font-bold">{{ rtrim(rtrim(number_format($item->jumlah, 2, '.', ''), '0'), '.') }}</div>
-                            <div class="text-xs text-gray-400">{{ $item->bahan->satuan }}</div>
+                            <div class="text-xs text-gray-400">{{ $item->bahan ? $item->bahan->satuan : 'N/A' }}</div>
                         </td>
                         <td class="py-3 px-3 whitespace-nowrap text-gray-300">
                             {{ $item->operator->name ?? 'Belum Ditugaskan' }}

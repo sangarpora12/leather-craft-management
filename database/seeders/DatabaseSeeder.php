@@ -18,5 +18,8 @@ class DatabaseSeeder extends Seeder
         //     'name' => 'Test User',
         //     'email' => 'test@example.com',
         // ]);
+
+        // Tambahkan 5 produk baru untuk halaman BOM
+        $this->call(ProdukBaruBOMSeeder::class);
     }
 }

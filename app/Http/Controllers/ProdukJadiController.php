@@ -237,9 +237,9 @@ class ProdukJadiController extends Controller
             $product = ProdukJadi::create([
                 'kode_produk'  => $kodeOtomatis,
                 'nama_produk'  => $validated['nama_produk'],
-                'kategori'     => json_encode($validated['kategori']),
-                'warna'        => json_encode($validated['warna']),
-                'jenis_motif'  => json_encode($validated['jenis_motif']),
+                'kategori'     => $validated['kategori'],
+                'warna'        => $validated['warna'],
+                'jenis_motif'  => $validated['jenis_motif'],
                 'harga_jual'   => $hargaJual,
                 'tipe_harga'   => $validated['tipe_harga'] ?? 'otomatis',
                 // Gunakan ?? null agar tidak error jika inputnya kosong/tidak ada
@@ -362,7 +362,7 @@ class ProdukJadiController extends Controller
              }
          }
 
-        $pathsSketsa = $product->sketsa ? json_decode($product->sketsa, true) : [];
+        $pathsSketsa = $product->sketsa ?: [];
         if ($request->hasFile('sketsa')) {
             // Hapus file lama jika ada
             if (is_array($pathsSketsa)) {
@@ -379,9 +379,9 @@ class ProdukJadiController extends Controller
 
         $product->update([
             'nama_produk'  => $validated['nama_produk'],
-            'kategori'     => isset($validated['kategori']) ? json_encode($validated['kategori']) : $product->kategori,
-            'warna'        => isset($validated['warna']) ? json_encode($validated['warna']) : $product->warna,
-            'jenis_motif'  => isset($validated['jenis_motif']) ? json_encode($validated['jenis_motif']) : $product->jenis_motif,
+            'kategori'     => isset($validated['kategori']) ? $validated['kategori'] : $product->kategori,
+            'warna'        => isset($validated['warna']) ? $validated['warna'] : $product->warna,
+            'jenis_motif'  => isset($validated['jenis_motif']) ? $validated['jenis_motif'] : $product->jenis_motif,
             'harga_jual'   => $hargaJual,
             'deskripsi'    => $validated['deskripsi'] ?? $product->deskripsi,
             'keterangan'   => $validated['keterangan'] ?? $product->keterangan,

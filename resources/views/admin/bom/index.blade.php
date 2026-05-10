@@ -75,21 +75,65 @@
                      {{ $product->deskripsi ? Str::limit($product->deskripsi, 50) : 'Tidak ada deskripsi' }}
                  </p>
 
-                <div class="flex justify-between items-center bg-[#161B26] p-3 rounded-lg border border-[#2A3140]/20 mb-4 mt-auto">
-                    <div>
-                        <p class="text-[10px] text-gray-500 uppercase font-bold">Komponen</p>
-                        <p class="text-sm font-bold {{ $validBomsCount > 0 ? 'text-blue-400' : 'text-gray-600' }}">
-                            {{ $validBomsCount }} Item
-                        </p>
+                @php
+                    // Hitung ringkasan per warna
+                    $ringkasanPerWarna = [];
+                    foreach ($product->boms as $bom) {
+                        if ($bom->bahanBaku && $bom->bahanBaku->warna) {
+                            $warna = $bom->bahanBaku->warna;
+                            if (!isset($ringkasanPerWarna[$warna])) {
+                                $ringkasanPerWarna[$warna] = [
+                                    'jumlah_item' => 0,
+                                    'total_biaya' => 0
+                                ];
+                            }
+                            $ringkasanPerWarna[$warna]['jumlah_item']++;
+                            $ringkasanPerWarna[$warna]['total_biaya'] += $bom->jumlah_kebutuhan * ($bom->bahanBaku->harga_satuan ?? 0);
+                        }
+                    }
+                @endphp
+
+                <div class="bg-[#161B26] p-3 rounded-lg border border-[#2A3140]/20 mb-4 mt-auto">
+                    {{-- Bagian Komponen & HPP --}}
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <p class="text-[10px] text-gray-500 uppercase font-bold">Komponen</p>
+                            <p class="text-sm font-bold {{ $validBomsCount > 0 ? 'text-blue-400' : 'text-gray-600' }}">
+                                {{ $validBomsCount }} Item
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-gray-500 uppercase font-bold">HPP Material</p>
+                            <p class="text-sm font-bold text-[#22C55E]">
+                                Rp {{ number_format($product->boms->sum(function($b) {
+                                    return $b->jumlah_kebutuhan * ($b->bahanBaku->harga_satuan ?? 0);
+                                }), 0, ',', '.') }}
+                            </p>
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-[10px] text-gray-500 uppercase font-bold">HPP Material</p>
-                    <p class="text-sm font-bold text-[#22C55E]">
-                            Rp {{ number_format($product->boms->sum(function($b) {
-                                return $b->jumlah_kebutuhan * ($b->bahanBaku->harga_satuan ?? 0);
-                            }), 0, ',', '.') }}
-                        </p>
-                    </div>
+
+                    {{-- Ringkasan Per Warna --}}
+                    @if(count($ringkasanPerWarna) > 0)
+                        <div class="border-t border-white/10 pt-3">
+                            <p class="text-[10px] text-gray-500 uppercase font-bold mb-2">Ringkasan per Warna</p>
+                            <div class="space-y-1">
+                                @foreach($ringkasanPerWarna as $warna => $data)
+                                    <div class="flex justify-between items-center text-xs">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-3 h-3 rounded-full border border-white/20" 
+                                                 style="background-color: {{ $warna }}; {{ $warna == 'PUTIH' || $warna == 'WHITE' ? 'border-gray-400' : '' }}">
+                                            </div>
+                                            <span class="text-gray-300">{{ $warna }}</span>
+                                            <span class="text-gray-500 text-[10px]">({{ $data['jumlah_item'] }} item)</span>
+                                        </div>
+                                        <span class="font-mono text-gray-400">
+                                            Rp {{ number_format($data['total_biaya'], 0, ',', '.') }}
+                                        </span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="grid grid-cols-1 gap-2">

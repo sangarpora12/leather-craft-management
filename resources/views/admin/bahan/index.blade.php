@@ -22,8 +22,8 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-[#1A1C24] p-6 rounded-2xl border border-[#2D3139] shadow-xl flex justify-between items-center">
             <div>
-                <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-2">Total SKU Material</p>
-                <h3 class="text-2xl font-extrabold text-white">{{ $bahans->total() }} <span class="text-sm font-normal text-gray-500">Item</span></h3>
+                <p class="text-gray-200 text-[10px] font-bold uppercase tracking-widest mb-2">Total Bahan </p>
+                <h3 class="text-2xl font-extrabold text-white">{{ $bahans->total() }} <span class="text-sm font-normal text-gray-200">Item</span></h3>
             </div>
             <div class="w-12 h-12 shrink-0 rounded-xl bg-[#2D3139] flex items-center justify-center">
                 <i class="fa-solid fa-boxes-stacked text-white text-xl"></i>
@@ -32,11 +32,11 @@
 
         <div class="bg-[#1A1C24] p-6 rounded-2xl border border-[#2D3139] shadow-xl flex justify-between items-center">
             <div>
-                <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-2">Nilai Aset Material</p>
+                <p class="text-gray-200 text-[10px] font-bold uppercase tracking-widest mb-2">Nilai Aset Material</p>
                 <h3 class="text-2xl font-extrabold text-[#00BFA5] whitespace-nowrap">Rp {{ number_format($totalAsetBahan ?? 0, 0, ',', '.') }}</h3>
             </div>
             <div class="w-12 h-12 shrink-0 rounded-xl bg-[#2D3139] border border-[#2D3139] flex items-center justify-center">
-                <i class="fa-solid fa-money-bill-wave text-white text-xl"></i>
+                <i class="fa-solid fa-sack-dollar text-white text-xl"></i>
             </div>
         </div>
 
@@ -44,7 +44,7 @@
             <div class="absolute top-0 right-0 w-16 h-16 bg-[#FF5252]/5 rounded-bl-full"></div>
             <div class="relative z-10">
                 <p class="text-[#FF5252] text-[10px] font-bold uppercase tracking-widest mb-2">Stok Kritis / Habis</p>
-                <h3 class="text-2xl font-extrabold text-[#FF5252]">{{ $totalKritis ?? 0 }} <span class="text-sm font-normal text-red-900/50">Item</span></h3>
+                <h3 class="text-2xl font-extrabold text-[#FF5252]">{{ $totalKritis ?? 0 }} <span class="text-sm font-normal text-red-200">Semua Bahan</span></h3>
             </div>
             <div class="w-12 h-12 shrink-0 rounded-xl bg-[#FF5252]/10 border border-[#FF5252]/20 flex items-center justify-center relative z-10">
                 <i class="fa-solid fa-clipboard-check text-[#FF5252] text-xl"></i>
@@ -97,7 +97,7 @@
 
             {{-- Info Stok Minimum --}}
             <div class="bg-[#2D3139] rounded-lg px-4 py-2.5 flex items-center justify-center">
-                <span class="text-xs text-gray-400 uppercase tracking-wider font-medium">Min. Stok: <span class="text-orange-400 font-bold">{{ \App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5 }}</span></span>
+                <span class="text-xs text-gray-100 uppercase tracking-wider font-semibold">Min. Stok: <span class="text-orange-200 font-bold">{{ \App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5 }}</span></span>
             </div>
         </div>
         
@@ -136,8 +136,8 @@
                     <tr class="text-[10px] text-gray-500 uppercase tracking-widest border-b border-[#2D3139] bg-[#0D1117]">
                         <th class="px-6 py-4 font-bold">Foto</th>
                         <th class="px-6 py-4 font-bold">Kode Bahan</th>
-                        <th class="px-6 py-4 font-bold">Nama Material</th>
-                        <th class="px-6 py-4 font-bold text-center">Stok Saat Ini</th>
+                        <th class="px-6 py-4 font-bold">Nama Bahan</th>
+                        <th class="px-6 py-4 font-bold text-center">Stok</th>
                         <th class="px-6 py-4 font-bold text-center">Satuan (Unit)</th>
                         <th class="px-6 py-4 font-bold text-center">Warna</th>
                         <th class="px-6 py-4 font-bold text-right">Harga Beli</th>

@@ -1,5 +1,6 @@
 @extends('layouts.admin')
 
+
 @section('title', 'Edit Bahan Baku: ' . $bahan->nama_material)
 @section('title_header', 'Edit Bahan Baku')
 

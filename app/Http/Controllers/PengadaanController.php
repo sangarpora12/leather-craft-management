@@ -98,6 +98,7 @@ class PengadaanController extends Controller
 
         $query = Pengadaan::where('operator_id', $user->id)
             ->where('status', 'PENDING')
+            ->whereHas('bahan') // hanya tampilkan yang bahannya masih ada
             ->with('bahan')
             ->orderBy('prioritas', 'desc')
             ->orderBy('tanggal_dibutuhkan', 'asc');

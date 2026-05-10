@@ -5,40 +5,36 @@
 @section('content')
 <div class="min-h-screen bg-[#0B0E14] px-6 py-6" x-data="operatorPage()">
 
-    {{-- HEADER HALAMAN --}}
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-            <h1 class="text-2xl font-bold text-white">Manajemen Operator</h1>
-            <p class="text-sm text-gray-500 mt-1">Kelola akun karyawan yang bertugas menerima perintah produksi.</p>
-        </div>
-        <button onclick="openModal('modalTambahOperator')" class="bg-orange-600 hover:bg-orange-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-orange-900/20 flex items-center gap-2 transition">
-            <i class="fa-solid fa-user-plus"></i> Tambah Operator
-        </button>
-    </div>
-
-    {{-- FILTER BAR --}}
-    <div class="bg-[#1C222D] rounded-xl p-4 mb-6 border border-white/5">
-        <div class="flex flex-wrap items-center gap-3">
-            {{-- Search --}}
-            <div class="relative flex-1 min-w-[200px]">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
+    {{-- HEADER HALAMAN - KOMPAK DAN EFEKTIF --}}
+    <div class="flex flex-col gap-3 mb-4">
+        {{-- Baris Atas: Search + Tambah Operator --}}
+        <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs z-10"></i>
                 <input type="text"
                        x-model="search"
                        @input="filterOperators()"
                        placeholder="Cari operator..."
-                       class="w-full bg-[#0B0E14] border border-gray-700 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-orange-500 transition-all">
+                       class="w-full bg-[#1C222D] border border-gray-700 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-orange-500 transition-all">
             </div>
-
-            {{-- Filter Status --}}
+            <button onclick="openModal('modalTambahOperator')" class="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-orange-900/20 flex items-center justify-center gap-2 transition whitespace-nowrap">
+                <i class="fa-solid fa-user-plus"></i> Tambah Operator
+            </button>
+        </div>
+        
+        {{-- Baris Bawah: Filter Status --}}
+        <div class="flex items-center gap-3">
+            <span class="text-xs text-gray-400 font-medium">Filter:</span>
             <select x-model="filterStatus" @change="filterOperators()"
-                    class="bg-[#0B0E14] border border-gray-700 text-white text-sm px-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 cursor-pointer min-w-[140px]">
+                    class="bg-[#1C222D] border border-gray-700 text-white text-xs px-3 py-1.5 rounded-lg focus:outline-none focus:border-orange-500 cursor-pointer">
                 <option value="all">Semua Status</option>
                 <option value="active">Aktif</option>
                 <option value="inactive">Nonaktif</option>
             </select>
-
         </div>
     </div>
+
+
 
     {{-- GRID CARD OPERATOR --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

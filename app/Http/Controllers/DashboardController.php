@@ -173,8 +173,10 @@ class DashboardController extends Controller
             ->sum('jumlah') ?? 0;
 
         // Ambil semua pengadaan PENDING secara individual untuk ditampilkan di dashboard
+        // Hanya tampilkan pengadaan yang bahannya masih ada (tidak dihapus)
         $pengadaanPendingIndividual = \App\Models\Pengadaan::with('bahan', 'operator')
             ->where('status', 'PENDING')
+            ->whereHas('bahan') // hanya pengadaan yang bahannya masih ada
             ->orderBy('tanggal_dibutuhkan', 'asc')
             ->get();
 
@@ -239,8 +241,10 @@ class DashboardController extends Controller
             ->where('status', 'PROSES')
             ->count();
 
-        // Total tugas pengadaan operator
-        $totalPengadaan = \App\Models\Pengadaan::where('operator_id', $user->id)->count();
+        // Total tugas pengadaan operator (hitung yang bahannya masih ada)
+        $totalPengadaan = \App\Models\Pengadaan::where('operator_id', $user->id)
+            ->whereHas('bahan')
+            ->count();
 
         // Bahan masuk bulan ini (dari log_stok - termasuk scan OCR)
         $bahanMasukBulanIni = DB::table('log_stok')
