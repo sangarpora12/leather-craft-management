@@ -114,6 +114,9 @@ class ProduksiController extends Controller
     /**
      * Store a newly created SPK (bulk, multi-product).
      */
+/**
+     * Store a newly created SPK (bulk, multi-product).
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -170,15 +173,45 @@ class ProduksiController extends Controller
                 }
             }
 
-            // ── Potong stok ───────────────────────────────────────────────
+            // ── Potong stok (Dengan Logika FIFO yang Benar) ───────────────
             foreach ($bahanDibutuhkan as $id => $bahan) {
+                $sisaKebutuhan = $bahan['total'];
+
+                // 1. Ambil layer stok yang masih ada isinya (FIFO: urut dari tanggal masuk terlama)
+                $layers = \App\Models\BahanStokLayer::where('bahan_baku_id', $id)
+                    ->where('qty_sisa', '>', 0)
+                    ->orderBy('tanggal_masuk', 'asc')
+                    ->orderBy('id', 'asc')
+                    ->lockForUpdate()
+                    ->get();
+
+                // 2. Kurangi qty_sisa di tiap layer sampai sisaKebutuhan = 0
+                foreach ($layers as $layer) {
+                    if ($sisaKebutuhan <= 0) break;
+
+                    if ($layer->qty_sisa >= $sisaKebutuhan) {
+                        // Layer ini cukup untuk menutupi semua sisa kebutuhan
+                        $layer->qty_sisa -= $sisaKebutuhan;
+                        $layer->save();
+                        $sisaKebutuhan = 0;
+                    } else {
+                        // Layer ini kurang, habiskan layer ini dan lanjut memotong layer berikutnya
+                        $sisaKebutuhan -= $layer->qty_sisa;
+                        $layer->qty_sisa = 0;
+                        $layer->save();
+                    }
+                }
+
+                // 3. Potong stok di tabel master bahan_bakus
                 BahanBaku::where('id', $id)->decrement('stok', $bahan['total']);
 
+                // 4. Catat aktivitas di log_stok
                 DB::table('log_stok')->insert([
                     'bahan_baku_id'    => $id,
+                    'operator_id'      => auth()->id(), // Tambahkan pencatat (Admin)
                     'jenis_transaksi'  => 'PENGELUARAN_PRODUKSI',
                     'jumlah'           => $bahan['total'],
-                    'keterangan'       => 'Pengeluaran untuk SPK baru',
+                    'keterangan'       => 'Pengeluaran otomatis untuk pembuatan SPK Baru',
                     'created_at'       => now(),
                     'updated_at'       => now(),
                 ]);
@@ -228,7 +261,7 @@ class ProduksiController extends Controller
 
             $total = count($createdSpks);
             return redirect()->route('admin.produksi.index')
-                ->with('success', "✅ BERHASIL! {$total} Surat Perintah Kerja baru telah diterbitkan.");
+                ->with('success', "✅ BERHASIL! {$total} Surat Perintah Kerja baru telah diterbitkan. Bahan baku otomatis dipotong dari gudang.");
 
         } catch (\Exception $e) {
             DB::rollBack();

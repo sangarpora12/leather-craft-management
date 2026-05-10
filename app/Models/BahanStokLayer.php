@@ -33,4 +33,11 @@ class BahanStokLayer extends Model
     {
         return $this->belongsTo(BahanBaku::class, 'bahan_baku_id');
     }
+    // Tambahkan ini di dalam class BahanStokLayer
+public function material()
+{
+    // Mengacu ke model BahanBaku menggunakan foreign key bahan_baku_id
+    return $this->belongsTo(BahanBaku::class, 'bahan_baku_id');
 }
+}
+

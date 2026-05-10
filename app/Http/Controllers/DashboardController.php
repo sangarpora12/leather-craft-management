@@ -45,7 +45,7 @@ class DashboardController extends Controller
             )
             ->groupBy('bahan_bakus.id', 'bahan_bakus.kode_material', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
             ->orderByDesc('total_masuk')
-            ->limit(10)
+            ->limit(0)
             ->get();
 
         // Bahan Keluar - From production usage (BOM)
@@ -61,7 +61,7 @@ class DashboardController extends Controller
             )
             ->groupBy('bahan_bakus.id', 'bahan_bakus.kode_material', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
             ->orderByDesc('total_keluar')
-            ->limit(10)
+            ->limit(0)
             ->get();
 
         return view('operator.laporan.cetak', compact(
@@ -79,8 +79,8 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        // 1. Ambil Pengaturan Stok Minimum Global (FIX NAMA: stok_minimum_global)
-        $globalMinStok = Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 0;
+        // 1. Ambil Pengaturan Stok Minimum Global dari nama_pengaturan 'stok_minimum_bahan'
+        $globalMinStok = Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 0;
 
         // 2. Data Ringkasan (KPI Cards)
         $totalBahan = BahanBaku::count();
@@ -105,15 +105,22 @@ class DashboardController extends Controller
         });
 
         // ==============================================================
-        // FIX LOGIKA SINKRONISASI:
-        // Menghitung bahan yang kritis berdasarkan:
-        // - Stok <= stok_minimum (individual barang)
-        // - Jika stok_minimum barang kosong, pakai globalMinStok dari pengaturan
+        // FINAL FIX LOGIC:
+        // Menghitung bahan yang kritis berdasarkan stok per-varian (per-item),
+        // bukan total gabungan. Setiap warna adalah item inventaris terpisah.
         // ==============================================================
-        // IKUTI PENGATURAN GUDANG: stok_minimum_global adalah acuan utama
-        // (kalau belum diset, fallback 5)
-        $minGlobal = (int) ($globalMinStok ?: 5);
-        $jumlahKritis = BahanBaku::where('stok', '<=', $minGlobal)->count();
+        $minGlobal = (int) $globalMinStok;
+
+        $criticalQuery = \App\Models\BahanBaku::where('is_inventory', 1);
+
+        if ($minGlobal === 0) {
+            // Jika setting 0, hanya item dengan stok tepat 0 yang kritis.
+            $criticalQuery->where('stok', '=', 0);
+        } else {
+            // Jika setting > 0, item dengan stok <= setting adalah kritis.
+            $criticalQuery->where('stok', '<=', $minGlobal);
+        }
+        $jumlahKritis = $criticalQuery->count();
 
         // Hitung Produk Jadi KRITIS (Stok <= Stok Minimum Global)
         $stokMinProduk = (int) (Pengaturan::where('nama_pengaturan', 'stok_minimum_produk')->value('nilai') ?? 2);
@@ -147,7 +154,7 @@ class DashboardController extends Controller
             ->groupBy('bahan_bakus.id', 'bahan_bakus.kode_material', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
             ->orderByDesc(DB::raw('MAX(pengadaans.created_at)'));
         
-        $pengadaanBahan = (clone $pengadaanPendingQuery)->limit(100)->get();
+        $pengadaanBahan = (clone $pengadaanPendingQuery)->limit(00)->get();
         $totalPengadaanPending = $pengadaanPendingQuery->count();
 
         // ✅ FIX GRAFIK KOSONG: Ambil data statistik untuk Chart.js
@@ -165,6 +172,12 @@ class DashboardController extends Controller
             ->where('jenis_transaksi', 'PRODUK_KELUAR')
             ->sum('jumlah') ?? 0;
 
+        // Ambil semua pengadaan PENDING secara individual untuk ditampilkan di dashboard
+        $pengadaanPendingIndividual = \App\Models\Pengadaan::with('bahan', 'operator')
+            ->where('status', 'PENDING')
+            ->orderBy('tanggal_dibutuhkan', 'asc')
+            ->get();
+
         return view('admin.dashboard', compact(
             'totalBahan', 
             'totalProduk', 
@@ -181,7 +194,8 @@ class DashboardController extends Controller
             'bahanKeluar',
             'produkMasuk',
             'produkKeluar',
-            'produkKeluarBulanIni'
+            'produkKeluarBulanIni',
+            'pengadaanPendingIndividual'
         ));
     }
 

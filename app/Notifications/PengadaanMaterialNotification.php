@@ -46,7 +46,8 @@ class PengadaanMaterialNotification extends Notification implements ShouldQueue
         $daftarFoto = [];
         foreach($this->pengadaanGroup as $item) {
             if ($item->bahan && $item->bahan->foto) {
-                $daftarFoto[$item->id] = \Illuminate\Support\Facades\Storage::disk('public')->url($item->bahan->foto);
+                // Gunakan asset() untuk membuat URL absolut yang bisa diakses dari email
+                $daftarFoto[$item->id] = asset('storage/' . $item->bahan->foto);
             }
         }
 

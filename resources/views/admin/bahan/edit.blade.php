@@ -226,13 +226,13 @@
                                     class="w-full bg-[#0a0a0a]/80 border border-white/20 rounded-xl px-4 py-3 text-gray-500 cursor-not-allowed">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-300 mb-2">Nama Material <span class="text-red-400">*</span></label>
-                                <input type="text" name="nama_material" required
-                                    value="{{ old('nama_material', $bahan->nama_material) }}"
-                                    class="w-full bg-[#0a0a0a]/80 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30 transition outline-none">
-                            </div>
-                        </div>
+                             <div>
+                                 <label class="block text-sm font-semibold text-gray-300 mb-2">Nama Material <span class="text-red-400">*</span></label>
+                                 <input type="text" name="nama_material" required
+                                     value="{{ old('nama_material', $bahan->nama_material) }}"
+                                     class="w-full bg-[#0a0a0a]/80 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30 transition outline-none">
+                             </div>
+                         </div>
 
                         {{-- Kategori & Satuan --}}
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -245,7 +245,7 @@
         <option value="">Pilih Kategori</option>
         @foreach($kategories as $k)
             <option value="{{ $k->nama_kategori }}"
-                {{ old('kategori', $bahan->kategori) == $k->nama_kategori ? 'selected' : '' }}>
+                {{ (is_array(old('kategori', $bahan->kategori)) ? (old('kategori', $bahan->kategori)[0] ?? '') : old('kategori', $bahan->kategori)) == $k->nama_kategori ? 'selected' : '' }}>
                 {{ $k->nama_kategori }}
             </option>
         @endforeach
@@ -262,21 +262,6 @@
 </option>
 @endforeach
 </select>
-</div>
-
-                        {{-- WARNA (multi) --}}
-                        <div class="mb-4">
-    <label class="text-xs text-gray-400">Warna</label>
-    <select name="warna"
-            class="w-full bg-gray-800 rounded-xl px-4 py-3 text-white">
-        <option value="">Pilih Warna</option>
-        @foreach($warnas as $w)
-            <option value="{{ $w->nama_warna }}"
-                {{ old('warna', $bahan->warna) == $w->nama_warna ? 'selected' : '' }}>
-                {{ $w->nama_warna }}
-            </option>
-        @endforeach
-    </select>
 </div>
 
                         {{-- Deskripsi --}}

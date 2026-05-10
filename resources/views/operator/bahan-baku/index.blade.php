@@ -95,7 +95,19 @@
                         <div class="text-xs text-gray-400 mb-1">{{ $bahan->kode_material }}</div>
                         <div class="flex items-center gap-2">
                             <span class="px-1.5 py-0.5 bg-gray-700 text-gray-300 text-[10px] rounded">{{ $bahan->kategori }}</span>
-                            <span class="text-xs font-bold {{ $bahan->stok <= $bahan->stok_minimum ? 'text-red-400' : 'text-green-400' }}">{{ number_format($bahan->stok, 0) }} <span class="font-normal text-gray-400">{{ strtolower($bahan->satuan) }}</span></span>
+                            @php
+    $stokTampil = $bahan->total_stok ?? $bahan->stok;
+    $batasKritis = $bahan->stok_minimum ?? 5;
+    // Format cerdas: 150.50 -> 150.5, 150.00 -> 150
+    $formatStokIdx = function($val) {
+        $val = (float) $val;
+        if ($val == (int) $val) return number_format($val, 0);
+        return rtrim(rtrim(number_format($val, 2, '.', ''), '0'), '.');
+    };
+@endphp
+<span class="text-xs font-bold {{ $stokTampil <= $batasKritis ? 'text-red-400' : 'text-green-400' }}">
+    {{ $formatStokIdx($stokTampil) }} <span class="font-normal text-gray-400">{{ strtolower($bahan->satuan) }}</span>
+</span>
                         </div>
                     </div>
                 </div>

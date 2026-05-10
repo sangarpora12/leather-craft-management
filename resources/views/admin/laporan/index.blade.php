@@ -433,12 +433,7 @@ if (!isset($mode) || empty($mode)) {
                             @forelse($pengadaans as $bahan)
                             <tr>
                                 <td class="px-3 py-2 text-xs text-gray-400">{{ $bahan->kode_material ?? '-' }}</td>
-                                <td class="px-3 py-2 text-xs font-bold text-white">
-    {{ $bahan->nama_material }}
-    @if(isset($bahan->warna) && $bahan->warna && $bahan->warna !== 'Tidak Ada Warna')
-        <span class="text-blue-400 ml-1">[{{ $bahan->warna }}]</span>
-    @endif
-</td>
+                                <td class="px-3 py-2 text-xs font-bold text-white">{{ $bahan->nama_material }}</td>
                                 <td class="px-3 py-2 text-xs text-green-400 text-right font-bold">+{{ rtrim(rtrim(number_format($bahan->jumlah, 2, ',', '.'), '0'), ',') }} {{ $bahan->satuan }}</td>
                                 <td class="px-3 py-2 text-xs text-gray-500">{{ $bahan->user_name ?? 'N/A' }}</td>
                             </tr>

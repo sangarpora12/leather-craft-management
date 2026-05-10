@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use App\Models\BahanBaku;
 use App\Models\Pengaturan;
 use App\Observers\ProdukJadiObserver;
+use Illuminate\Support\Carbon;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -36,5 +37,7 @@ class AppServiceProvider extends ServiceProvider
         // Auto recalculate harga produk saat harga bahan atau pengaturan berubah
         BahanBaku::observe(ProdukJadiObserver::class);
         Pengaturan::observe(ProdukJadiObserver::class);
+
+        Carbon::setLocale('id');
     }
 }

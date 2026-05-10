@@ -35,6 +35,7 @@ Admin **{{ $adminName }}** telah mengirimkan permintaan pengadaan bahan baru.
             </td>
             <td valign="middle" style="padding: 8px 10px; text-align: left; vertical-align: middle;">
                 <div style="font-weight: bold; font-size: 13px; color: #1e293b;">{{ $item->bahan->nama_material }}</div>
+                <div style="font-size: 11px; color: #f97316; margin-top: 3px; font-weight: bold;">Warna: {{ $item->warna ?? 'Polos' }}</div>
                 <div style="font-size: 11px; color: #64748b; margin-top: 3px;">{{ $item->bahan->kode_material }}</div>
             </td>
             <td width="65" valign="middle" style="padding: 8px 10px; text-align: center; vertical-align: middle; font-weight: bold; font-size: 13px; color: #059669;">

@@ -14,6 +14,7 @@ class Pengadaan extends Model
     protected $fillable = [
         'no_referensi',
         'bahan_baku_id',
+        'warna',
         'jumlah',
         'received',
         'status',

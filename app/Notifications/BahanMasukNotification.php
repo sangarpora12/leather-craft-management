@@ -14,14 +14,18 @@ class BahanMasukNotification extends Notification
 
     protected $bahan;
     protected $qtyMasuk;
+    protected $operatorName;
+    protected $sumber;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct(BahanBaku $bahan, $qtyMasuk)
+    public function __construct(BahanBaku $bahan, $qtyMasuk, $operatorName = 'Operator', $sumber = 'Input Manual')
     {
         $this->bahan = $bahan;
         $this->qtyMasuk = $qtyMasuk;
+        $this->operatorName = $operatorName;
+        $this->sumber = $sumber;
     }
 
     /**
@@ -41,16 +45,21 @@ class BahanMasukNotification extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-        // Gunakan URL yang bisa diakses dari mana saja (bukan localhost)
-        // Route yang benar adalah /admin/bahan (bukan /admin/bahan-baku)
         $url = route('admin.bahan.index');
+        $tanggal = now()->isoFormat('dddd, D MMMM YYYY [Pukul] HH:mm');
         
         return (new MailMessage)
-        ->subject('📦 Notifikasi Bahan Baku Masuk')
+        ->subject('📦 Bahan Baku Masuk - ' . $this->bahan->nama_material)
         ->greeting('Halo ' . $notifiable->name . '!')
-        ->line("Bahan baku **{$this->bahan->nama_material}** baru saja masuk.")
-        ->line("Jumlah masuk: **{$this->qtyMasuk} {$this->bahan->satuan}**")
-        ->line("Stok saat ini: **{$this->bahan->stok} {$this->bahan->satuan}**")
+        ->line("**{$this->operatorName}** telah menambahkan bahan baku masuk melalui **{$this->sumber}**.")
+        ->line("")
+        ->line("📋 **Detail Bahan Masuk:**")
+        ->line("• Nama Bahan: **{$this->bahan->nama_material}**")
+        ->line("• Warna: **{$this->bahan->warna}**")
+        ->line("• Jumlah Masuk: **{$this->qtyMasuk} {$this->bahan->satuan}**")
+        ->line("• Stok Saat Ini: **{$this->bahan->stok} {$this->bahan->satuan}**")
+        ->line("• Diinput oleh: **{$this->operatorName}**")
+        ->line("• Tanggal: **{$tanggal}**")
         ->action('Lihat Stok Bahan Baku', $url)
         ->line('Terima kasih telah menggunakan sistem Berliano Leather!');
     }
@@ -62,11 +71,22 @@ class BahanMasukNotification extends Notification
      */
     public function toArray(object $notifiable): array
     {
+        $tanggal = now()->isoFormat('dddd, D MMMM YYYY');
+        
         return [
             'judul' => 'Bahan Baku Masuk',
-            'pesan' => "Bahan {$this->bahan->nama_material} baru saja masuk/ditambah sebanyak {$this->qtyMasuk} {$this->bahan->satuan}. Stok saat ini: {$this->bahan->stok} {$this->bahan->satuan}.",
+            'pesan' => "{$this->operatorName} menambahkan {$this->bahan->nama_material} ({$this->bahan->warna}) sebanyak {$this->qtyMasuk} {$this->bahan->satuan} melalui {$this->sumber}. Stok saat ini: {$this->bahan->stok}.",
             'url'   => route('admin.bahan.index'),
-            'icon'  => 'fa-box'
+            'icon'  => 'fa-box',
+            'detail' => [
+                'nama_bahan' => $this->bahan->nama_material,
+                'warna' => $this->bahan->warna,
+                'jumlah' => $this->qtyMasuk,
+                'satuan' => $this->bahan->satuan,
+                'operator' => $this->operatorName,
+                'sumber' => $this->sumber,
+                'tanggal' => $tanggal,
+            ]
         ];
     }
 }

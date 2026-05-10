@@ -171,7 +171,15 @@
                         </td>
                         
                         <td class="px-6 py-4 text-center">
-                            <span class="{{ $isKritis ? 'text-[#FF5252]' : 'text-[#00BFA5]' }} font-extrabold text-base">{{ number_format($stokItem, 2) }}</span>
+                            @php
+                                // Format cerdas: 150.50 -> 150.5, 150.00 -> 150
+                                $fmtStok = function($v) {
+                                    $v = (float) $v;
+                                    if ($v == (int) $v) return number_format($v, 0);
+                                    return rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
+                                };
+                            @endphp
+                            <span class="{{ $isKritis ? 'text-[#FF5252]' : 'text-[#00BFA5]' }} font-extrabold text-base">{{ $fmtStok($stokItem) }}</span>
                         </td>
                         
                         <td class="px-6 py-4 text-center">

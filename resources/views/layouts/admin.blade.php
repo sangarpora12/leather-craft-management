@@ -207,11 +207,10 @@
                 </div>
 
                 <div class="flex items-center gap-4">
-                    {{-- FIX: Ikon Notifikasi Lonceng --}}
-                    <div class="relative">
-                        <a href="{{ route('admin.notifications.index') }}" class="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:bg-[#20232A] hover:text-white transition relative">
+                    {{-- NOTIFIKASI POPUP (DROP DOWN) --}}
+                    <div x-data="{ notifOpen: false }" class="relative">
+                        <button @click="notifOpen = !notifOpen" class="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:bg-[#20232A] hover:text-white transition relative">
                             <i class="fa-solid fa-bell text-xl"></i>
-                            
                             @php $unreadCount = auth()->user()->unreadNotifications->count(); @endphp
                             @if($unreadCount > 0)
                                 <span class="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#FF5252] text-[10px] font-black text-white border-2 border-[#0D1117] shadow-lg">
@@ -219,7 +218,54 @@
                                 </span>
                                 <span class="absolute top-0 right-0 flex h-5 w-5 animate-ping rounded-full bg-[#FF5252] opacity-75"></span>
                             @endif
-                        </a>
+                        </button>
+                        
+                        <!-- Dropdown Notifikasi -->
+                        <div x-show="notifOpen" @click.outside="notifOpen = false" x-cloak class="absolute right-0 mt-3 w-80 sm:w-96 bg-[#1A1C24] border border-[#2D3139] rounded-2xl shadow-2xl overflow-hidden z-50">
+                            <div class="p-4 border-b border-[#2D3139] flex justify-between items-center">
+                                <h3 class="text-sm font-bold text-white">Notifikasi</h3>
+                                <div class="flex gap-2">
+                                    <button onclick="event.preventDefault(); document.getElementById('form-mark-all').submit();" class="text-[10px] px-2 py-1 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition">
+                                        ✅ Baca Semua
+                                    </button>
+                                    <button onclick="event.preventDefault(); Swal.fire({...swalDarkTheme, title:'Hapus Semua Notifikasi?', text:'Semua notifikasi akan dihapus permanen.', icon:'warning', showCancelButton:true, confirmButtonText:'Ya, Hapus Semua', cancelButtonText:'Batal', reverseButtons:true}).then((r)=>{if(r.isConfirmed) document.getElementById('form-delete-all').submit();})" class="text-[10px] px-2 py-1 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition">
+                                        🗑️ Hapus Semua
+                                    </button>
+                                </div>
+                            </div>
+                            <form id="form-mark-all" action="{{ route('admin.notifications.mark-all') }}" method="POST" class="hidden">@csrf</form>
+                            <form id="form-delete-all" action="{{ route('admin.notifications.delete-all') }}" method="POST" class="hidden">@csrf @method('DELETE')</form>
+                            <div class="max-h-72 overflow-y-auto custom-scrollbar">
+                                @php
+                                    $semuaNotif = auth()->user()->notifications()->take(15)->get();
+                                @endphp
+                                @forelse($semuaNotif as $n)
+                                <a href="{{ route('admin.notifications.read', $n->id) }}" class="block px-4 py-3 border-b border-[#2D3139]/50 hover:bg-[#20232A] transition {{ is_null($n->read_at) ? 'bg-blue-900/10 border-l-2 border-l-blue-500' : '' }}">
+                                    <div class="flex items-start gap-2">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-xs font-bold text-white truncate">{{ $n->data['judul'] ?? 'Notifikasi' }}</p>
+                                            <p class="text-[10px] text-gray-400 mt-0.5 leading-relaxed line-clamp-2">{{ $n->data['pesan'] ?? '' }}</p>
+                                            <p class="text-[9px] text-gray-600 mt-1">{{ $n->created_at->diffForHumans() }}</p>
+                                        </div>
+                                        <div class="flex-shrink-0 ml-2">
+                                            <form action="{{ route('admin.notifications.destroy', $n->id) }}" method="POST" onclick="event.stopPropagation();">
+                                                @csrf @method('DELETE')
+                                                <button class="text-[9px] px-1.5 py-0.5 bg-gray-700 text-gray-400 rounded hover:bg-red-600/30 hover:text-red-400">✕</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </a>
+                                @empty
+                                <div class="px-4 py-8 text-center text-gray-500 text-sm">
+                                    <i class="fa-solid fa-bell-slash text-2xl mb-2 block"></i>
+                                    Tidak ada notifikasi
+                                </div>
+                                @endforelse
+                            </div>
+                            <a href="{{ route('admin.notifications.index') }}" class="block text-center text-[11px] py-3 bg-[#20232A] text-gray-400 hover:text-white hover:bg-[#2A3140] transition">
+                                Lihat Semua Notifikasi →
+                            </a>
+                        </div>
                     </div>
 
                     {{-- Tombol Refresh --}}

@@ -6,6 +6,10 @@ use App\Models\BahanMasuk;
 use App\Models\User;
 use App\Models\Satuan;
 use App\Models\Kategori;
+use App\Models\Pengadaan;
+use App\Models\Bahan;
+use App\Models\BahanBaku;
+use App\Models\BahanStokLayer;
 use App\Notifications\ScanNotaNotification;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Http\Request;
@@ -20,12 +24,30 @@ class ScanController extends Controller
     /**
      * Display scan page for operator
      */
-public function index()
+public function index(Request $request)
     {
+        $pengadaan_id = $request->query('pengadaan_id');
         $satuans = Satuan::all();
         $kategories = Kategori::where('tipe', 'bahan')->get();
         $warnas = \App\Models\Warna::all();
-        return view('operator.scan-nota', compact('satuans', 'kategories', 'warnas'));
+        return view('operator.scan-nota', compact('satuans', 'kategories', 'warnas', 'pengadaan_id'));
+    }
+
+    public function showManualInputForm($pengadaan_id)
+    {
+        // Ambil semua kategori untuk dropdown di form
+        $kategories = \App\Models\Kategori::all();
+
+        $satuans = \App\Models\Satuan::all();
+        $warnas = \App\Models\Warna::all();
+
+        // Teruskan semua data yang dibutuhkan ke view.
+        return view('operator.scan.index', [
+            'pengadaan_id' => $pengadaan_id,
+            'kategories' => $kategories,
+            'satuans' => $satuans,
+            'warnas' => $warnas
+        ]);
     }
 
     /**
@@ -61,6 +83,7 @@ public function index()
             'nama_material' => 'required|string',
             'jumlah' => 'required|numeric',
             'satuan' => 'required|string',
+            'warna' => 'required|string',
             'harga_satuan' => 'nullable|numeric',
             'supplier' => 'nullable|string',
             'ref_no' => 'nullable|string',
@@ -111,33 +134,110 @@ public function index()
                 'notes' => null,
             ]);
 
-            // Send notification to all admins
+            // Update stok bahan baku & distribusi ke PENGADAAN (FIFO)
+            $namaMaterial = $request->nama_material;
+            $warnaInput = $request->warna ?? 'Tidak Ada Warna';
+            $jumlahMasuk = (float) $request->jumlah;
+            
+            // 1. CARI ATAU BUAT VARIAN BAHAN BAKU BERDASARKAN NAMA + WARNA (case-insensitive)
+            $bahan = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$namaMaterial])
+                ->whereRaw('LOWER(warna) = LOWER(?)', [$warnaInput])
+                ->first();
+
+            if (!$bahan) {
+                // Buat varian baru
+                $existingMaster = BahanBaku::where('nama_material', $namaMaterial)->first();
+                $kodeMaterial = $existingMaster ? $existingMaster->kode_material : BahanBaku::generateKodeMaterial($request->kategori);
+                
+                $bahan = BahanBaku::create([
+                    'kode_material' => $kodeMaterial,
+                    'nama_material' => $namaMaterial,
+                    'warna'         => $warnaInput,
+                    'stok'          => 0,
+                    'satuan'        => $request->satuan,
+                    'kategori'      => $request->kategori ?? 'Bahan Utama',
+                    'harga_satuan'  => $request->harga_satuan ?? 0,
+                    'is_inventory'  => true,
+                ]);
+            }
+
+            // 2. UPDATE STOK BAHAN BAKU
+            $bahan->increment('stok', $jumlahMasuk);
+
+            // 3. FIFO: Distribusikan ke SEMUA pengadaan PENDING dengan JOIN langsung
+            // (lebih reliable daripada whereHas)
+            $query = \Illuminate\Support\Facades\DB::table('pengadaans')
+                ->join('bahan_bakus', 'bahan_bakus.id', '=', 'pengadaans.bahan_baku_id')
+                ->whereRaw('LOWER(bahan_bakus.nama_material) = LOWER(?)', [$namaMaterial])
+                ->where('pengadaans.status', 'PENDING')
+                ->select('pengadaans.*')
+                ->orderBy('pengadaans.created_at', 'asc');
+
+            // Filter warna
+            $warnaBersih = trim($warnaInput);
+            $isWarnaKosong = empty($warnaBersih) || strtolower($warnaBersih) === 'tidak ada warna';
+            if (!$isWarnaKosong) {
+                $query->where(function($q) use ($warnaBersih) {
+                    $q->whereRaw('LOWER(pengadaans.warna) = LOWER(?)', [$warnaBersih])
+                      ->orWhereNull('pengadaans.warna')
+                      ->orWhere('pengadaans.warna', '')
+                      ->orWhereRaw('LOWER(pengadaans.warna) = ?', ['tidak ada warna']);
+                });
+            }
+
+            $antrianPengadaanRaw = $query->get();
+            $antrianPengadaan = Pengadaan::whereIn('id', $antrianPengadaanRaw->pluck('id'))->get();
+
+            $sisaDistribusi = $jumlahMasuk;
+            foreach ($antrianPengadaan as $p) {
+                if ($sisaDistribusi <= 0) break;
+                $sisaPesanan = $p->jumlah - ($p->received ?? 0);
+                $yangDiambil = min($sisaDistribusi, $sisaPesanan);
+                
+                $p->increment('received', $yangDiambil);
+                $p->refresh();
+                
+                if ($p->received >= $p->jumlah) {
+                    $p->update(['status' => 'DONE']);
+                }
+                
+                $sisaDistribusi -= $yangDiambil;
+            }
+
+            // 4. CATAT STOK LAYER
+            if ($sisaDistribusi < $jumlahMasuk) {
+                $jumlahTerdistribusi = $jumlahMasuk - $sisaDistribusi;
+                BahanStokLayer::create([
+                    'bahan_baku_id' => $bahan->id,
+                    'tanggal_masuk' => now()->toDateString(),
+                    'qty_masuk'     => $jumlahTerdistribusi,
+                    'qty_sisa'      => $jumlahTerdistribusi,
+                    'harga_beli'    => $request->harga_satuan ?? $bahan->harga_satuan,
+                    'sumber_harga'  => 'Scan Nota',
+                ]);
+            }
+
+            // 5. CATAT KE LOG STOK (UNTUK GRAFIK DASHBOARD)
+            \App\Models\LogStok::create([
+                'bahan_baku_id' => $bahan->id,
+                'operator_id' => auth()->id(),
+                'jenis_transaksi' => 'TAMBAH_STOK',
+                'jumlah' => $jumlahMasuk,
+                'keterangan' => 'Input Manual - ' . $namaMaterial . ' (' . $warnaInput . ')',
+            ]);
+
+            // Send notification Bahan Masuk ke semua admin
             $admins = User::where('role', 'admin')->get();
             $operatorName = auth()->user()->name ?? 'Operator';
             
-            // Prepare scan data for notification
-            $scanData = [
-                'id' => $bahanMasuk->id,
-                'bahan_id' => $bahanMasuk->id,
-                'nama_bahan' => $bahanMasuk->nama_material,
-                'items' => [
-                    [
-                        'nama' => $bahanMasuk->nama_material,
-                        'jumlah' => $bahanMasuk->jumlah,
-                        'satuan' => $bahanMasuk->satuan,
-                        'harga' => $bahanMasuk->harga_satuan ?? 0,
-                    ]
-                ],
-                'total_harga' => ($bahanMasuk->jumlah * ($bahanMasuk->harga_satuan ?? 0)),
-            ];
-            
-            $notification = new ScanNotaNotification(
-                $scanData, 
+            $notif = new \App\Notifications\BahanMasukNotification(
+                $bahan, 
+                $jumlahMasuk, 
                 $operatorName, 
-                $bahanMasuk->foto_nota
+                'Input Manual'
             );
             
-            Notification::send($admins, $notification);
+            Notification::send($admins, $notif);
 
             DB::commit();
 

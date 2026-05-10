@@ -29,6 +29,7 @@
 
             <div class="bg-[#1A1A1A] p-4 rounded-xl border border-white/5 relative">
                 <h4 class="font-bold text-white text-base">Benang Nilon Waxed</h4>
+                <p class="text-sm font-bold text-orange-400">Warna: Hitam</p> <!-- CONTOH TAMBAHAN WARNA -->
                 <div class="flex justify-between items-end mt-2">
                     <p class="text-xs text-gray-500 font-mono">Kode: BAH-N-001</p>
                     <div class="text-right">

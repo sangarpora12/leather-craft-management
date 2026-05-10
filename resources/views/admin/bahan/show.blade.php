@@ -36,10 +36,6 @@
                 <div class="bg-[#2D3139] p-6 rounded-xl border border-gray-700/50 sticky top-8">
                     @php
                         $fotoMaster = $bahan->foto;
-                        if (!$fotoMaster && isset($varianWarna)) {
-                            $firstWithFoto = $varianWarna->firstWhere('foto', '!=', null);
-                            if ($firstWithFoto) $fotoMaster = $firstWithFoto->foto;
-                        }
                     @endphp
                     <div class="aspect-square w-full bg-gray-800 rounded-lg mb-6 overflow-hidden border border-gray-700 flex items-center justify-center">
                         @if($fotoMaster)
@@ -55,7 +51,7 @@
                 </div>
             </div>
 
-            <!-- Right Column: Details, FIFO, Variants -->
+            <!-- Right Column: Details, Ringkasan, Variants -->
             <div class="lg:col-span-2 space-y-8">
                 
                 <!-- Details Card -->
@@ -72,9 +68,17 @@
                         </div>
                         <div class="col-span-2">
                             @php
-                                $totalStokSemuaWarna = isset($varianWarna) ? $varianWarna->sum('stok') : $bahan->stok;
+                                // $varianWarna SUDAH termasuk $bahan (tidak ada where exclude)
+                                // Jadi cukup SUM semua varian, TIDAK boleh ditambah $bahan->stok lagi
+                                $totalStokSemuaWarna = isset($varianWarna) ? (float) $varianWarna->sum('stok') : (float) $bahan->stok;
+                                // Format cerdas: 150.50 -> 150.5, 150.00 -> 150
+                                $formatStok = function($val) {
+                                    $val = (float) $val;
+                                    if ($val == (int) $val) return number_format($val, 0);
+                                    return rtrim(rtrim(number_format($val, 2, '.', ''), '0'), '.');
+                                };
                             @endphp
-                            <p class="text-orange-400 font-bold text-2xl mb-3">{{ floatval($totalStokSemuaWarna) }} <span class="text-base text-gray-400 font-normal">{{ $bahan->satuan }}</span></p>
+                            <p class="text-orange-400 font-bold text-2xl mb-3">{{ $formatStok($totalStokSemuaWarna) }} <span class="text-base text-gray-400 font-normal">{{ $bahan->satuan }}</span></p>
                             <p class="text-gray-400 text-xs mb-1 uppercase tracking-tighter">Varian Warna</p>
                             <div class="space-y-2 mt-2">
                                 @if(isset($varianWarna) && $varianWarna->count() > 0)
@@ -82,7 +86,7 @@
                                         <div class="flex items-center gap-3">
                                             <span class="w-3 h-3 rounded-full inline-block" style="background-color: {{ $v->warna && $v->warna !== 'Tidak Ada Warna' ? '#' . substr(md5($v->warna), 0, 6) : '#6b7280' }};"></span>
                                             <span class="text-white font-bold text-base">{{ $v->warna ?? 'Tidak Ada Warna' }}</span>
-                                            <span class="text-emerald-400 font-bold text-lg">({{ floatval($v->stok) }})</span>
+                                            <span class="text-emerald-400 font-bold text-lg">({{ (int) $v->stok }})</span>
                                         </div>
                                     @endforeach
                                 @else
@@ -96,78 +100,88 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- FIFO Stock Layers -->
-                <div class="bg-[#2D3139] p-6 rounded-xl border border-gray-700/50">
-                    <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
-                        <i class="fa-solid fa-clock-rotate-left text-orange-400 mr-3"></i>Riwayat Stok (FIFO)
-                    </h3>
-
-                    @if(isset($ringkasanPerHarga) && $ringkasanPerHarga->count() > 0)
-                    <div class="mb-6 bg-gray-800/30 rounded-lg p-4 border border-gray-700">
-                        <p class="text-xs text-gray-500 uppercase tracking-wider mb-3">Ringkasan Per Harga Beli (FIFO)</p>
-                        <div class="space-y-2">
-                            @foreach($ringkasanPerHarga as $r)
-                            <div class="flex items-center justify-between py-2 px-3 rounded-lg {{ $loop->first ? 'bg-emerald-500/10 border border-emerald-500/20' : '' }}">
-                                <div class="flex items-center gap-3">
-                                    <span class="text-white font-bold text-base">Rp {{ number_format($r->harga_beli, 0, ',', '.') }}</span>
-                                    @if($loop->first)
-                                        <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] rounded border border-emerald-500/30">TERAKHIR</span>
-                                    @endif
-                                </div>
-                                <div class="text-right">
-                                    <span class="text-gray-400 text-sm">Total Bahan: <span class="text-white font-bold">{{ floatval($r->total_masuk) }}</span></span>
-                                    <span class="mx-2 text-gray-600">|</span>
-                                    <span class="text-gray-400 text-sm">Sisa: <span class="{{ floatval($r->total_sisa) > 0 ? 'text-orange-400' : 'text-gray-600' }} font-bold">{{ floatval($r->total_sisa) }}</span></span>
-                                </div>
-                            </div>
-                            @endforeach
-                        </div>
-                    </div>
+<!-- Ringkasan Per Harga Beli -->
+@if(isset($ringkasanPerHarga) && $ringkasanPerHarga->count() > 0)
+<div class="bg-[#2D3139] p-6 rounded-xl border border-gray-700/50">
+    <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+        <i class="fa-solid fa-chart-simple text-emerald-400 mr-3"></i>Ringkasan Per Harga Beli
+    </h3>
+    <div class="space-y-3">
+        @foreach($ringkasanPerHarga as $r)
+        <div class="flex items-center justify-between p-4 rounded-lg {{ $loop->first ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-gray-800/40 border border-white/5' }}">
+            <!-- Sisi Kiri: Harga dan Badge Warna -->
+            <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-white font-bold text-base">Rp {{ number_format($r->harga_beli, 0, ',', '.') }}</span>
+                    @if($loop->first)
+                        <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded border border-emerald-500/30 uppercase">Terakhir</span>
                     @endif
-
-                    <!-- Tabel Detail FIFO -->
-                    <div class="overflow-hidden rounded-lg border border-gray-800">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-800/50 text-[10px] text-gray-500 uppercase tracking-widest">
-                                <tr>
-                                    <th class="px-4 py-3">Periode</th>
-                                    <th class="px-4 py-3 text-right">Total Bahan</th>
-                                    <th class="px-4 py-3 text-right">Sisa Stok</th>
-                                    <th class="px-4 py-3 text-right">Harga Beli</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-800">
-                                @php
-                                    $layers = isset($semuaLayer) ? $semuaLayer->where('qty_sisa', '>', 0) : $bahan->stockLayers->where('qty_sisa', '>', 0)->sortByDesc('created_at');
-                                    $grouped = $layers->groupBy('harga_beli');
-                                @endphp
-                                @forelse($grouped as $harga => $items)
-                                @php
-                                    $totalMasuk = $items->sum('qty_masuk');
-                                    $totalSisa = $items->sum('qty_sisa');
-                                    $tglAwal = $items->min('tanggal_masuk');
-                                    $tglAkhir = $items->max('tanggal_masuk');
-                                @endphp
-                                <tr class="hover:bg-gray-800/30 transition">
-                                    <td class="px-4 py-3 text-gray-400 font-mono text-xs">
-                                        {{ \Carbon\Carbon::parse($tglAwal)->format('d/m') }} - {{ \Carbon\Carbon::parse($tglAkhir)->format('d/m/Y') }}
-                                    </td>
-                                    <td class="px-4 py-3 text-right text-white font-bold">{{ floatval($totalMasuk) }}</td>
-                                    <td class="px-4 py-3 text-right font-bold text-lg {{ $totalSisa > 0 ? 'text-orange-400' : 'text-gray-600' }}">
-                                        {{ floatval($totalSisa) }}
-                                    </td>
-                                    <td class="px-4 py-3 text-right text-white font-mono">Rp {{ number_format($harga, 0, ',', '.') }}</td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="4" class="px-4 py-10 text-center text-gray-500 italic">Data stok belum tersedia.</td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
+                <div>
+                    <span class="px-2 py-1 bg-gray-700/50 text-gray-300 text-[10px] font-medium rounded border border-white/10 uppercase tracking-tight">
+                        {{ $r->warna ?? 'Tidak Ada Warna' }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Sisi Kanan: Statistik Stok -->
+            <div class="flex items-center gap-4 text-right">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-500 uppercase font-bold">Masuk</span>
+                    <span class="text-white font-bold text-sm">{{ (float) $r->total_masuk }}</span>
+                </div>
+                <div class="w-px h-8 bg-gray-700"></div>
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-500 uppercase font-bold">Sisa</span>
+                    <span class="{{ (float) $r->total_sisa > 0 ? 'text-orange-400' : 'text-gray-500' }} font-bold text-sm">
+                        {{ (float) $r->total_sisa }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
+
+                <!-- LAYER FIFO STOK -->
+@if(isset($semuaLayer) && $semuaLayer->count() > 0)
+<div class="bg-[#2D3139] p-6 rounded-xl border border-gray-700/50">
+    <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+        <i class="fa-solid fa-layer-group text-purple-400 mr-3"></i>Layer FIFO Stok
+    </h3>
+    <div class="overflow-x-auto rounded-lg border border-gray-800">
+        <table class="w-full text-sm text-left">
+            <thead class="bg-gray-800/50 text-[10px] text-gray-500 uppercase tracking-widest">
+                <tr>
+                    <th class="px-4 py-3">Tgl Masuk</th>
+                    <th class="px-4 py-3">Warna</th> {{-- Kolom Warna Baru --}}
+                    <th class="px-4 py-3 text-right">Qty Masuk</th>
+                    <th class="px-4 py-3 text-right">Qty Sisa</th>
+                    <th class="px-4 py-3 text-right">Harga Beli</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+                @foreach($semuaLayer as $layer)
+                <tr class="hover:bg-gray-800/30 transition">
+                    <td class="px-4 py-3 text-white">{{ \Carbon\Carbon::parse($layer->tanggal_masuk)->format('d M Y') }}</td>
+                    <td class="px-4 py-3">
+                        <span class="text-[10px] font-medium text-gray-400 uppercase">
+                            {{ $layer->material->warna ?? 'Tidak Ada Warna' }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-right text-white font-medium">{{ (float) $layer->qty_masuk }}</td>
+                    <td class="px-4 py-3 text-right {{ (float) $layer->qty_sisa > 0 ? 'text-orange-400 font-bold' : 'text-gray-600' }}">
+                        {{ (float) $layer->qty_sisa }}
+                    </td>
+                    <td class="px-4 py-3 text-right text-emerald-400 font-bold">Rp {{ number_format($layer->harga_beli, 0, ',', '.') }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
 
                 <!-- VARIAN WARNA TABLE -->
                 @if(isset($varianWarna) && $varianWarna->count() > 0)
@@ -194,11 +208,11 @@
                                             {{ $v->warna ?? 'Tidak Ada Warna' }}
                                         </span>
                                     </td>
-                                    <td class="px-4 py-3 text-right font-bold {{ floatval($v->stok) > 0 ? 'text-orange-400' : 'text-gray-600' }}">
-                                        {{ floatval($v->stok) }} <span class="text-gray-500 font-normal text-xs">{{ $v->satuan }}</span>
+                                    <td class="px-4 py-3 text-right font-bold {{ (int) $v->stok > 0 ? 'text-orange-400' : 'text-gray-600' }}">
+                                        {{ (int) $v->stok }} <span class="text-gray-500 font-normal text-xs">{{ $v->satuan }}</span>
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <a href="{{ route('admin.bahan.edit', $v->id) }}" class="inline-block bg-gray-700/50 hover:bg-orange-500 text-white p-2 rounded-lg transition duration-200" title="Edit Warna & Foto">
+                                        <a href="{{ route('admin.bahan.edit-varian', $v->id) }}" class="inline-block bg-gray-700/50 hover:bg-orange-500 text-white p-2 rounded-lg transition duration-200" title="Edit Warna">
                                             <i class="fa-solid fa-pen-to-square text-xs"></i>
                                         </a>
                                     </td>

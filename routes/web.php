@@ -115,7 +115,8 @@ Route::middleware(['auth'])->group(function () {
         // --- DATA MASTER (BAHAN BAKU) ---
         Route::resource('bahan', BahanBakuController::class)->names('bahan');
         Route::get('bahan/{id}/show', [BahanBakuController::class, 'show'])->name('bahan.show');
-        Route::post('bahan/{id}/update-varian', [BahanBakuController::class, 'updateVarian'])->name('bahan.update-varian');
+        Route::get('bahan/{id}/edit-varian', [BahanBakuController::class, 'editVarian'])->name('bahan.edit-varian');
+        Route::match(['post', 'put'], 'bahan/{id}/update-varian', [BahanBakuController::class, 'updateVarian'])->name('bahan.update-varian');
         Route::get('/bahan/{id}/stock-layers', [BahanBakuController::class, 'getStockLayers'])->name('bahan.stock-layers');
         Route::get('/api/bahan/search', [BahanBakuController::class, 'searchApi'])->name('bahan.search.api');
         
@@ -297,6 +298,8 @@ Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
         Route::post('/notifications/mark-all-read', [DashboardController::class, 'markAllOperatorNotificationsRead'])->name('notifications.mark-all-read');
         Route::get('/notifications/{id}/read', [DashboardController::class, 'markOperatorNotificationReadAndRedirect'])->name('notifications.read');
 
+        Route::get('/bahan', [BahanBakuController::class, 'indexOperator'])->name('bahan.index');
+        Route::get('/bahan/{id}', [BahanBakuController::class, 'show'])->name('bahan.show');
         Route::get('/bahan/{id}/edit', [BahanBakuController::class, 'editOperator'])->name('bahan.edit');
         Route::put('/bahan/{id}', [BahanBakuController::class, 'updateOperator'])->name('bahan.update');
 
@@ -330,8 +333,13 @@ Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
         
         // Scan Nota (New System)
         Route::get('/scan', [ScanController::class, 'index'])->name('scan.index');
+        Route::get('/scan/manual/{pengadaan_id}', [ScanController::class, 'showManualInputForm'])->name('scan.manual');
         Route::post('/scan/process', [ScanController::class, 'process'])->name('scan.process');
+        Route::get('/scan/result', [ScanController::class, 'result'])->name('scan.result');
+        Route::post('/scan/save', [ScanController::class, 'save'])->name('scan.save');
         Route::get('/scan/success/{id}', [ScanController::class, 'success'])->name('scan.success');
+        Route::get('/scan/history', [ScanController::class, 'history'])->name('scan.history');
+        Route::get('/scan/history/{id}', [ScanController::class, 'historyDetail'])->name('scan.history.detail');
         
         // Scan Nota (Legacy - keep for backward compatibility)
         Route::get('/scan/ocr', function () { return view('operator.scan-ocr'); })->name('scan.ocr');
@@ -369,12 +377,16 @@ Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
         Route::get('/bahan/{id}', [BahanBakuController::class, 'showOperator'])->name('bahan.show');
         Route::get('/bahan/{id}/edit', [BahanBakuController::class, 'editOperator'])->name('bahan.edit');
         Route::put('/bahan/{id}', [BahanBakuController::class, 'updateOperator'])->name('bahan.update');
+        Route::get('/bahan/{id}/edit-varian', [BahanBakuController::class, 'editVarian'])->name('bahan.edit-varian');
+        Route::post('/bahan/{id}/update-varian', [BahanBakuController::class, 'updateVarian'])->name('bahan.update-varian');
         Route::get('/api/bahan-baku/search', [BahanBakuController::class, 'search'])->name('bahan-baku.search');
         
         // Pengadaan / Penerimaan Bahan
         Route::get('/pengadaan-bahan', [PengadaanController::class, 'indexOperator'])->name('pengadaan');
         Route::get('/pengadaan', [PengadaanController::class, 'indexOperator'])->name('pengadaan.index');
         Route::get('/daftar-belanja', [PengadaanController::class, 'indexOperator'])->name('belanja.index');
+        Route::get('/belanja/{nama_material}', [PengadaanController::class, 'showOperatorGroup'])->name('belanja.show');
+        Route::post('/pengadaan/update-photo/{kode_material}', [PengadaanController::class, 'updatePhoto'])->name('pengadaan.update-photo');
         Route::get('/pengadaan/list', [PengadaanController::class, 'indexOperator'])->name('pengadaan.list');
         Route::post('/pengadaan/request/{materialId}', [PengadaanController::class, 'requestMaterial'])->name('pengadaan.request');
         Route::patch('/daftar-belanja/{id}/selesai', [PengadaanController::class, 'markAsDone'])->name('belanja.selesai');

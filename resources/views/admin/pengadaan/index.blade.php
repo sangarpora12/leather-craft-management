@@ -2,10 +2,9 @@
 @section('page_title', 'Pengadaan Material')
 
 @section('content')
-{{-- CONTAINER UTAMA: Menggunakan p-6 agar ada jarak ke pinggir, min-h-screen agar lega --}}
 <div x-data="procurementApp()" class="min-h-screen bg-[#0D1117] p-6 space-y-6 animate-fade-in font-sans text-gray-300">
 
-    {{-- 1. HEADER & BAHAN KRITIS (TOP SECTION) --}}
+    {{-- 1. HEADER & BAHAN KRITIS --}}
     <div class="flex flex-col gap-4">
         <div>
             <p class="text-[10px] text-gray-500 uppercase tracking-[0.2em]">Inventory Control System</p>
@@ -17,36 +16,50 @@
                 <span class="flex h-2 w-2 rounded-full bg-red-500 animate-ping"></span>
                 <h3 class="text-white font-bold text-xs uppercase italic">Stok Kritis Terdeteksi</h3>
             </div>
-            {{-- Horizontal Scroll Kecil --}}
+
             <div class="flex gap-3 overflow-x-auto custom-scrollbar pb-2">
-                @foreach($lowStockMaterials as $mat)
-                <div class="shrink-0 w-[180px] bg-[#0D1117] border border-white/5 rounded-lg p-3 flex flex-col justify-between hover:border-red-500/30 transition">
-                    <div class="mb-2">
-                        <p class="text-white text-[11px] font-bold truncate">{{ $mat->nama_material }}</p>
-                        <p class="text-[9px] text-red-500 font-black">Sisa: {{ $mat->stok }} {{ $mat->satuan }}</p>
+                @foreach($lowStockMaterials as $kode => $items)
+                    @php
+                    // Cari item master (tanpa warna, atau warna 'Polos', atau ID terkecil) untuk foto utama
+                    $masterItemForPhoto = $items->firstWhere('warna', null) ?? $items->firstWhere('warna', 'Polos') ?? $items->sortBy('id')->first();
+                @endphp
+                    @foreach($items as $item)
+                    <div class="shrink-0 w-[180px] bg-[#0D1117] border border-white/5 rounded-lg p-3 flex flex-col justify-between hover:border-red-500/30 transition">
+                        <div class="mb-2">
+                            @if($masterItemForPhoto && $masterItemForPhoto->foto)
+                                <img src="{{ asset('storage/' . $masterItemForPhoto->foto) }}" class="w-full h-20 object-cover rounded mb-2 border border-white/10">
+                            @else
+                                <div class="w-full h-20 bg-gray-800 rounded mb-2 flex items-center justify-center border border-white/5">
+                                    <i class="fa-solid fa-box text-gray-700 text-xl"></i>
+                                </div>
+                            @endif
+                            <p class="text-white text-[11px] font-bold truncate">{{ $item->nama_material ?? 'N/A' }}</p>
+                            <p class="text-[10px] text-orange-400 font-semibold">{{ $item->warna ?? 'Polos' }}</p>
+                            <p class="text-[9px] text-red-500 font-black">Sisa: {{ rtrim(rtrim(number_format($item->stok, 2, '.', ''), '0'), '.') }} {{ $item->satuan ?? '' }}</p>
+                        </div>
+                        <button @click="addToCart({{ $item->id }}, '{{ $item->warna ?? 'Polos' }}')" 
+                                class="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white text-[9px] font-bold py-1 rounded transition uppercase">
+                            + Tambah
+                        </button>
                     </div>
-                    <button @click="addToCart({{ $mat->id }})" class="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white text-[9px] font-bold py-1 rounded transition uppercase">
-                        + Tambah
-                    </button>
-                </div>
+                    @endforeach
                 @endforeach
             </div>
         </div>
         @endif
     </div>
 
-    {{-- 2. MAIN LAYOUT (LEFT: CATALOG, RIGHT: CART FIXED) --}}
+    {{-- 2. MAIN LAYOUT --}}
     <div class="flex flex-col lg:flex-row gap-6 items-start">
         
-        {{-- PANEL KIRI: KATALOG MATERIAL (SCROLLABLE) --}}
+        {{-- PANEL KIRI: KATALOG --}}
         <div class="flex-1 w-full">
             <div class="bg-[#1A1C24] border border-white/5 rounded-xl shadow-2xl overflow-hidden">
-                <div class="p-4 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <h3 class="text-white font-black text-[11px] uppercase tracking-widest">Katalog Material</h3>
+                <div class="p-4 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-white">
+                    <h3 class="font-black text-[11px] uppercase tracking-widest">Katalog Material</h3>
                     <div class="relative w-full md:w-64">
-                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-700 text-[10px]"></i>
-                        <input type="text" x-model="search" placeholder="Cari Nama/Kode Bahan..." 
-                               class="w-full bg-[#0D1117] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-[11px] text-white focus:border-orange-500 outline-none transition">
+                        <input type="text" x-model="search" placeholder="Cari Bahan..." 
+                               class="w-full bg-[#0D1117] border border-white/10 rounded-lg pl-4 pr-3 py-2 text-[11px] outline-none">
                     </div>
                 </div>
 
@@ -55,281 +68,187 @@
                         <thead class="bg-black/20 text-[9px] text-gray-500 font-black uppercase tracking-widest border-b border-white/5">
                             <tr>
                                 <th class="px-4 py-3 w-20">Foto</th>
-                                <th class="px-6 py-4">Informasi Material</th>
+                                <th class="px-6 py-4">Material</th>
                                 <th class="px-6 py-4 text-center">Stok</th>
-                                <th class="px-6 py-4 text-right">Harga Satuan</th>
+                                <th class="px-6 py-4 text-right">Harga</th>
                                 <th class="px-6 py-4 text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-white/5">
-                            <template x-for="mat in filteredMaterials" :key="mat.id">
-                                <tr class="hover:bg-white/[0.02] transition">
-                                    <td class="px-4 py-3">
-                                        <template x-if="mat.foto">
-                                            <img :src="'/storage/' + mat.foto" 
-                                                 :alt="mat.nama_material"
-                                                 class="w-16 h-16 rounded-lg object-cover border border-white/10">
-                                        </template>
-                                        <template x-if="!mat.foto">
-                                            <div class="w-16 h-16 rounded-lg bg-[#2D3139] flex items-center justify-center border border-gray-700/50">
-                                                <i class="fa-solid fa-image text-gray-500 text-lg"></i>
-                                            </div>
-                                        </template>
+                            @foreach($bahanBakus as $kode => $group)
+                                @php $masterRow = $group->first(); @endphp
+                                <tr class="bg-white/[0.02] border-l-4 border-orange-600">
+                                    <td class="px-4 py-3 relative group">
+                                        <img id="foto-{{$kode}}" src="{{ $masterRow->foto ? asset('storage/'.$masterRow->foto) : asset('images/no-image.png') }}" class="w-12 h-12 rounded-xl object-cover">
+                                        <label for="photo-upload-{{$kode}}" class="absolute inset-0 bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition cursor-pointer rounded-xl">
+                                            <i class="fas fa-camera"></i>
+                                        </label>
+                                        <input type="file" id="photo-upload-{{$kode}}" class="hidden" onchange="uploadPhoto('{{$kode}}')">
                                     </td>
-                                    <td class="px-6 py-4">
-                                        <p class="text-white text-xs font-bold" x-text="mat.nama_material"></p>
-                                        <p class="text-[9px] text-gray-600 font-mono mt-0.5" x-text="mat.kode_material"></p>
+                                    <td class="px-6 py-4" colspan="4">
+                                        <p class="text-white text-sm font-black">{{ $masterRow->nama_material }}</p>
+                                        <p class="text-[10px] text-gray-500">{{ $kode }}</p>
                                     </td>
-                                    <td class="px-6 py-4 text-center">
-                                        <div class="inline-flex items-center">
-                                            <span :class="mat.stok <= 5 ? 'text-red-500 bg-red-500/10 border-red-500/20' : 'text-green-500 bg-green-500/10 border-green-500/20'" 
-                                                   class="text-[9px] font-black px-3 py-1 rounded-l border border-r-0 font-mono" 
-                                                   x-text="Math.round(mat.stok)"></span>
-                                            <span class="text-[9px] font-bold px-2 py-1 rounded-r border text-gray-400 bg-white/5" x-text="mat.satuan"></span>
-                                        </div>
+                                </tr>
+                                @foreach($group as $v)
+                                <tr class="hover:bg-white/[0.04] transition group">
+                                    <td></td>
+                                    <td class="px-6 py-3 text-xs font-bold text-gray-300">{{ $v->warna ?? 'Polos' }}</td>
+                                    <td class="px-6 py-3 text-center font-black text-[11px] {{ $v->stok <= 5 ? 'text-red-500' : 'text-emerald-500' }}">
+                                        {{ rtrim(rtrim(number_format($v->stok, 2, '.', ''), '0'), '.') }} {{ $v->satuan }}
                                     </td>
-                                    <td class="px-6 py-4 text-right">
-                                        <span class="text-xs font-mono text-gray-400" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(mat.harga_satuan || 0)"></span>
-                                    </td>
-                                    <td class="px-6 py-4 text-right">
-                                        <button @click="addToCart(mat.id)" class="bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white px-4 py-1.5 rounded-md border border-orange-600/20 text-[9px] font-black transition-all">
-                                            TAMBAH
+                                    <td class="px-6 py-3 text-right text-[11px] font-mono">Rp{{ number_format($v->harga_satuan, 0, ',', '.') }}</td>
+                                    <td class="px-6 py-3 text-right">
+                                        <button @click="addToCart({{ $v->id }}, '{{ $v->warna ?? 'Polos' }}')" class="bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white px-4 py-1.5 rounded-lg border border-orange-600/20 text-[10px] font-black transition-all">
+                                            + KERANJANG
                                         </button>
                                     </td>
                                 </tr>
-                            </template>
+                                @endforeach
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        {{-- PANEL KANAN: KERANJANG ORDER (FIXED STICKY) --}}
+        {{-- PANEL KANAN: KERANJANG --}}
         <div class="w-full lg:w-[380px] shrink-0 sticky top-4 h-[calc(100vh-6rem)]">
-            <!-- Tambahan overflow-hidden di sini sangat penting -->
-            <div class="bg-[#1A1C24] border border-white/5 rounded-xl shadow-2xl flex flex-col h-full overflow-hidden">
-                
-                {{-- Header (Statis di Atas) --}}
-                <div class="p-4 border-b border-white/5 flex justify-between items-center bg-white/5 shrink-0 z-10">
-                    <h3 class="text-orange-500 font-black text-[10px] uppercase tracking-widest text-center">Keranjang Order</h3>
-                    <span class="text-[10px] text-gray-500" x-text="cart.length + ' Item'"></span>
+            <div class="bg-[#1A1C24] border border-white/5 rounded-xl flex flex-col h-full overflow-hidden">
+                <div class="p-4 border-b border-white/5 flex justify-between items-center bg-white/5">
+                    <h3 class="text-orange-500 font-black text-[10px] uppercase">Keranjang Order</h3>
+                    <span class="text-[10px]" x-text="cart.length + ' Item'"></span>
                 </div>
 
-                {{-- Daftar Item (Area ini yang bisa di-scroll) --}}
-                <div class="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar min-h-0 bg-[#1A1C24]">
-                    <template x-for="(item, index) in cart" :key="item.id">
+                <div class="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar">
+                    <template x-for="(item, index) in cart" :key="index">
                         <div class="bg-[#0D1117] border border-white/5 p-3 rounded-lg flex flex-col gap-2">
-                            <div class="flex gap-3 items-start">
-                                <!-- Foto Bahan di Keranjang -->
-                                <template x-if="item.foto">
-                                    <img :src="'/storage/' + item.foto" 
-                                         :alt="item.nama_material"
-                                         class="w-10 h-10 rounded-lg object-cover border border-white/10 shrink-0">
-                                </template>
-                                <template x-if="!item.foto">
-                                    <div class="w-10 h-10 rounded-lg bg-[#2D3139] flex items-center justify-center border border-gray-700/50 shrink-0">
-                                        <i class="fa-solid fa-image text-gray-500 text-sm"></i>
+                            <div class="flex gap-3">
+                                <img :src="item.foto ? '/storage/' + item.foto : '/images/no-image.png'" class="w-10 h-10 rounded-lg object-cover">
+                                <div class="flex-1">
+                                    <div class="flex justify-between">
+                                        <p class="text-white text-[11px] font-bold" x-text="item.nama_material"></p>
+                                        <button @click="removeFromCart(index)" class="text-gray-700 hover:text-red-500"><i class="fas fa-times"></i></button>
                                     </div>
-                                </template>
-                                
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex justify-between items-start">
-                                        <p class="text-white text-[11px] font-bold truncate" x-text="item.nama_material"></p>
-                                        <button @click="removeFromCart(index)" class="text-gray-700 hover:text-red-500 ml-2"><i class="fas fa-times text-[10px]"></i></button>
-                                    </div>
-                                    
-                                    <!-- Harga Total -->
-                                    <p class="text-[10px] text-gray-400 font-mono mt-1" 
-                                       x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(item.qty) * item.harga_satuan)"></p>
+                                    <p class="text-[9px] text-orange-400 font-black uppercase" x-text="'Warna: ' + item.warna"></p>
+                                    <p class="text-[10px] text-gray-400 font-mono" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(item.qty * item.harga_satuan)"></p>
                                 </div>
                             </div>
-                            
-                            <div class="flex items-center justify-between gap-2">
-                                <div class="flex-1 flex items-center bg-black/40 rounded border border-white/5 p-1">
-                                
-                                <input type="number" step="any" x-model="item.qty" class="flex-1 min-w-0 bg-transparent text-center text-[10px] text-white outline-none">
-                                 </div>
-                            </div>
-                            
-                            <!-- Input Catatan -->
-                            <input type="text" 
-                                   x-model="item.catatan" 
-                                   placeholder="Catatan (opsional)..." 
-                                   class="w-full mt-2 text-[10px] bg-gray-900 border border-gray-700 text-gray-300 rounded-md p-1.5 outline-none focus:border-orange-500">
+                            <input type="number" x-model="item.qty" class="w-full bg-black/40 text-white text-center text-[10px] py-1 rounded">
                         </div>
                     </template>
-                    <div x-show="cart.length === 0" class="py-10 text-center opacity-20 italic text-[10px]">Belum ada pilihan</div>
                 </div>
 
-                {{-- Footer (Statis di Bawah) --}}
-                <div class="p-4 border-t border-white/5 bg-[#1A1C24] shrink-0 z-10">
+                <div class="p-4 border-t border-white/5 bg-[#1A1C24]">
                     <div class="flex justify-between items-center mb-3">
-                        <span class="text-[9px] font-bold text-gray-500 uppercase">Estimasi</span>
-                        <span class="text-sm font-black text-[#00BFA5]" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(totalEstimasi)"></span>
+                        <span class="text-sm font-black text-[#00BFA5]" x-text="'Total: Rp ' + new Intl.NumberFormat('id-ID').format(totalEstimasi)"></span>
                     </div>
-                    <button @click="showSubmitModal = true" :disabled="cart.length === 0" 
-                            class="w-full py-3 bg-orange-600 hover:bg-orange-500 disabled:bg-gray-800 disabled:text-gray-600 rounded-lg text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-orange-900/20 transition-all">
+                    <button @click="showSubmitModal = true" :disabled="cart.length === 0" class="w-full py-3 bg-orange-600 rounded-lg text-white text-[10px] font-black uppercase">
                         BUAT PENGADAAN
                     </button>
                 </div>
             </div>
         </div>
-        {{-- MODAL KONFIRMASI PENGADAAN --}}
-    <div x-show="showSubmitModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
-        <!-- Wrapper modal ditambahkan max-h-[90vh] dan flex flex-col -->
-        <div @click.outside="showSubmitModal = false" class="w-full max-w-2xl max-h-[90vh] bg-[#1A1C24] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-zoom-in flex flex-col">
-            
-            {{-- Header Modal (Statis) --}}
-            <div class="p-4 border-b border-white/5 bg-black/20 flex justify-between items-center shrink-0">
-                <h3 class="text-white font-black text-[10px] uppercase tracking-widest">Konfirmasi Pengadaan</h3>
-                <button type="button" @click="showSubmitModal = false" class="text-gray-500 hover:text-white"><i class="fas fa-times text-xs"></i></button>
-            </div>
-            
-            <form action="{{ route('admin.pengadaan.store') }}" method="POST" class="flex flex-col flex-1 overflow-hidden" x-ref="submitForm">
+    </div>
+
+    {{-- MODAL KONFIRMASI --}}
+    <div x-show="showSubmitModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4">
+        <div class="w-full max-w-2xl bg-[#1A1C24] rounded-2xl overflow-hidden flex flex-col">
+            <form action="{{ route('admin.pengadaan.store') }}" method="POST" x-ref="submitForm">
                 @csrf
-
-                {{-- Area Body Modal (Bisa di-scroll) --}}
-                <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1 min-h-0 bg-[#1A1C24]">
-                    
-                    <!-- TABEL DAFTAR BAHAN YANG AKAN DIPESAN -->
-                    <div class="bg-[#0D1117] rounded-lg overflow-hidden border border-white/5">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left whitespace-nowrap">
-                                <thead>
-                                    <tr class="bg-black/30 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                                        <th class="py-3 px-4">Foto</th>
-                                        <th class="py-3 px-4">Nama Bahan</th>
-                                        <th class="py-3 px-4 text-center">Jumlah</th>
-                                        <th class="py-3 px-4 text-center">Satuan</th>
-                                        <th class="py-3 px-4">Catatan</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="(item, index) in cart" :key="index">
-                                        <tr class="border-t border-white/5">
-                                            <td class="py-3 px-4">
-                                                <template x-if="item.foto">
-                                                    <img :src="'/storage/' + item.foto" 
-                                                         :alt="item.nama_material"
-                                                         class="w-12 h-12 rounded-lg object-cover border border-white/10">
-                                                </template>
-                                                <template x-if="!item.foto">
-                                                    <div class="w-12 h-12 rounded-lg bg-[#2D3139] flex items-center justify-center border border-gray-700/50">
-                                                        <i class="fa-solid fa-image text-gray-500 text-lg"></i>
-                                                    </div>
-                                                </template>
-                                            </td>
-                                            <td class="py-3 px-4">
-                                                <p class="text-white text-[11px] font-bold" x-text="item.nama_material"></p>
-                                                <p class="text-[9px] text-gray-500 font-mono mt-0.5" x-text="item.kode_material"></p>
-                                                <input type="hidden" :name="`items[${index}][bahan_baku_id]`" :value="item.id">
-                                                <input type="hidden" :name="`items[${index}][jumlah]`" :value="item.qty">
-                                                <input type="hidden" :name="`items[${index}][catatan]`" :value="item.catatan">
-                                            </td>
-                                            <td class="py-3 px-4 text-center font-mono text-green-400 font-bold" x-text="item.qty"></td>
-                                            <td class="py-3 px-4 text-center text-gray-400 text-[10px]" x-text="item.satuan"></td>
-                                            <td class="py-3 px-4 text-gray-400 text-[10px]" style="max-width:180px; white-space:normal;" x-text="item.catatan || '-'"></td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-[9px] font-bold text-gray-500 uppercase mb-1">Prioritas</label>
-                            <select name="prioritas" class="w-full bg-[#0D1117] border border-white/10 rounded-lg text-white text-[11px] px-3 py-2 outline-none focus:border-orange-500">
-                                <option value="BIASA">BIASA</option>
-                                <option value="URGENT">URGENT</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[9px] font-bold text-gray-500 uppercase mb-1">Target Tanggal</label>
-                            <input type="date" name="tanggal_dibutuhkan" x-model="form.tanggal" class="w-full bg-[#0D1117] border border-white/10 rounded-lg text-white text-[11px] px-3 py-2 outline-none focus:border-orange-500">
-                        </div>
-                        <div>
-                            <label class="block text-[9px] font-bold text-gray-500 uppercase mb-1">Operator</label>
-                            <select name="operator_id" class="w-full bg-[#0D1117] border border-white/10 rounded-lg text-white text-[11px] px-3 py-2 outline-none focus:border-orange-500">
-                                <option value="">-- Pilih --</option>
-                                @foreach($operators as $op) <option value="{{ $op->id }}">{{ $op->name }}</option> @endforeach
-                            </select>
-                        </div>
+                <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                    <table class="w-full text-left text-xs">
+                        <template x-for="(item, index) in cart" :key="index">
+                            <tr class="border-b border-white/5">
+                                <td class="py-2 align-top">
+                                    <p class="font-bold text-white" x-text="item.nama_material"></p>
+                                    <p class="text-[9px] text-orange-400 uppercase" x-text="item.warna"></p>
+                                    <input type="hidden" :name="`items[${index}][bahan_baku_id]`" :value="item.id">
+                                    <input type="hidden" :name="`items[${index}][jumlah]`" :value="item.qty">
+                                    <input type="hidden" :name="`items[${index}][warna]`" :value="item.warna">
+                                    <input type="hidden" :name="`items[${index}][catatan]`" x-bind:value="item.catatan">
+                                </td>
+                                <td class="py-2 align-top text-right font-black" x-text="item.qty + ' ' + item.satuan"></td>
+                                <td class="py-2 pl-4 align-top w-1/3">
+                                    <input type="text" x-model="item.catatan" class="bg-[#0D1117] border border-white/10 text-white p-2 rounded text-xs w-full" placeholder="Catatan...">
+                                </td>
+                            </tr>
+                        </template>
+                    </table>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <select name="operator_id" required class="bg-[#0D1117] text-white p-2 rounded text-xs">
+                            <option value="">-- Pilih Operator --</option>
+                            @foreach($operators as $operator)
+                                <option value="{{ $operator->id }}">{{ $operator->name }}</option>
+                            @endforeach
+                        </select>
+                        <select name="prioritas" class="bg-[#0D1117] text-white p-2 rounded text-xs">
+                            <option value="BIASA">BIASA</option><option value="URGENT">URGENT</option>
+                        </select>
+                        <input type="date" name="tanggal_dibutuhkan" required class="bg-[#0D1117] text-white p-2 rounded text-xs col-span-2">
                     </div>
                 </div>
-
-                {{-- Footer Modal / Tombol (Statis di Bawah) --}}
-                <div class="p-4 border-t border-white/5 bg-[#1A1C24] flex justify-end gap-3 shrink-0">
-                    <button type="button" @click="showSubmitModal = false" class="text-[10px] text-gray-500 font-bold hover:text-white transition px-4 py-2">BATAL</button>
-                    <button type="button" @click="submitPengadaan()" :disabled="!isFormValid" class="px-6 py-2 bg-orange-600 text-white text-[10px] font-black rounded-lg shadow-lg shadow-orange-900/40 uppercase tracking-widest hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all">KIRIM ORDER</button>
+                <div class="p-4 flex justify-end gap-3 bg-black/20">
+                    <button type="button" @click="showSubmitModal = false" class="text-xs text-gray-500">BATAL</button>
+                    <button type="submit" class="px-6 py-2 bg-orange-600 text-white text-xs font-black rounded-lg uppercase">KIRIM</button>
                 </div>
             </form>
         </div>
     </div>
+</div>
 
-{{-- LOGIKA Alpine.js --}}
 @push('scripts')
 <script>
+function uploadPhoto(kodeMaterial) {
+    const fileInput = document.getElementById(`photo-upload-${kodeMaterial}`);
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('photo', file);
+    formData.append('_token', '{{ csrf_token() }}');
+
+    fetch(`/admin/pengadaan/update-photo/${kodeMaterial}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const imgElement = document.getElementById(`foto-${kodeMaterial}`);
+            imgElement.src = data.new_photo_url + '?t=' + new Date().getTime(); // Cache-busting
+            // Anda bisa menambahkan notifikasi sukses di sini, misalnya dengan Toastr atau SweetAlert
+            alert(data.success);
+        } else {
+            // Tampilkan pesan error
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Upload error:', error);
+        alert('Terjadi kesalahan saat mengunggah foto.');
+    });
+}
+
 function procurementApp() {
     return {
-        search: '',
-        cart: [],
-        materials: @json($bahanBakus),
+        search: '', cart: [],
+        materials: @json($bahanBakus->values()->flatten()),
         showSubmitModal: false,
-        form: { prioritas: 'BIASA', tanggal: '' },
-
-        get filteredMaterials() {
-            if (!this.search) return this.materials;
-            return this.materials.filter(m =>
-                m.nama_material.toLowerCase().includes(this.search.toLowerCase()) ||
-                (m.kode_material && m.kode_material.toLowerCase().includes(this.search.toLowerCase()))
-            );
+        get totalEstimasi() { return this.cart.reduce((sum, item) => sum + (parseFloat(item.qty) * item.harga_satuan), 0); },
+        addToCart(id, warna) {
+            const mat = this.materials.find(m => m.id === id);
+            if (!mat) return;
+            const existing = this.cart.find(i => i.id === id);
+            if (existing) { existing.qty = parseFloat(existing.qty) + 1; } 
+            else { this.cart.push({ id: mat.id, nama_material: mat.nama_material, foto: mat.foto, satuan: mat.satuan, harga_satuan: mat.harga_satuan || 0, qty: 1, warna: warna, catatan: '' }); }
         },
-
-        get totalEstimasi() {
-            return this.cart.reduce((sum, item) => sum + (item.qty * (item.harga_satuan || 0)), 0);
-        },
-
-        get isFormValid() {
-            return this.form.tanggal !== '' && this.cart.length > 0;
-        },
-
-                            addToCart(id) {
-                                const mat = this.materials.find(m => m.id === id);
-                                if (!mat) return;
-                                const existing = this.cart.find(i => i.id === id);
-                                if (existing) {
-                                    existing.qty = parseFloat(existing.qty + 1);
-                                } else {
-                                    this.cart.push({
-                                        id: mat.id,
-                                        nama_material: mat.nama_material,
-                                        kode_material: mat.kode_material,
-                                        foto: mat.foto,
-                                        satuan: mat.satuan,
-                                        harga_satuan: mat.harga_satuan || 0,
-                                        qty: 1,
-                                        catatan: ''
-                                    });
-                                }
-                            },
-
-        removeFromCart(index) {
-            this.cart.splice(index, 1);
-        },
-
-        submitPengadaan() {
-            if (this.isFormValid) this.$refs.submitForm.submit();
-        }
+        removeFromCart(index) { this.cart.splice(index, 1); }
     }
 }
 </script>
-
-<style>
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #2D3139; border-radius: 10px; }
-    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
-</style>
 @endpush
 @endsection

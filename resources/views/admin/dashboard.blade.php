@@ -163,38 +163,59 @@
     </div>
 
     {{-- PENGADAAN BAHAN YANG PENDING --}}
-    @if(isset($pengadaanBahan) && $pengadaanBahan->count() > 0)
     <div class="bg-[#1A1C24] border border-[#2D3139] rounded-2xl p-6 shadow-xl">
-        <h3 class="text-white font-bold mb-4 flex items-center gap-2 text-sm">
-            <span class="w-2 h-2 bg-[#FFD740] rounded-full animate-pulse"></span> Pengadaan Bahan Pending
+        <h3 class="text-white font-bold mb-1 flex items-center gap-2 text-sm">
+            <span class="w-2 h-2 bg-[#FFD740] rounded-full animate-pulse"></span> Daftar Pengadaan Belum Dikerjakan
         </h3>
+        <p class="text-xs text-gray-400 mb-4">Tugas pembelian bahan yang masih menunggu untuk diproses oleh operator.</p>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="text-[10px] text-gray-500 uppercase">
                     <tr>
-                        <th class="text-left py-2">Bahan</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-center">OPERATOR</th>
-                        <th class="text-center">Tanggal</th>
+                        <th class="text-left py-2 px-3">Bahan</th>
+                        <th class="text-left py-2 px-3">Jumlah</th>
+                        <th class="text-left py-2 px-3">Operator</th>
+                        <th class="text-left py-2 px-3">Tgl. Dibuat</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-[#2D3139]">
-                    @foreach($pengadaanBahan as $pengadaan)
+                    @forelse($pengadaanPendingIndividual as $item)
                     <tr>
-                        <td class="py-3">
-                            <span class="text-xs text-[#FF6B00] font-mono mr-2">[{{ $pengadaan->kode_material }}]</span>
-                            <span class="text-white font-medium">{{ $pengadaan->nama_material }}</span>
+                        <td class="py-3 px-3 whitespace-nowrap">
+                            <div class="flex items-center gap-3">
+                                <img class="h-10 w-10 rounded-lg object-cover flex-shrink-0" src="{{ $item->bahan->foto ? asset('storage/' . $item->bahan->foto) : asset('images/no-image.png') }}" alt="">
+                                <div>
+                                    <div class="font-medium text-white">{{ $item->bahan->nama_material }}</div>
+                                    <div class="text-xs text-gray-400">{{ $item->bahan->warna ?: 'N/A' }}</div>
+                                </div>
+                            </div>
                         </td>
-                        <td class="py-3 text-center text-[#00BFA5] font-bold">{{ number_format($pengadaan->total_jumlah) }} {{ $pengadaan->satuan }}</td>
-                        <td class="py-3 text-center text-white font-bold text-xs">{{ $pengadaan->operator_names ?? '-' }}</td>
-                        <td class="py-3 text-center text-gray-500 text-xs">{{ \Carbon\Carbon::parse($pengadaan->terakhir_dibuat)->format('d M Y') }}</td>
+                        <td class="py-3 px-3 whitespace-nowrap">
+                            <div class="text-white font-bold">{{ rtrim(rtrim(number_format($item->jumlah, 2, '.', ''), '0'), '.') }}</div>
+                            <div class="text-xs text-gray-400">{{ $item->bahan->satuan }}</div>
+                        </td>
+                        <td class="py-3 px-3 whitespace-nowrap text-gray-300">
+                            {{ $item->operator->name ?? 'Belum Ditugaskan' }}
+                        </td>
+                        <td class="py-3 px-3 whitespace-nowrap text-gray-400 text-xs">
+                            {{ $item->created_at->isoFormat('D MMM YYYY') }}
+                        </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="4" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="fas fa-check-circle text-3xl text-emerald-500 mb-2"></i>
+                                <p class="font-semibold text-gray-300">Tidak ada pengadaan yang pending.</p>
+                                <p class="text-xs text-gray-500 mt-1">Semua tugas pembelian sudah dikerjakan.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
     </div>
-    @endif
 </div>
 
 <style>

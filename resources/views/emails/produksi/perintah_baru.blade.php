@@ -110,8 +110,23 @@
         @foreach ($spk->product->boms as $bom)
         <tr>
             <td style="padding: 5px; border: 1px solid #ddd; text-align: center;">
-                @if(isset($bom->bahanBaku->foto) && $bom->bahanBaku->foto)
-                    <img src="{{ $message->embed(storage_path('app/public/' . $bom->bahanBaku->foto)) }}" width="40" height="40" style="border-radius: 4px;">
+                @php
+                    $fotoUrl = null;
+                    if (isset($bom->bahanBaku->foto) && $bom->bahanBaku->foto) {
+                        $fotoUrl = $bom->bahanBaku->foto;
+                    } else {
+                        $fallback = \App\Models\BahanBaku::where('nama_material', $bom->bahanBaku->nama_material)
+                            ->whereNotNull('foto')
+                            ->where('foto', '!=', '')
+                            ->first();
+                        if ($fallback) {
+                            $fotoUrl = $fallback->foto;
+                        }
+                    }
+                @endphp
+
+                @if($fotoUrl)
+                    <img src="{{ Storage::disk('public')->url($fotoUrl) }}" width="40" height="40" style="border-radius: 4px;">
                 @else
                     <span style="color: #ccc; font-size: 8px;">No Pic</span>
                 @endif

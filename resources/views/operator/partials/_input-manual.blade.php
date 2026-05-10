@@ -9,8 +9,9 @@
             <h3 class="text-lg font-semibold text-white">Input Manual Bahan</h3>
             <p class="text-gray-400 text-sm mt-1">Masukkan data bahan secara manual</p>
         </div>
-        <form id="manualForm" action="{{ route('operator.bahan.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+        <form id="manualForm" action="{{ route('operator.scan.process') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
             @csrf
+            <input type="hidden" name="pengadaan_id" value="{{ $pengadaan_id }}">
             <div class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-5 border border-white/5 shadow-xl">
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">Kode Material</label>
@@ -73,7 +74,7 @@
                 <div class="grid grid-cols-2 gap-3 mt-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">Jumlah Masuk <span class="text-red-500">*</span></label>
-                        <input type="number" name="stok" id="jumlahInput" placeholder="0" step="0.01" min="0.01" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none" required>
+                        <input type="number" name="jumlah" id="jumlahInput" placeholder="0" step="0.01" min="0.01" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none" required>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">Harga Beli (Rp) <span class="text-red-500">*</span></label>
@@ -222,5 +223,88 @@ document.addEventListener('DOMContentLoaded', function() {
 
     namaInput.addEventListener('input', cekBahan);
     warnaSelect.addEventListener('change', cekBahan);
+});
+
+// Intercept Manual Form Submission with JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    const manualForm = document.getElementById('manualForm');
+    if (manualForm) {
+        manualForm.addEventListener('submit', async function(e) {
+            e.preventDefault(); // Mencegah form submit cara lama
+
+            const formData = new FormData(manualForm);
+
+            // Tampilkan loading overlay (pastikan ID ini ada di view utama)
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingText = document.getElementById('loadingText');
+            if (loadingOverlay) {
+                loadingText.textContent = 'Menyimpan Data...';
+                loadingOverlay.classList.remove('hidden');
+            }
+
+            try {
+                const response = await fetch(manualForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                        'Accept': 'application/json' // Meminta respons JSON
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Sembunyikan loading overlay
+                    if (loadingOverlay) loadingOverlay.classList.add('hidden');
+
+                    // Panggil fungsi showSuccess (didefinisikan di view utama)
+                    if (typeof showSuccess === 'function') {
+                        showSuccess(result.message || 'Data berhasil disimpan!');
+                    } else {
+                        alert(result.message || 'Data berhasil disimpan!');
+                    }
+
+                    // Reset form untuk input berikutnya, tapi JANGAN reset pengadaan_id
+                    const pengadaanIdInput = manualForm.querySelector('input[name="pengadaan_id"]');
+                    const pengadaanIdValue = pengadaanIdInput ? pengadaanIdInput.value : null;
+
+                    manualForm.reset();
+
+                    if (pengadaanIdInput && pengadaanIdValue) {
+                        pengadaanIdInput.value = pengadaanIdValue;
+                    }
+
+                    // Reset juga tampilan preview foto dan teks tombol
+                    const previewFoto = document.getElementById('manualFotoPreview');
+                    const textFoto = document.getElementById('manualTextFoto');
+                    const btnFoto = document.getElementById('manualBtnFoto');
+                    if (previewFoto && textFoto && btnFoto) {
+                        previewFoto.classList.add('hidden');
+                        textFoto.textContent = '📷 Pilih Foto Bahan';
+                        btnFoto.classList.remove('bg-emerald-500/20', 'border-emerald-500/50');
+                    }
+
+                } else {
+                    // Jika gagal, sembunyikan loading dan tampilkan error
+                    if (loadingOverlay) loadingOverlay.classList.add('hidden');
+                    // Panggil fungsi showError jika ada (didefinisikan di view utama)
+                    if (typeof showError === 'function') {
+                        showError(result.message || 'Terjadi kesalahan saat menyimpan.');
+                    } else {
+                        alert(result.message || 'Terjadi kesalahan saat menyimpan.');
+                    }
+                }
+            } catch (error) {
+                // Handle jika ada error koneksi/jaringan
+                if (loadingOverlay) loadingOverlay.classList.add('hidden');
+                if (typeof showError === 'function') {
+                    showError('Gagal terhubung ke server. Periksa koneksi Anda.');
+                } else {
+                    alert('Gagal terhubung ke server. Periksa koneksi Anda.');
+                }
+            }
+        });
+    }
 });
 </script>

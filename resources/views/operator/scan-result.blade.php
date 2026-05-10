@@ -89,15 +89,16 @@
                 <div class="p-4">
                     @if(session('ocr_result.items') && count(session('ocr_result.items')) > 0)
                         <div class="overflow-x-auto">
-                            <table class="min-w-[900px] divide-y divide-white/5">
+                            <table class="min-w-[1050px] divide-y divide-white/5">
                                 <thead class="bg-[#161A22]">
                                     <tr>
-                                        <th scope="col" class="px-4 py-3 text-left text-sm font-bold text-gray-300 uppercase tracking-wide" style="width: 40%">Nama Barang</th>
-                                        <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="width: 12%">Satuan</th>
-                                        <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="width: 14%">Harga</th>
-                                        <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="width: 10%">Jml</th>
-                                        <th scope="col" class="px-3 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider" style="width: 14%">Subtotal</th>
-                                        <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="width: 10%">Aksi</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-sm font-bold text-gray-300 uppercase tracking-wide" style="width: 30%">Nama Barang</th>
+                                        <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="width: 15%">Warna</th>
+                                        <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="width: 10%">Satuan</th>
+                                        <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="width: 12%">Harga</th>
+                                        <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="width: 8%">Jml</th>
+                                        <th scope="col" class="px-3 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider" style="width: 12%">Subtotal</th>
+                                        <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="width: 8%">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-[#1C222D] divide-y divide-white/5">
@@ -106,12 +107,17 @@
                                              <td class="px-4 py-3">
                                                  <div class="flex flex-col gap-2">
                                                      <textarea name="items[{{ $index }}][nama]" title="{{ $item['nama'] ?? '' }}" rows="1" style="resize: horizontal; height: 40px; overflow: hidden;" class="w-full px-3 py-2 text-sm text-white bg-[#0B0E14] border border-white/10 rounded-lg focus:outline-none focus:border-blue-500" required>{{ $item['nama'] ?? '' }}</textarea>
-                                                     <label class="inline-flex items-center text-sm text-gray-400">
-                                                         <input type="checkbox" name="items[{{ $index }}][is_inventory]" value="1" checked class="rounded border-white/10 bg-[#0B0E14] text-blue-500 focus:ring-blue-500">
-                                                         <span class="ml-2">Hitung Stok & Harga</span>
-                                                     </label>
+                                                     <input type="hidden" name="items[{{ $index }}][id]" value="{{ $index }}">
                                                  </div>
-                                                 <input type="hidden" name="items[{{ $index }}][id]" value="{{ $index }}">
+                                             </td>
+                                             <td class="px-4 py-2 text-center">
+                                                 <select name="items[{{ $index }}][warna]" class="w-full px-2 py-1 text-sm text-white bg-[#0B0E14] border border-white/10 rounded-lg text-center focus:outline-none focus:border-orange-500">
+                                                     <option value="Tidak Ada Warna" {{ ($item['warna'] ?? 'Tidak Ada Warna') == 'Tidak Ada Warna' ? 'selected' : '' }}>🚫 Tidak Ada Warna</option>
+                                                     @php $warnas = \App\Models\Warna::orderBy('nama_warna')->get(); @endphp
+                                                     @foreach($warnas as $w)
+                                                         <option value="{{ $w->nama_warna }}" {{ ($item['warna'] ?? '') == $w->nama_warna ? 'selected' : '' }}>{{ $w->nama_warna }}</option>
+                                                     @endforeach
+                                                 </select>
                                              </td>
                                              <td class="px-4 py-2 text-center">
                                                  <input type="text" name="items[{{ $index }}][satuan]" value="{{ $item['satuan'] ?? '' }}" class="w-full px-2 py-1 text-sm text-white bg-[#0B0E14] border border-white/10 rounded-lg text-center focus:outline-none focus:border-green-500" placeholder="pcs">

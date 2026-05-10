@@ -43,7 +43,7 @@
 
 @include('operator.partials._bahan-pelengkap')
 
-@include('operator.partials._input-manual')
+@include('operator.partials._input-manual', ['pengadaan_id' => $pengadaan_id])
 
         <!-- Preview Area -->
         <div id="previewArea" class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-6 border border-white/5 shadow-xl hidden">

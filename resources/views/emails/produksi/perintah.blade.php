@@ -60,15 +60,45 @@ Anda mendapatkan perintah produksi baru. Mohon untuk segera diproses sesuai deta
 
 Berikut adalah bahan baku yang dibutuhkan:
 
-@component('mail::table')
-| Nama Material | Kebutuhan | Satuan |
-|:--------------|:----------|:-------|
-@foreach($produksi->product->boms as $bom)
-@if($bom->bahanBaku)
-| {{ $bom->bahanBaku->nama_material }} | {{ $bom->jumlah_kebutuhan * $produksi->jumlah_produksi }} | {{ $bom->bahanBaku->satuan }} |
-@endif
-@endforeach
-@endcomponent
+<table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; border: 1px solid #ddd;">
+    <tr style="background: #34495e; color: white;">
+        <th style="padding: 8px; border: 1px solid #ddd; text-align: center; width: 50px;">Foto</th>
+        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Nama Material</th>
+        <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Kebutuhan</th>
+        <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Satuan</th>
+    </tr>
+    @foreach($produksi->product->boms as $bom)
+    @if($bom->bahanBaku)
+    <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;">
+            @php
+                $fotoBahan = $bom->bahanBaku->foto;
+                if (!$fotoBahan) {
+                    $fallback = \App\Models\BahanBaku::where('nama_material', $bom->bahanBaku->nama_material)
+                        ->whereNotNull('foto')->where('foto', '!=', '')->first();
+                    if ($fallback) $fotoBahan = $fallback->foto;
+                }
+            @endphp
+            @if($fotoBahan)
+                <img src="{{ Storage::disk('public')->url($fotoBahan) }}" width="40" height="40" style="border-radius: 4px; object-fit: cover;">
+            @else
+                <span style="color: #ccc; font-size: 8px;">No Pic</span>
+            @endif
+        </td>
+        <td style="padding: 8px; border: 1px solid #ddd;">
+            <strong>{{ $bom->bahanBaku->nama_material }}</strong>
+            <br><small style="color: #7f8c8d;">{{ $bom->bahanBaku->warna ?? '-' }}</small>
+        </td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-weight: bold;">
+            {{ $bom->jumlah_kebutuhan * $produksi->jumlah_produksi }}
+        </td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+            {{ $bom->bahanBaku->satuan }}
+        </td>
+    </tr>
+    @endif
+    @endforeach
+</table>
 
 @if($showAction)
 @component('mail::button', ['url' => $url, 'color' => 'success'])
