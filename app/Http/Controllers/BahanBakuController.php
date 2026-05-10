@@ -75,14 +75,14 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
         // Query utama: GROUP BY master material, SUM stok dari semua varian warna
         $query = BahanBaku::select([
             'kode_material',
-            'nama_material',
-            'kategori',
-            'satuan',
-            'stok_minimum',
+            DB::raw('MAX(nama_material) as nama_material'),
+            DB::raw('MAX(kategori) as kategori'),
+            DB::raw('MAX(satuan) as satuan'),
+            DB::raw('MAX(stok_minimum) as stok_minimum'),
             DB::raw('SUM(stok) as total_stok'),
             DB::raw('MAX(harga_satuan) as harga_satuan'),
             DB::raw('MAX(id) as id'),
-            DB::raw('(SELECT bb.foto FROM bahan_bakus AS bb WHERE bb.kode_material = bahan_bakus.kode_material AND bb.foto IS NOT NULL AND bb.foto != "" ORDER BY bb.id DESC LIMIT 1) as foto'),
+            DB::raw('MAX(foto) as foto')
         ]); // Hanya tampilkan bahan inventory
     
         // Filter Pencarian (Kode/Nama Material)
@@ -102,8 +102,7 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
 
     
         // GROUP BY untuk master material (bukan per varian)
-        $query->groupBy('kode_material', 'nama_material', 'kategori', 'satuan', 'stok_minimum');
-    
+        $query->groupBy('kode_material');
         // Sorting / Urutkan
         $query->when($request->filled('sort_by'), function ($q) use ($request) {
             switch ($request->sort_by) {
@@ -524,13 +523,12 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             'nama_material',
             'kategori',
             'satuan',
-            DB::raw('0 as stok_minimum'), // Bahan pelengkap tidak punya stok minimum
-            DB::raw('stok as total_stok'), // ✅ BACA STOK ASLI BIAR BISA DIEDIT (Bukan selalu 1)
+            DB::raw('0 as stok_minimum'), 
+            DB::raw('SUM(stok) as total_stok'), // ✅ BUNGKUS PAKAI SUM()
             DB::raw('MAX(id) as id'),
-            // ✅ SIMPLIFIKASI LOGIKA FOTO: Langsung baca kolom foto saja
             DB::raw('MAX(foto) as foto'), 
-            DB::raw('0 as jenis_bahan'), // 0 = pelengkap
-        ])->where('is_inventory', 0); // Bahan pelengkap
+            DB::raw('0 as jenis_bahan'), 
+        ])->where('is_inventory', 0);
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
