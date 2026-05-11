@@ -99,10 +99,37 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             $q->where('kategori', $request->kategori);
         });
     
-
+        // Filter Warna (cari varian dengan warna tertentu dalam satu grup kode_material)
+        $query->when($request->filled('warna'), function ($q) use ($request) {
+            $warna = $request->warna;
+            $q->whereIn('kode_material', function ($sub) use ($warna) {
+                $sub->select('kode_material')
+                     ->from('bahan_bakus')
+                     ->where('warna', $warna)
+                     ->where('is_inventory', 1);
+            });
+        });
     
-        // GROUP BY untuk master material (bukan per varian)
+        // GROUP BY untuk master material (bukan per varian) - HARUS SEBELUM having()
         $query->groupBy('kode_material');
+    
+        // Filter Status Stok (berdasarkan total_stok hasil SUM) - HARUS SETELAH groupBy
+        $query->when($request->filled('status_stok'), function ($q) use ($request) {
+            $batasStokGlobal = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 10);
+            switch ($request->status_stok) {
+                case 'aman':
+                    $q->having('total_stok', '>', $batasStokGlobal);
+                    break;
+                case 'kritis':
+                    $q->having('total_stok', '<=', $batasStokGlobal)
+                      ->having('total_stok', '>', 0);
+                    break;
+                case 'habis':
+                    $q->having('total_stok', '=', 0);
+                    break;
+            }
+        });
+    
         // Sorting / Urutkan
         $query->when($request->filled('sort_by'), function ($q) use ($request) {
             switch ($request->sort_by) {
@@ -1052,20 +1079,28 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
         // Ambil prefix dari database settings, fallback ke 'BHN-' jika tidak ada
         $prefixSetting = \App\Models\Pengaturan::where('nama_pengaturan', 'prefix_bahan')->first();
         $prefix = $prefixSetting ? $prefixSetting->nilai : 'BHN-';
+        $prefix = trim($prefix); // Bersihkan spasi di awal/akhir prefix
 
-        // Pakai lock agar aman dari race-condition
-        $last = BahanBaku::lockForUpdate()
+        // Ambil nomor urut terakhir: cari angka terbesar dari semua kode_material yang starts with prefix
+        $maxNum = 0;
+        $allCodes = BahanBaku::lockForUpdate()
             ->where('kode_material', 'like', $prefix . '%')
-            ->orderByDesc('id')
-            ->first();
+            ->pluck('kode_material');
 
-        $next = 1;
-        if ($last && is_string($last->kode_material)) {
-            // Match pattern based on the prefix (e.g., BHN-001, BHN-1000)
-            if (preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', $last->kode_material, $m)) {
-                $next = ((int) $m[1]) + 1;
+        foreach ($allCodes as $code) {
+            // Ekstrak angka dari akhir string (setelah prefix)
+            $numericPart = substr($code, strlen($prefix));
+            // Hapus semua non-digit, ambil angka pertama yang ditemukan
+            $numericPart = preg_replace('/[^0-9]/', '', $numericPart);
+            if ($numericPart !== '' && is_numeric($numericPart)) {
+                $num = (int) $numericPart;
+                if ($num > $maxNum) {
+                    $maxNum = $num;
+                }
             }
         }
+
+        $next = $maxNum + 1;
 
         // Pastikan unik
         do {

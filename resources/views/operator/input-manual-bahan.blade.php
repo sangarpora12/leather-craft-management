@@ -37,7 +37,8 @@
                 <p class="text-gray-600 text-sm">Masukkan data bahan secara manual</p>
             </div>
             
-            <form id="manualForm" class="space-y-4">
+            <form id="manualForm" action="{{ route('operator.bahan.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                @csrf
                 <!-- Nama Bahan (Auto-complete) -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -103,7 +104,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Upload Foto (Opsional)
                     </label>
-                    <input type="file" id="manualFileInput" accept="image/*" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                    <input type="file" id="manualFileInput" name="foto" accept="image/*" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
                 </div>
                 
                 <!-- Submit Buttons -->
@@ -363,58 +364,93 @@ manualForm.addEventListener('submit', async (e) => {
     const satuanBahan = document.getElementById('satuanBahan').value;
     const noNota = document.getElementById('noNota').value.trim();
     const supplier = document.getElementById('supplier').value.trim();
-    const file = manualFileInput.files[0];
     
     if (!namaBahan || !jumlahBahan || !satuanBahan) {
         showError('Mohon lengkapi semua field yang wajib diisi');
         return;
     }
     
-    // Process manual data
-    await processManualData(namaBahan, jumlahBahan, satuanBahan, noNota, supplier, file);
+    // Mapping field nama ke format yang diterima storeOperator
+    const form = e.target;
+    
+    // Hapus field nama_bahan (kalo ada) & ganti dengan nama_material
+    let input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'nama_material';
+    input.value = namaBahan;
+    form.appendChild(input);
+    
+    input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'stok';
+    input.value = parseFloat(jumlahBahan);
+    form.appendChild(input);
+    
+    input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'harga_satuan';
+    input.value = '0';
+    form.appendChild(input);
+    
+    input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'kategori';
+    input.value = 'Bahan Baku';
+    form.appendChild(input);
+    
+    if (supplier) {
+        input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'supplier';
+        input.value = supplier;
+        form.appendChild(input);
+    }
+    
+    if (noNota) {
+        input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'ref_no';
+        input.value = noNota;
+        form.appendChild(input);
+    }
+    
+    // Submit form langsung ke operator.bahan.store
+    loadingOverlay.classList.remove('hidden');
+    loadingText.textContent = 'Menyimpan...';
+    form.submit();
 });
 
 btnBatal.addEventListener('click', () => {
     window.location.href = "{{ route('operator.dashboard') }}";
 });
 
-// Process Manual Data
+// Process Manual Data (via FormData/multipart)
 async function processManualData(namaBahan, jumlahBahan, satuanBahan, noNota, supplier, file) {
     loadingOverlay.classList.remove('hidden');
     loadingText.textContent = 'Memproses data manual...';
     
     try {
-        let fileBase64 = null;
+        const formData = new FormData();
+        formData.append('nama_bahan', namaBahan);
+        formData.append('jumlah', parseFloat(jumlahBahan));
+        formData.append('satuan', satuanBahan);
+        formData.append('_token', "{{ csrf_token() }}");
         
-        if (file) {
-            fileBase64 = await convertFileToBase64(file);
-        }
-        
-        const payload = {
-            nama_bahan: namaBahan,
-            jumlah: parseFloat(jumlahBahan),
-            satuan: satuanBahan,
-            no_nota: noNota || null,
-            supplier: supplier || null,
-            foto: fileBase64
-        };
+        if (noNota) formData.append('no_nota', noNota);
+        if (supplier) formData.append('supplier', supplier);
+        if (file) formData.append('foto', file);
         
         // Jika bahan sudah ada, update stok
         if (selectedBahan) {
-            payload.kode_bahan = selectedBahan.kode_bahan;
-            payload.action = 'update_stok';
+            formData.append('kode_bahan', selectedBahan.kode_bahan);
+            formData.append('action', 'update_stok');
         } else {
-            // Jika bahan baru, buat master data baru
-            payload.action = 'create_new';
+            formData.append('action', 'create_new');
         }
         
         const response = await fetch('/api/bahan/manual', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': "{{ csrf_token() }}"
-            },
-            body: JSON.stringify(payload)
+            body: formData
         });
         
         const result = await response.json();

@@ -145,25 +145,50 @@ public function index(Request $request)
                 ->whereRaw('LOWER(warna) = LOWER(?)', [$warnaInput])
                 ->first();
 
+            // ✅ PERBAIKAN 1: Eksekusi foto DULU sebelum ngecek bahan. Utamakan cek 'hasFile'
+            $fotoPath = null;
+            if ($request->hasFile('foto')) {
+                // Foto dikirim dari form manual (berupa file asli)
+                $fotoPath = $request->file('foto')->store('bahan_baku', 'public');
+            } elseif ($request->has('foto') && is_string($request->foto)) {
+                // Foto dikirim dari kamera OCR (berupa teks Base64)
+                $fotoData = $request->foto;
+                if (preg_match('/^data:image\/\w+;base64,/', $fotoData)) {
+                    $fotoData = substr($fotoData, strpos($fotoData, ',') + 1);
+                    $fotoData = str_replace(' ', '+', $fotoData);
+                    $fotoPath = 'bahan_baku/' . uniqid() . '.jpg';
+                    Storage::disk('public')->put($fotoPath, base64_decode($fotoData));
+                }
+            }
+
             if (!$bahan) {
                 // Buat varian baru
                 $existingMaster = BahanBaku::where('nama_material', $namaMaterial)->first();
-                $kodeMaterial = $existingMaster ? $existingMaster->kode_material : BahanBaku::generateKodeMaterial($request->kategori);
                 
-                // Handle upload foto bahan jika ada (base64 atau file)
-                $fotoPath = null;
-                if ($request->has('foto') && !empty($request->foto)) {
-                    // Foto dikirim sebagai base64
-                    $fotoData = $request->foto;
-                    if (preg_match('/^data:image(+);base64,/', $fotoData, $matches)) {
-                        $fotoData = substr($fotoData, strpos($fotoData, ',') + 1);
-                        $fotoData = str_replace(' ', '+', $fotoData);
-                        $fotoPath = 'bahan/' . uniqid() . '.jpg';
-                        Storage::disk('public')->put($fotoPath, base64_decode($fotoData));
+                // Logika Pembuat Kode Sakti
+                if ($existingMaster) {
+                    $kodeMaterial = $existingMaster->kode_material;
+                } else {
+                    $prefix = \App\Models\Pengaturan::where('nama_pengaturan', 'prefix_bahan')->value('nilai') ?? 'BHN-';
+                    $prefix = trim($prefix);
+                    $maxNum = 0;
+                    $allCodes = BahanBaku::lockForUpdate()->where('kode_material', 'like', $prefix . '%')->pluck('kode_material');
+                    
+                    foreach ($allCodes as $code) {
+                        $numericPart = preg_replace('/[^0-9]/', '', substr($code, strlen($prefix)));
+                        if ($numericPart !== '' && is_numeric($numericPart)) {
+                            $num = (int) $numericPart;
+                            if ($num > $maxNum) {
+                                $maxNum = $num;
+                            }
+                        }
                     }
-                } elseif ($request->hasFile('foto')) {
-                    // Foto dikirim sebagai file upload
-                    $fotoPath = $request->file('foto')->store('bahan', 'public');
+                    $next = $maxNum + 1;
+                    
+                    do {
+                        $kodeMaterial = $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+                        $next++;
+                    } while (BahanBaku::where('kode_material', $kodeMaterial)->exists());
                 }
                 
                 $bahan = BahanBaku::create([
@@ -177,6 +202,12 @@ public function index(Request $request)
                     'is_inventory'  => true,
                     'foto'          => $fotoPath,
                 ]);
+            } else {
+                // ✅ PERBAIKAN 2: Jika bahan sudah ada, dan user upload foto baru, TIMPA foto lamanya!
+                if ($fotoPath) {
+                    $bahan->foto = $fotoPath;
+                    $bahan->save();
+                }
             }
 
             // 2. UPDATE STOK BAHAN BAKU

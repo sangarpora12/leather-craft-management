@@ -93,83 +93,63 @@
                                 <th class="px-6 py-4 text-right">Aksi</th>
                             </tr>
                         </thead>
-                                                @foreach($bahanBakus as $kode => $group)
+                                        <template x-for="(group, kode) in filteredGroups" :key="kode">
                             <tbody x-data="{ expanded: false }" class="divide-y divide-white/5">
-                                @php 
-                                    $masterRow = $group->first();
-                                    $photoRow = $group->firstWhere('foto', '!=', null);
-                                    $masterPhoto = $photoRow ? $photoRow->foto : ($masterRow ? $masterRow->foto : null);
-                                @endphp
                                 <tr @click="expanded = !expanded" class="bg-white/[0.02] hover:bg-white/[0.03] transition cursor-pointer">
                                     <td class="px-4 py-3">
                                         <div class="w-12 h-12 relative group">
-                                            {{-- Area untuk Klik Pratinjau --}}
-                                            <div @if($masterPhoto) @click.stop="openImagePreview('{{ asset('storage/'.$masterPhoto) }}')" @endif class="w-full h-full rounded-xl cursor-pointer">
-                                                @if($masterPhoto)
-                                                    <img id="foto-{{$kode}}" src="{{ asset('storage/'.$masterPhoto) }}" class="w-full h-full rounded-xl object-cover">
-                                                @else
-                                                    <div class="w-full h-full rounded-xl bg-gray-800 border border-dashed border-gray-600 flex items-center justify-center">
-                                                        <i class="fas fa-camera text-gray-600"></i>
-                                                    </div>
-                                                @endif
+                                            <div @click.stop="openImagePreview(getGroupPhoto(kode) ? '/storage/' + getGroupPhoto(kode) : '')" class="w-full h-full rounded-xl cursor-pointer" x-show="getGroupPhoto(kode)" x-cloak>
+                                                <img :src="'/storage/' + getGroupPhoto(kode)" class="w-full h-full rounded-xl object-cover">
                                             </div>
-                                            {{-- Tombol Upload di Pojok --}}
-                                            {{-- <label for="photo-upload-{{$kode}}" class="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition cursor-pointer hover:bg-black">
-                                                <i class="fas fa-camera text-[8px]"></i>
-                                            </label> --}}
+                                            <div x-show="!getGroupPhoto(kode)" class="w-full h-full rounded-xl bg-gray-800 border border-dashed border-gray-600 flex items-center justify-center">
+                                                <i class="fas fa-camera text-gray-600"></i>
+                                            </div>
                                         </div>
-                                        {{-- <input type="file" id="photo-upload-{{$kode}}" class="hidden" onchange="uploadPhoto('{{$kode}}')"> --}}
                                     </td>
                                     <td class="px-6 py-4" colspan="3">
-                                        <p class="text-white text-sm font-black">{{ $masterRow->nama_material }}</p>
-                                        <p class="text-[10px] text-gray-500">{{ $kode }}</p>
+                                        <p class="text-white text-sm font-black" x-text="getGroupName(kode)"></p>
+                                        <p class="text-[10px] text-gray-500" x-text="kode"></p>
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex items-center justify-end gap-2">
-                                            <span x-show="!expanded" class="text-[9px] text-gray-500 font-bold">{{ $group->count() }} varian</span>
+                                            <span x-show="!expanded" class="text-[9px] text-gray-500 font-bold" x-text="group.length + ' varian'"></span>
                                             <i class="fas fa-chevron-down transition-transform text-gray-500 w-4" :class="expanded && 'rotate-180'"></i>
                                         </div>
                                     </td>
                                 </tr>
                                 
-                                @foreach($group as $v)
-                                <tr x-show="expanded" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform -translate-y-2" x-transition:enter-end="opacity-100 transform translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform translate-y-0" x-transition:leave-end="opacity-0 transform -translate-y-2" class="hover:bg-white/[0.04] transition">
-                                    <td class="px-4 py-3">
-                                        <div class="w-10 h-10 relative group">
-                                            @php
-                                                $varianPhoto = $v->foto ?: $masterPhoto;
-                                            @endphp
-                                            {{-- Area untuk Klik Pratinjau --}}
-                                            <div @if($varianPhoto) @click.stop="openImagePreview('{{ asset('storage/'.$varianPhoto) }}')" @endif class="w-full h-full rounded-lg cursor-pointer">
-                                                @if($varianPhoto)
-                                                    <img id="foto-varian-{{$v->id}}" src="{{ asset('storage/'.$varianPhoto) }}" class="w-full h-full rounded-lg object-cover">
-                                                @else
-                                                    <div class="w-full h-full rounded-lg bg-gray-800 border border-dashed border-gray-600 flex items-center justify-center">
-                                                        <i class="fas fa-camera text-gray-600 text-xs"></i>
-                                                    </div>
-                                                @endif
+                                <template x-for="(v, idx) in group" :key="v.id">
+                                    <tr x-show="expanded" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform -translate-y-2" x-transition:enter-end="opacity-100 transform translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform translate-y-0" x-transition:leave-end="opacity-0 transform -translate-y-2" class="hover:bg-white/[0.04] transition">
+                                        <td class="px-4 py-3">
+                                            <div class="w-10 h-10 relative group">
+                                                <div @click.stop="openImagePreview(getVarianPhoto(v) ? '/storage/' + getVarianPhoto(v) : '')" class="w-full h-full rounded-lg cursor-pointer" x-show="getVarianPhoto(v)" x-cloak>
+                                                    <img :src="'/storage/' + getVarianPhoto(v)" class="w-full h-full rounded-lg object-cover">
+                                                </div>
+                                                <div x-show="!getVarianPhoto(v)" class="w-full h-full rounded-lg bg-gray-800 border border-dashed border-gray-600 flex items-center justify-center">
+                                                    <i class="fas fa-camera text-gray-600 text-xs"></i>
+                                                </div>
                                             </div>
-                                            {{-- Tombol Upload di Pojok --}}
-                                            {{-- <label for="photo-upload-varian-{{$v->id}}" class="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition cursor-pointer hover:bg-black">
-                                                <i class="fas fa-camera text-[8px]"></i>
-                                            </label> --}}
-                                        </div>
-                                        {{-- <input type="file" id="photo-upload-varian-{{$v->id}}" class="hidden" onchange="uploadPhotoVarian({{$v->id}}, '{{$kode}}', 'foto-varian-')"> --}}
-                                    </td>
-                                    <td class="px-6 py-3 text-xs font-bold text-gray-300">{{ $v->warna ?? 'Polos' }}</td>
-                                    <td class="px-6 py-3 text-center font-black text-[11px] {{ $v->stok <= 5 ? 'text-red-500' : 'text-emerald-500' }}">
-                                        {{ rtrim(rtrim(number_format($v->stok, 2, '.', ''), '0'), '.') }} {{ $v->satuan }}
-                                    </td>
-                                    <td class="px-6 py-3 text-right text-[11px] font-mono">Rp{{ number_format($v->harga_satuan, 0, ',', '.') }}</td>
-                                    <td class="px-6 py-3 text-right">
-                                        <button @click.stop="addToCart({{ $v->id }}, '{{ $v->warna ?? 'Polos' }}')" class="bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white px-4 py-1.5 rounded-lg border border-orange-600/20 text-[10px] font-black transition-all">
-                                            + KERANJANG
-                                        </button>
-                                    </td>
-                                </tr>
-                                @endforeach
+                                        </td>
+                                        <td class="px-6 py-3 text-xs font-bold text-gray-300" x-text="v.warna || 'Polos'"></td>
+                                        <td class="px-6 py-3 text-center font-black text-[11px]" :class="v.stok <= 5 ? 'text-red-500' : 'text-emerald-500'" x-text="parseFloat(v.stok).toFixed(1).replace(/\.?0+$/, '') + ' ' + (v.satuan || '')"></td>
+                                        <td class="px-6 py-3 text-right text-[11px] font-mono" x-text="'Rp' + new Intl.NumberFormat('id-ID').format(v.harga_satuan || 0)"></td>
+                                        <td class="px-6 py-3 text-right">
+                                            <button @click.stop="addToCart(v.id, v.warna || 'Polos')" class="bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white px-4 py-1.5 rounded-lg border border-orange-600/20 text-[10px] font-black transition-all">
+                                                + KERANJANG
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
                             </tbody>
-                        @endforeach
+                        </template>
+                        {{-- Fallback jika hasil pencarian kosong --}}
+                        <tbody x-show="Object.keys(filteredGroups).length === 0" x-cloak>
+                            <tr>
+                                <td colspan="5" class="px-6 py-12 text-center">
+                                    <p class="text-gray-500 text-sm font-bold">Tidak ada bahan yang ditemukan untuk "<span x-text="search"></span>"</p>
+                                </td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -349,8 +329,71 @@ function procurementApp() {
         showImagePreview: false,
         previewImageUrl: '',
         
+        // COMPUTED: Filter materials berdasarkan input search
+        get filteredGroups() {
+            const q = (this.search || '').toLowerCase().trim();
+            
+            // Grouping by kode_material
+            const grouped = {};
+            this.materials.forEach(m => {
+                if (!grouped[m.kode_material]) {
+                    grouped[m.kode_material] = [];
+                }
+                grouped[m.kode_material].push(m);
+            });
+            
+            // Urutkan: group yang ada fotonya di atas
+            Object.keys(grouped).forEach(kode => {
+                grouped[kode].sort((a, b) => {
+                    if (!!a.foto && !b.foto) return -1;
+                    if (!a.foto && !!b.foto) return 1;
+                    return 0;
+                });
+            });
+            
+            // Jika tidak ada pencarian, return semua
+            if (!q) return grouped;
+            
+            // Filter: cari bahan yang nama_material, kode_material, atau warnanya cocok
+            const result = {};
+            Object.keys(grouped).forEach(kode => {
+                const filteredItems = grouped[kode].filter(v => {
+                    const nama = (v.nama_material || '').toLowerCase();
+                    const warna = (v.warna || '').toLowerCase();
+                    return nama.includes(q) || kode.toLowerCase().includes(q) || warna.includes(q);
+                });
+                if (filteredItems.length > 0) {
+                    result[kode] = filteredItems;
+                }
+            });
+            return result;
+        },
+        
         get totalEstimasi() { 
             return this.cart.reduce((sum, item) => sum + (parseFloat(item.qty) * item.harga_satuan), 0); 
+        },
+        
+        // Helper: ambil foto pertama dari group (yang punya foto)
+        getGroupPhoto(kode) {
+            const group = this.filteredGroups[kode];
+            if (!group) return null;
+            const withPhoto = group.find(v => v.foto);
+            return withPhoto ? withPhoto.foto : null;
+        },
+        
+        // Helper: ambil nama material dari group
+        getGroupName(kode) {
+            const group = this.filteredGroups[kode];
+            if (!group || group.length === 0) return '';
+            return group[0].nama_material || '';
+        },
+        
+        // Helper: ambil foto varian (jika tidak ada, fallback ke foto group)
+        getVarianPhoto(v) {
+            if (v.foto) return v.foto;
+            // Cari foto dari master group
+            const master = this.materials.find(m => m.kode_material === v.kode_material && m.foto);
+            return master ? master.foto : null;
         },
         
         openImagePreview(url) {

@@ -111,7 +111,7 @@ $bahans = $queryBuilder->select('id', 'kode_bahan', 'nama_bahan', 'stok', 'satua
     }
     
     /**
-     * Handle manual input bahan
+     * Handle manual input bahan (Master-Variant + FIFO Layer)
      */
     public function manualInput(Request $request)
     {
@@ -120,48 +120,154 @@ $bahans = $queryBuilder->select('id', 'kode_bahan', 'nama_bahan', 'stok', 'satua
                 'nama_bahan' => 'required|string|max:255',
                 'jumlah' => 'required|numeric|min:0.01',
                 'satuan' => 'required|string',
-                'warna' => 'required|string', // Tambahkan validasi warna
+                'warna' => 'nullable|string',
+                'harga_satuan' => 'nullable|numeric|min:0',
                 'action' => 'required|string|in:update_stok,create_new',
-                // ... validasi lainnya ...
+                'no_nota' => 'nullable|string',
+                'supplier' => 'nullable|string',
+                'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             ]);
 
             if ($validator->fails()) {
                 return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
             }
 
-            // OTOMATIS: Gabungkan Nama + Warna seperti di Controller Web
-            $namaLengkap = $request->input('nama_bahan') . " (" . $request->input('warna') . ")";
-            $jumlah = $request->input('jumlah');
+            $warna = $request->input('warna', 'Tidak Ada Warna');
+            $jumlah = (float) $request->input('jumlah');
+            $hargaSatuan = (float) ($request->input('harga_satuan', 0));
 
-            if ($request->input('action') === 'update_stok') {
-                // Cari berdasarkan nama lengkap (varian spesifik)
-                $bahan = BahanBaku::where('nama_bahan', $namaLengkap)->first();
+            // ============================================================
+            // PROSES FOTO (FILE UPLOAD BIASA)
+            // ============================================================
+            $fotoPath = null;
+            if ($request->hasFile('foto')) {
+                try {
+                    $fotoPath = $request->file('foto')->store('bahan_baku', 'public');
+                } catch (\Exception $e) {
+                    \Log::warning('Gagal menyimpan foto: ' . $e->getMessage());
+                }
+            }
 
-                if (!$bahan) {
-                    return response()->json(['success' => false, 'message' => 'Varian ' . $namaLengkap . ' tidak ditemukan'], 404);
+            // ============================================================
+            // LOGIKA MASTER-VARIANT (SAMA SEPERTI storeOperator di Web)
+            // ============================================================
+            \DB::transaction(function () use ($request, $warna, $jumlah, $hargaSatuan, $fotoPath) {
+                $namaMaterial = $request->input('nama_bahan');
+
+                if ($request->input('action') === 'update_stok') {
+                    // Cari berdasarkan kombinasi nama_material + warna
+                    $bahan = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$namaMaterial])
+                        ->whereRaw('LOWER(warna) = LOWER(?)', [$warna])
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$bahan) {
+                        // Jika tidak ditemukan, buat varian baru untuk warna ini
+                        $existingMaster = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$namaMaterial])
+                            ->lockForUpdate()
+                            ->first();
+
+                        $kodeMaterial = $existingMaster ? $existingMaster->kode_material : $this->generateKodeBahanOtomatis($namaMaterial);
+
+                        $bahan = BahanBaku::create([
+                            'kode_material' => $kodeMaterial,
+                            'nama_material' => $namaMaterial,
+                            'warna' => $warna,
+                            'stok' => 0,
+                            'satuan' => $request->input('satuan'),
+                            'harga_satuan' => $hargaSatuan,
+                            'kategori' => $request->input('kategori', 'Bahan Baku'),
+                            'is_inventory' => true,
+                            'foto' => $fotoPath,
+                        ]);
+                    } else {
+                        // Update foto jika ada
+                        if ($fotoPath) {
+                            $bahan->foto = $fotoPath;
+                        }
+                    }
+
+                    $bahan->increment('stok', $jumlah);
+                    if ($hargaSatuan > 0) {
+                        $bahan->harga_satuan = $hargaSatuan;
+                    }
+                    $bahan->save();
+                } else {
+                    // Buat master baru + varian pertama
+                    $existingMaster = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$namaMaterial])
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($existingMaster) {
+                        // Cek apakah varian dengan warna ini sudah ada
+                        $existingVarian = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$namaMaterial])
+                            ->whereRaw('LOWER(warna) = LOWER(?)', [$warna])
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($existingVarian) {
+                            $existingVarian->increment('stok', $jumlah);
+                            if ($hargaSatuan > 0) {
+                                $existingVarian->harga_satuan = $hargaSatuan;
+                            }
+                            if ($fotoPath) {
+                                $existingVarian->foto = $fotoPath;
+                            }
+                            $existingVarian->save();
+                            $bahan = $existingVarian;
+                        } else {
+                            // Buat varian baru dengan kode_material yang sama
+                            $bahan = BahanBaku::create([
+                                'kode_material' => $existingMaster->kode_material,
+                                'nama_material' => $namaMaterial,
+                                'warna' => $warna,
+                                'stok' => $jumlah,
+                                'satuan' => $request->input('satuan'),
+                                'harga_satuan' => $hargaSatuan,
+                                'kategori' => $request->input('kategori', 'Bahan Baku'),
+                                'is_inventory' => true,
+                                'foto' => $fotoPath,
+                            ]);
+                        }
+                    } else {
+                        // Bahan baru, generate kode
+                        $kodeMaterial = $this->generateKodeBahanOtomatis($namaMaterial);
+
+                        $bahan = BahanBaku::create([
+                            'kode_material' => $kodeMaterial,
+                            'nama_material' => $namaMaterial,
+                            'warna' => $warna,
+                            'stok' => $jumlah,
+                            'satuan' => $request->input('satuan'),
+                            'harga_satuan' => $hargaSatuan,
+                            'kategori' => $request->input('kategori', 'Bahan Baku'),
+                            'is_inventory' => true,
+                            'foto' => $fotoPath,
+                        ]);
+                    }
                 }
 
-                $bahan->stok += $jumlah;
-                $bahan->save();
+                // ============================================================
+                // BUAT LAYER FIFO
+                // ============================================================
+                if (\Illuminate\Support\Facades\Schema::hasTable('bahan_stok_layers')) {
+                    \App\Models\BahanStokLayer::create([
+                        'bahan_baku_id' => $bahan->id,
+                        'tanggal_masuk' => now()->toDateString(),
+                        'qty_masuk' => $jumlah,
+                        'qty_sisa' => $jumlah,
+                        'harga_beli' => $hargaSatuan ?: ($bahan->harga_satuan ?: 0),
+                        'supplier' => $request->input('supplier', null),
+                        'ref_no' => $request->input('no_nota', null),
+                    ]);
+                }
 
-                $this->catatLogStok($bahan->id, 'masuk', $jumlah, $request->no_nota, $request->supplier, $request->foto);
+                // Catat log stok
+                $this->catatLogStok($bahan->id, 'masuk', $jumlah, $request->no_nota, $request->supplier, $fotoPath);
+            });
 
-                return response()->json(['success' => true, 'message' => 'Stok varian berhasil diperbarui']);
-            } else {
-                // Buat bahan/varian baru
-                $bahan = new BahanBaku();
-                $bahan->kode_bahan = $this->generateKodeBahanOtomatis($request->nama_bahan);
-                $bahan->nama_bahan = $namaLengkap; // Simpan Nama (Warna)
-                $bahan->warna_id = $request->input('warna'); // Pastikan kolom ini ada di DB
-                $bahan->stok = $jumlah;
-                $bahan->satuan = $request->input('satuan');
-                $bahan->status = 'aktif';
-                $bahan->save();
+            return response()->json(['success' => true, 'message' => 'Bahan berhasil disimpan dengan layer FIFO!']);
 
-                $this->catatLogStok($bahan->id, 'masuk', $jumlah, $request->no_nota, $request->supplier, $request->foto);
-
-                return response()->json(['success' => true, 'message' => 'Varian baru berhasil ditambahkan']);
-            }
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
