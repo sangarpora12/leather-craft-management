@@ -16,6 +16,21 @@
         </button>
     </div>
 
+    {{-- INFORMASI SISTEM ROLE --}}
+    <div class="bg-[#1C222D] border border-blue-500/20 rounded-xl p-4 mb-6">
+        <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-info-circle text-blue-400 text-sm"></i>
+            </div>
+            <div class="text-xs text-gray-400 leading-relaxed">
+                <span class="text-white font-bold">Sistem Role Operator:</span><br>
+                • <span class="text-emerald-400 font-bold">Kepala Gudang</span> → Bisa login dashboard & punya akses semi-penuh ke sistem<br>
+                • <span class="text-yellow-400 font-bold">Pekerja</span> → Tidak bisa login, tapi tetap terima notifikasi instruksi via Gmail<br>
+                • Notifikasi Gmail hanya BERHENTI jika akun <span class="text-red-400">dinonaktifkan</span>. Selama akun Aktif, Pekerja tetap dapat pemberitahuan via email.
+            </div>
+        </div>
+    </div>
+
     {{-- FILTER BAR --}}
     <div class="bg-[#1C222D] rounded-xl p-4 mb-6 border border-white/5">
         <div class="flex flex-wrap items-center gap-3">
@@ -37,6 +52,13 @@
                 <option value="inactive">Nonaktif</option>
             </select>
 
+            {{-- Filter Role --}}
+            <select x-model="filterRole" @change="filterOperators()"
+                    class="bg-[#0B0E14] border border-gray-700 text-white text-sm px-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 cursor-pointer min-w-[160px]">
+                <option value="all">Semua Role</option>
+                <option value="kepala_gudang">Kepala Gudang</option>
+                <option value="pekerja">Pekerja</option>
+            </select>
         </div>
     </div>
 
@@ -45,11 +67,16 @@
         @forelse($operators as $op)
             @php
                 $isActive = $op->is_active == true || $op->is_active === 1 || is_null($op->is_active);
+                $isKepalaGudang = $op->sub_role === 'kepala_gudang';
+                $isVerified = !is_null($op->email_verified_at);
+                $roleBadgeClass = $isKepalaGudang ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
+                $roleIcon = $isKepalaGudang ? 'fa-crown' : 'fa-user';
             @endphp
 
             <div class="bg-[#1C222D] rounded-2xl border {{ $isActive ? 'border-white/5' : 'border-red-500/30' }} overflow-hidden relative transition-all duration-300 hover:translate-y-[-2px] shadow-lg"
                  data-name="{{ strtolower($op->name) }}"
-                 data-status="{{ $isActive ? 'active' : 'inactive' }}">
+                 data-status="{{ $isActive ? 'active' : 'inactive' }}"
+                 data-role="{{ $op->sub_role ?? 'pekerja' }}">
 
                 {{-- OVERLAY GELAP UNTUK NON-AKTIF --}}
                 @if(!$isActive)
@@ -71,16 +98,26 @@
                                 @endif
                             </div>
 
-                            {{-- Nama & Role --}}
+                            {{-- Nama & Badges --}}
                             <div>
                                 <h3 class="text-base font-bold text-white">{{ $op->name }}</h3>
                                 <p class="text-[11px] text-gray-400">{{ $op->jabatan ?? 'Operator Gudang' }}</p>
-                                <div class="flex gap-1.5 mt-1">
-                                    @if(!$isActive)
-                                    <span class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/25">
-                                        <i class="fa-solid fa-circle text-[6px] mr-1"></i> Non-Aktif
+                                <div class="flex gap-1.5 mt-1.5 flex-wrap">
+                                    {{-- Badge Role --}}
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border {{ $roleBadgeClass }}">
+                                        <i class="fa-solid {{ $roleIcon }}"></i>
+                                        {{ $isKepalaGudang ? 'KEPALA GUDANG' : 'PEKERJA' }}
                                     </span>
-                                    @endif
+                                    {{-- Badge Status --}}
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full {{ $isActive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400' }}">
+                                        <i class="fa-solid {{ $isActive ? 'fa-circle text-[6px]' : 'fa-circle-xmark' }}"></i>
+                                        {{ $isActive ? 'AKTIF' : 'NONAKTIF' }}
+                                    </span>
+                                    {{-- Badge Email Verified --}}
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full {{ $isVerified ? 'bg-purple-500/10 text-purple-400' : 'bg-gray-500/10 text-gray-500' }}">
+                                        <i class="fa-solid {{ $isVerified ? 'fa-envelope-circle-check' : 'fa-envelope' }}"></i>
+                                        {{ $isVerified ? 'EMAIL VERIFIED' : 'UNVERIFIED' }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -101,42 +138,64 @@
                                  x-transition:leave="transition ease-in duration-75"
                                  x-transition:leave-start="transform opacity-100 scale-100"
                                  x-transition:leave-end="transform opacity-0 scale-95"
-                                 class="absolute right-0 mt-2 w-48 bg-[#1C222D] border border-gray-700 rounded-xl shadow-xl shadow-black/50 z-20 overflow-hidden"
+                                 class="absolute right-0 mt-2 w-56 bg-[#1C222D] border border-gray-700 rounded-xl shadow-xl shadow-black/50 z-20 overflow-hidden"
                                  style="display: none;">
 
-                                <a href="{{ route('admin.operator.edit', $op->id) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition">
+                                <a href="{{ route('admin.operator.edit', $op->id) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition border-b border-gray-800/50">
                                     <i class="fa-solid fa-pen text-blue-400 text-xs"></i> Edit User
                                 </a>
 
-                                {{-- Toggle sub_role --}}
-                                <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full" id="form-toggle-role-{{ $op->id }}">
-                                    @csrf @method('PATCH')
-                                    <input type="hidden" name="toggle_sub_role" value="1">
-                                    <button type="button" onclick="swalConfirm({title: 'Ubah Role?', text: 'Ubah {{ $op->name }} menjadi {{ $op->sub_role === 'kepala_gudang' ? 'Pekerja' : 'Kepala Gudang' }}?', icon: 'question', confirmText: 'Ya, Ubah'}, () => document.getElementById('form-toggle-role-{{ $op->id }}').submit())" class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition">
-                                        <i class="fa-solid {{ $op->sub_role === 'kepala_gudang' ? 'fa-user' : 'fa-crown' }} text-xs"></i>
-                                        {{ $op->sub_role === 'kepala_gudang' ? 'Turunkan ke Pekerja' : 'Angkat Kepala Gudang' }}
-                                    </button>
-                                </form>
+                                @if(!$isVerified)
+                                    {{-- AKUN BELUM VERIFIKASI: menu terbatas --}}
 
-                                @if($isActive)
-                                <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full" id="form-nonaktif-{{ $op->id }}">
-                                    @csrf @method('PATCH')
-                                    <button type="button" onclick="swalConfirm({title: 'Nonaktifkan Akun?', text: 'Akun {{ $op->name }} akan dinonaktifkan dan tidak bisa login.', icon: 'warning', confirmText: 'Ya, Nonaktifkan'}, () => document.getElementById('form-nonaktif-{{ $op->id }}').submit())" class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition">
-                                        <i class="fa-solid fa-ban text-xs"></i> Nonaktifkan Akun
-                                    </button>
-                                </form>
+                                    {{-- Kirim Ulang Verifikasi --}}
+                                    <form action="{{ route('admin.operator.resend-verification', $op->id) }}" method="POST" class="block w-full" id="form-kirim-verif-{{ $op->id }}">
+                                        @csrf
+                                        <button type="button" onclick="swalConfirm({title: 'Kirim Ulang Verifikasi?', text: 'Email verifikasi akan dikirim ulang ke {{ $op->email }}. Pastikan email aktif dan benar.', icon: 'question', confirmText: 'Ya, Kirim', onConfirm: () => document.getElementById('form-kirim-verif-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-purple-400 hover:bg-purple-900/20 hover:text-purple-300 transition w-full text-left border-b border-gray-800/50">
+                                            <i class="fa-solid fa-envelope text-xs"></i> Kirim Ulang Verifikasi Email
+                                        </button>
+                                    </form>
+
                                 @else
-                                <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full" id="form-aktif-{{ $op->id }}">
-                                    @csrf @method('PATCH')
-                                    <button type="button" onclick="swalConfirm({title: 'Aktifkan Akun?', text: 'Akun {{ $op->name }} akan diaktifkan kembali.', icon: 'question', confirmText: 'Ya, Aktifkan'}, () => document.getElementById('form-aktif-{{ $op->id }}').submit())" class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition">
-                                        <i class="fa-solid fa-check-circle text-xs"></i> Aktifkan Akun
-                                    </button>
-                                </form>
+                                    {{-- AKUN SUDAH TERVERIFIKASI: menu lengkap --}}
+
+                                    {{-- Promote/Demote --}}
+                                    @if(!$isKepalaGudang)
+                                    <form action="{{ route('admin.operator.toggle-role', $op->id) }}" method="POST" class="block w-full" id="form-promote-{{ $op->id }}">
+                                        @csrf @method('PATCH')
+                                        <button type="button" onclick="swalConfirm({title: 'Angkat jadi Kepala Gudang?', text: '{{ $op->name }} akan mendapatkan akses login & hak semi-penuh. Akun akan otomatis diaktifkan.', icon: 'question', confirmText: 'Ya, Angkat', onConfirm: () => document.getElementById('form-promote-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-emerald-400 hover:bg-emerald-900/20 hover:text-emerald-300 transition w-full text-left border-b border-gray-800/50">
+                                            <i class="fa-solid fa-arrow-up text-xs"></i> Angkat jadi Kepala Gudang
+                                        </button>
+                                    </form>
+                                    @else
+                                    <form action="{{ route('admin.operator.toggle-role', $op->id) }}" method="POST" class="block w-full" id="form-demote-{{ $op->id }}">
+                                        @csrf @method('PATCH')
+                                        <button type="button" onclick="swalConfirm({title: 'Turunkan jadi Pekerja?', text: '{{ $op->name }} akan kehilangan akses login. Tapi MASIH tetap bisa terima notifikasi Gmail selama akun aktif.', icon: 'warning', confirmText: 'Ya, Turunkan', onConfirm: () => document.getElementById('form-demote-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-yellow-400 hover:bg-yellow-900/20 hover:text-yellow-300 transition w-full text-left border-b border-gray-800/50">
+                                            <i class="fa-solid fa-arrow-down text-xs"></i> Turunkan jadi Pekerja
+                                        </button>
+                                    </form>
+                                    @endif
+
+                                    @if($isActive)
+                                    <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full" id="form-nonaktif-{{ $op->id }}">
+                                        @csrf @method('PATCH')
+                                        <button type="button" onclick="swalConfirm({title: 'Nonaktifkan Akun?', text: 'Akun {{ $op->name }} akan dinonaktifkan. Tidak akan terima notifikasi Gmail lagi.', icon: 'warning', confirmText: 'Ya, Nonaktifkan', onConfirm: () => document.getElementById('form-nonaktif-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-orange-400 hover:bg-orange-900/20 hover:text-orange-300 transition w-full text-left border-b border-gray-800/50">
+                                            <i class="fa-solid fa-ban text-xs"></i> Nonaktifkan Akun
+                                        </button>
+                                    </form>
+                                    @else
+                                    <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full" id="form-aktif-{{ $op->id }}">
+                                        @csrf @method('PATCH')
+                                        <button type="button" onclick="swalConfirm({title: 'Aktifkan Akun?', text: 'Akun {{ $op->name }} akan diaktifkan kembali. Notifikasi Gmail akan kembali dikirim jika email sudah terverifikasi.', icon: 'question', confirmText: 'Ya, Aktifkan', onConfirm: () => document.getElementById('form-aktif-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-green-400 hover:bg-green-900/20 hover:text-green-300 transition w-full text-left border-b border-gray-800/50">
+                                            <i class="fa-solid fa-check-circle text-xs"></i> Aktifkan Akun
+                                        </button>
+                                    </form>
+                                    @endif
                                 @endif
 
                                 <form action="{{ route('admin.pekerja-master.destroy', $op->id) }}" method="POST" class="block w-full" id="form-hapus-{{ $op->id }}">
                                     @csrf @method('DELETE')
-                                    <button type="button" onclick="swalConfirm({title: 'Hapus Operator?', text: 'Data {{ $op->name }} tidak bisa dikembalikan!', icon: 'error', confirmText: 'Ya, Hapus'}, () => document.getElementById('form-hapus-{{ $op->id }}').submit())" class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-red-400 transition">
+                                    <button type="button" onclick="swalConfirm({title: 'Hapus Operator?', text: 'Data {{ $op->name }} tidak bisa dikembalikan!', icon: 'error', confirmText: 'Ya, Hapus', onConfirm: () => document.getElementById('form-hapus-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition w-full text-left">
                                         <i class="fa-solid fa-trash text-xs"></i> Hapus User
                                     </button>
                                 </form>
@@ -151,7 +210,7 @@
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
                                     <div class="w-7 h-7 rounded-lg bg-gray-700/30 flex items-center justify-center">
-                                        <i class="fa-solid fa-gear text-gray-400 text-[10px]"></i>
+                                        <i class="fa-solid fa-box text-blue-400 text-[10px]"></i>
                                     </div>
                                     <div>
                                         <p class="text-[9px] text-gray-500 uppercase tracking-wider">Input Bahan Terbanyak</p>
@@ -173,7 +232,7 @@
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
                                     <div class="w-7 h-7 rounded-lg bg-gray-700/30 flex items-center justify-center">
-                                        <i class="fa-solid fa-bullseye text-gray-400 text-[10px]"></i>
+                                        <i class="fa-solid fa-check text-green-400 text-[10px]"></i>
                                     </div>
                                     <div>
                                         <p class="text-[9px] text-gray-500 uppercase tracking-wider">Produk Selesai Terbanyak</p>
@@ -191,6 +250,36 @@
                         </div>
                     </div>
 
+                    {{-- INFO NOTIFIKASI --}}
+                    <div class="bg-[#0B0E14] rounded-xl p-3 border border-white/5 mb-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-bell text-[10px] {{ $isActive && $isVerified ? 'text-green-400' : 'text-gray-600' }}"></i>
+                                <span class="text-[10px] text-gray-500">Notifikasi Gmail:</span>
+                            </div>
+                            <span class="text-[10px] font-bold {{ $isActive && $isVerified ? 'text-green-400' : 'text-red-400' }}">
+                                @if(!$isActive)
+                                    ✕ Berhenti (Akun Nonaktif)
+                                @elseif(!$isVerified)
+                                    ⏳ Email Belum Diverifikasi
+                                @else
+                                    ✓ Siap Dikirim
+                                @endif
+                            </span>
+                        </div>
+                        <div class="mt-1.5 text-[9px] text-gray-600">
+                            @if(!$isKepalaGudang)
+                                @if($isActive && $isVerified)
+                                    ✅ Pekerja ini akan tetap terima instruksi via Gmail
+                                @else
+                                    ⛔ Pekerja ini tidak akan terima Gmail karena {{ !$isActive ? 'akun nonaktif' : 'email belum diverifikasi' }}
+                                @endif
+                            @else
+                                🔑 Kepala Gudang — dapat login & notifikasi in-app + email
+                            @endif
+                        </div>
+                    </div>
+
                     {{-- ACTION BUTTONS --}}
                     <div class="flex gap-3">
                         @if($isActive)
@@ -204,14 +293,20 @@
                                title="Lihat detail kinerja operator">
                                 <i class="fa-solid fa-chart-simple mr-1.5 text-[10px]"></i> Lihat Kinerja
                             </a>
-                        @else
+                        @elseif($isVerified)
+                            {{-- AKUN SUDAH VERIF TAPI NONAKTIF: tampilkan tombol Aktifkan --}}
                             <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="w-full" id="form-aktifkan-{{ $op->id }}">
                                 @csrf @method('PATCH')
-                                <button type="button" onclick="swalConfirm({title: 'Aktifkan Kembali?', text: 'Akun {{ $op->name }} akan diaktifkan kembali.', icon: 'question', confirmText: 'Ya, Aktifkan'}, () => document.getElementById('form-aktifkan-{{ $op->id }}').submit())"
+                                <button type="button" onclick="swalConfirm({title: 'Aktifkan Kembali?', text: 'Akun {{ $op->name }} akan diaktifkan kembali. Notifikasi Gmail akan kembali dikirim.', icon: 'question', confirmText: 'Ya, Aktifkan', onConfirm: () => document.getElementById('form-aktifkan-{{ $op->id }}').submit()})"
                                         class="w-full h-9 bg-[#1A1D29] hover:bg-[#252836] border border-white/5 rounded-lg text-white text-xs font-semibold flex items-center justify-center transition-colors">
                                     <i class="fa-solid fa-power-off mr-1.5 text-[10px]"></i> Aktifkan Kembali
                                 </button>
                             </form>
+                        @else
+                            {{-- AKUN BELUM VERIFIKASI: hanya info, tidak ada tombol aktifkan --}}
+                            <div class="w-full h-9 bg-[#1A1D29] border border-white/5 rounded-lg flex items-center justify-center text-gray-500 text-xs font-semibold cursor-default">
+                                <i class="fa-solid fa-hourglass-half mr-1.5 text-[10px]"></i> Menunggu Verifikasi Email
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -273,6 +368,7 @@
                 <input type="email" name="email" required pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
                     placeholder="email@contoh.com"
                     class="w-full bg-[#0f1115] border border-gray-700 rounded-lg px-4 py-3 text-xs text-white focus:border-orange-500 focus:outline-none placeholder-gray-600">
+                <p class="text-[9px] text-gray-600 mt-1">*Digunakan untuk notifikasi Gmail. Pastikan email aktif & bisa diverifikasi.</p>
             </div>
 
             {{-- Jabatan --}}
@@ -290,18 +386,18 @@
             <div>
                 <label class="block text-[10px] font-bold text-gray-400 mb-1.5 uppercase">Tipe Akun</label>
                 <select name="sub_role" class="w-full bg-[#0f1115] border border-gray-700 rounded-lg px-4 py-3 text-xs text-white focus:border-orange-500 focus:outline-none">
-                    <option value="pekerja">Pekerja (Tidak Bisa Login)</option>
-                    <option value="kepala_gudang">Kepala Gudang (Bisa Login)</option>
+                    <option value="pekerja">Pekerja (Tidak Bisa Login, tapi terima Gmail)</option>
+                    <option value="kepala_gudang">Kepala Gudang (Bisa Login & Akses Sistem)</option>
                 </select>
-                <p class="text-[9px] text-gray-600 mt-1">*Kepala Gudang bisa login dashboard. Pekerja hanya menerima instruksi via email.</p>
+                <p class="text-[9px] text-gray-600 mt-1">*Kepala Gudang bisa login dashboard. Pekerja hanya terima instruksi via Gmail (tidak bisa login).</p>
             </div>
 
             {{-- Password --}}
             <div>
-                <label class="block text-[10px] font-bold text-gray-400 mb-1.5 uppercase">Password Default</label>
-                <input type="text" name="password" value="123456"
-                    class="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-xs text-gray-500 cursor-not-allowed">
-                <p class="text-[9px] text-gray-600 mt-1">*Password default: 123456 (Bisa diganti operator nanti)</p>
+                <label class="block text-[10px] font-bold text-gray-400 mb-1.5 uppercase">Password</label>
+                <input type="text" name="password" value="123456" required
+                    class="w-full bg-[#0f1115] border border-gray-700 rounded-lg px-4 py-3 text-xs text-white focus:border-orange-500 focus:outline-none placeholder-gray-600">
+                <p class="text-[9px] text-gray-600 mt-1">*Minimal 6 karakter. Bisa diganti nanti oleh operator.</p>
             </div>
 
             <div class="pt-6 flex justify-end gap-3 border-t border-gray-700 mt-2">
@@ -326,19 +422,24 @@
         return {
             search: '',
             filterStatus: 'all',
+            filterRole: 'all',
             filterOperators() {
                 const cards = document.querySelectorAll('[data-name]');
                 cards.forEach(card => {
                     const name = card.dataset.name;
                     const status = card.dataset.status;
+                    const role = card.dataset.role;
 
                     const matchSearch = name.includes(this.search.toLowerCase());
                     const matchStatus = this.filterStatus === 'all' || status === this.filterStatus;
+                    const matchRole = this.filterRole === 'all' || role === this.filterRole;
 
-                    card.style.display = (matchSearch && matchStatus) ? '' : 'none';
+                    card.style.display = (matchSearch && matchStatus && matchRole) ? '' : 'none';
                 });
             }
         };
     }
+
+    // Gunakan swalConfirm global dari layout (parameter object: {title, text, icon, confirmText, onConfirm})
 </script>
 @endsection

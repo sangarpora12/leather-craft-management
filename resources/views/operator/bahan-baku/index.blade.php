@@ -28,38 +28,40 @@
 
     <!-- Filter & Search -->
     <div class="px-4 pb-4">
-        <form method="GET" action="{{ route('operator.bahan.index') }}" class="space-y-3">
+        <form id="filter-form" method="GET" action="{{ route('operator.bahan.index') }}" class="space-y-3">
             <div class="relative">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama / kode bahan..." class="w-full bg-[#1C222D] border border-white/5 rounded-2xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none pr-10">
-                <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
-                    <i class="fas fa-search"></i>
-                </button>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama / kode bahan..." 
+                       class="w-full bg-[#1C222D] border border-white/5 rounded-2xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none pr-10"
+                       oninput="clearTimeout(searchTimer); searchTimer = setTimeout(() => document.getElementById('filter-form').submit(), 400)">
             </div>
             
             <div class="flex overflow-x-auto gap-2 pb-1 scrollbar-hide">
-                <select name="kategori" class="bg-[#1C222D] border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[100px]">
+                <select name="kategori" class="bg-[#1C222D] border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[100px]"
+                        onchange="document.getElementById('filter-form').submit()">
                     <option value="" {{ !request('kategori') ? 'selected' : '' }}>Semua Kategori</option>
                     @foreach($kategories as $k)
                         <option value="{{ $k->nama_kategori }}" {{ request('kategori') == $k->nama_kategori ? 'selected' : '' }}>{{ $k->nama_kategori }}</option>
                     @endforeach
                 </select>
                 
-                <select name="satuan" class="bg-[#1C222D] border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[90px]">
+                <select name="satuan" class="bg-[#1C222D] border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[90px]"
+                        onchange="document.getElementById('filter-form').submit()">
                     <option value="" {{ !request('satuan') ? 'selected' : '' }}>Semua Satuan</option>
                     @foreach($satuans as $s)
                         <option value="{{ $s->nama_satuan }}" {{ request('satuan') == $s->nama_satuan ? 'selected' : '' }}>{{ $s->nama_satuan }}</option>
                     @endforeach
                 </select>
                 
-                <select name="sort" class="bg-[#1C222D] border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[120px]">
+                <select name="sort" class="bg-[#1C222D] border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[120px]"
+                        onchange="document.getElementById('filter-form').submit()">
                     <option value="terbaru" {{ !request('sort') || request('sort') == 'terbaru' ? 'selected' : '' }}>Terbaru</option>
                     <option value="stok_terendah" {{ request('sort') == 'stok_terendah' ? 'selected' : '' }}>Stok Rendah</option>
                     <option value="nama_asc" {{ request('sort') == 'nama_asc' ? 'selected' : '' }}>Nama A-Z</option>
                 </select>
             </div>
             
-            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg text-sm font-medium">
-                Terapkan Filter
+            <button type="button" onclick="document.querySelector('input[name=\'search\']').value=''; document.querySelectorAll('select').forEach(s => s.selectedIndex=0); document.getElementById('filter-form').submit();" class="w-full bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg text-sm font-medium">
+                Reset Filter
             </button>
         </form>
     </div>
@@ -67,7 +69,12 @@
     <!-- Bahan Baku List -->
     <div class="px-4 pb-24">
         @forelse($bahanBakus as $bahan)
-        <div class="rounded-xl mb-3 overflow-hidden relative @if($bahan->stok <= $bahan->stok_minimum) bg-red-500/10 border border-red-500/40 @else bg-[#1C222D] border border-white/5 @endif">
+            @php
+                $stokTampil = $bahan->total_stok ?? $bahan->stok;
+                $batasKritis = $batasStokGlobal ?? 5;
+                $isKritis = $stokTampil <= $batasKritis;
+            @endphp
+        <div class="rounded-xl mb-3 overflow-hidden relative @if($isKritis) bg-red-500/10 border border-red-500/40 @else bg-[#1C222D] border border-white/5 @endif">
             <!-- ICON EDIT POJOK KANAN ATAS -->
             <div class="absolute top-3 right-3 flex gap-1 z-10">
                 <a href="{{ route('operator.bahan.edit', $bahan->id) }}" 
@@ -119,9 +126,6 @@
                             @else
                                 {{-- Bahan Inventory --}}
                                 @php
-        $stokTampil = $bahan->total_stok ?? $bahan->stok;
-        // Gunakan batas stok global seperti admin (fallback ke 5)
-        $batasKritis = $batasStokGlobal ?? 5;
         // Format cerdas: 150.50 -> 150.5, 150.00 -> 150
         $formatStokIdx = function($val) {
             $val = (float) $val;
@@ -154,12 +158,12 @@
 
 <style>
 /* Sembunyikan scrollbar tapi tetap bisa scroll */
-.scrollbar-hide::-webkit-scrollbar {
-    display: none;
-}
 .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
 }
 </style>
 @endsection

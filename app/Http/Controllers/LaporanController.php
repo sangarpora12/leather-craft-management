@@ -44,24 +44,30 @@ class LaporanController extends Controller
         $from = Carbon::parse($fromDate)->startOfDay();
         $to = Carbon::parse($toDate)->endOfDay();
 
-        $productions = DB::table('produksis')
-        ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
-        ->leftJoin('users', 'produksis.operator_id', '=', 'users.id') //
-        ->whereBetween('produksis.created_at', [$from, $to])
-        ->where('produksis.status', 'SELESAI')
-        ->select(
-            'produk_jadis.nama_produk',
-            'produk_jadis.kode_produk',
-            'produk_jadis.harga_jual',
-            DB::raw('SUM(produksis.jumlah_selesai) as jumlah_selesai'),
-            // Ambil nama operator dari tabel users
-            DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as operator_name"), 
-            DB::raw('"Produksi" as jenis_mutasi')
-        )
-        ->groupBy('produk_jadis.id', 'produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produk_jadis.harga_jual')
-        ->get();
-                
-// Get product keluar/sales - Grouped by PRODUCT NAME only
+// 1. QUERY PRODUKSI (OUTPUT)
+$productions = DB::table('produksis')
+->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
+->leftJoin('users', 'produksis.operator_id', '=', 'users.id')
+->whereBetween('produksis.created_at', [$from, $to])
+->where('produksis.status', 'SELESAI')
+->select(
+    'produk_jadis.nama_produk',
+    'produk_jadis.kode_produk',
+    'produk_jadis.harga_jual',
+    DB::raw('SUM(produksis.jumlah_selesai) as jumlah_selesai'),
+    
+    // 👇 INI DIA YANG BIKIN ERROR (TADI KETINGGALAN DI FUNGSI INDEX) 👇
+    DB::raw('COUNT(produksis.id) as jumlah_spk'), 
+    
+    DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as operator_name"), 
+    DB::raw('"Produksi" as jenis_mutasi'),
+    DB::raw('MAX(produksis.created_at) as tanggal_terbaru')
+)
+->groupBy('produk_jadis.id', 'produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produk_jadis.harga_jual')
+->orderByDesc('tanggal_terbaru')
+->get();
+        
+// 2. QUERY PRODUK KELUAR
 $produkKeluars = DB::table('produk_keluars')
 ->join('produk_jadis', 'produk_keluars.produk_jadi_id', '=', 'produk_jadis.id')
 ->leftJoin('users', 'produk_keluars.user_id', '=', 'users.id')
@@ -71,28 +77,18 @@ $produkKeluars = DB::table('produk_keluars')
     'produk_jadis.kode_produk',
     'produk_jadis.harga_jual',
     DB::raw('SUM(produk_keluars.jumlah_keluar) as jumlah'),
-    DB::raw('COUNT(produk_keluars.id) as jumlah_transaksi'),
-    DB::raw('MIN(DATE(produk_keluars.created_at)) as tanggal_mulai'),
-    DB::raw('MAX(DATE(produk_keluars.created_at)) as tanggal_terakhir'),
-    DB::raw('MAX(DATE(produk_keluars.created_at)) as tanggal_keluar'), 
-    
-    // ✅ UBAH DI SINI: Menarik data alasan/keterangan dari database
+    DB::raw('MAX(produk_keluars.created_at) as tanggal_terbaru'), // Tambahan untuk sorting
     DB::raw("GROUP_CONCAT(DISTINCT produk_keluars.alasan SEPARATOR ', ') as alasan"), 
-    
-    DB::raw("'-' as jenis_transaksi"), 
-    DB::raw("'-' as keterangan"), 
-    DB::raw('"Keluar" as jenis_mutasi'),
-    DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as user_name")
+    DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as operator_name")
 )
 ->groupBy('produk_jadis.id', 'produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produk_jadis.harga_jual')
-->orderByDesc('jumlah')
+->orderByDesc('tanggal_terbaru') // Urutkan dari yang terbaru
 ->get();
 
-        
-// Get bahan masuk dari log_stok (material incoming) - Grouped by MATERIAL NAME only
+// 3. QUERY BAHAN MASUK (PENGADAAN) -> Tambah Harga Satuan di sini
 $pengadaans = DB::table('log_stok')
 ->join('bahan_bakus', 'log_stok.bahan_baku_id', '=', 'bahan_bakus.id')
-->leftJoin('users', 'log_stok.operator_id', '=', 'users.id')
+->leftJoin('users', 'log_stok.operator_id', '=', 'users.id') // Sesuaikan jika sebelumnya user_id
 ->whereBetween('log_stok.created_at', [$from, $to])
 ->where(function($q) {
     $q->where('log_stok.jenis_transaksi', 'like', '%MASUK%')
@@ -107,14 +103,17 @@ $pengadaans = DB::table('log_stok')
     'bahan_bakus.kode_material',
     'bahan_bakus.satuan',
     'bahan_bakus.warna',
+    'bahan_bakus.harga_satuan', // Kunci untuk memisahkan harga
     DB::raw('SUM(log_stok.jumlah) as jumlah'),
-    DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as user_name")
+    DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as operator_name"),
+    DB::raw('MAX(log_stok.created_at) as tanggal_terbaru') // Tambahan untuk sorting
 )
-->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan', 'bahan_bakus.warna')
-->orderByDesc('jumlah')
+// GroupBy ditambah 'harga_satuan' agar beda harga = beda baris
+->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan', 'bahan_bakus.warna', 'bahan_bakus.harga_satuan')
+->orderByDesc('tanggal_terbaru') // Urutkan dari yang terbaru
 ->get();
-                
-// Get material usage from production (material outgoing) - Grouped by MATERIAL NAME only
+        
+// 4. QUERY BAHAN KELUAR (PEMAKAIAN SPK)
 $materialUsage = DB::table('produksis')
 ->join('bom', 'produksis.produk_jadi_id', '=', 'bom.id_produk')
 ->join('bahan_bakus', 'bom.id_bahan', '=', 'bahan_bakus.id')
@@ -122,23 +121,17 @@ $materialUsage = DB::table('produksis')
 ->leftJoin('users', 'produksis.operator_id', '=', 'users.id')
 ->whereBetween('produksis.created_at', [$from, $to])
 ->where('produksis.status', 'SELESAI')
-// ->whereNull('bahan_bakus.deleted_at') <--- BARIS INI KITA HAPUS
 ->select(
     'bahan_bakus.nama_material',
     'bahan_bakus.kode_material',
     'bahan_bakus.satuan',
     'bahan_bakus.warna',
     DB::raw('SUM(produksis.jumlah_selesai * bom.jumlah_kebutuhan) as jumlah'),
-    DB::raw("GROUP_CONCAT(DISTINCT produk_jadis.nama_produk SEPARATOR ', ') as nama_produk"), // Nama produk tetap kita ambil
-    DB::raw('MAX(DATE(produksis.created_at)) as tanggal_terakhir'), 
-    DB::raw('MAX(DATE(produksis.created_at)) as tanggal_keluar'), 
-    DB::raw("'-' as alasan"), 
-    DB::raw("'-' as jenis_transaksi"), 
-    DB::raw("'-' as keterangan"), 
-    DB::raw('"Dipakai" as jenis_mutasi')
+    DB::raw("GROUP_CONCAT(DISTINCT produk_jadis.nama_produk SEPARATOR ', ') as nama_produk"), 
+    DB::raw('MAX(produksis.created_at) as tanggal_terbaru') // Tambahan untuk sorting
 )
 ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan', 'bahan_bakus.warna')
-->orderByDesc('jumlah')
+->orderByDesc('tanggal_terbaru') // Urutkan dari yang terbaru
 ->get();
         // Summary for production/produk
         $totalOutput = DB::table('produksis')
@@ -304,7 +297,7 @@ $materialUsage = DB::table('produksis')
         $from = Carbon::parse($fromDate)->startOfDay();
         $to = Carbon::parse($toDate)->endOfDay();
 
-        // --- 1. AMBIL DATA ---
+        // --- 1. AMBIL DATA (Sama Persis Seperti Tampilan Layar) ---
         $productions = DB::table('produksis')
             ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
             ->leftJoin('users', 'produksis.operator_id', '=', 'users.id') 
@@ -313,9 +306,11 @@ $materialUsage = DB::table('produksis')
             ->select('produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produk_jadis.harga_jual',
                 DB::raw('SUM(produksis.jumlah_selesai) as jumlah_selesai'),
                 DB::raw('COUNT(produksis.id) as jumlah_spk'),
-                DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as operator_name") 
+                DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as operator_name"),
+                DB::raw('MAX(produksis.created_at) as tanggal_terbaru')
             )
             ->groupBy('produk_jadis.id', 'produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produk_jadis.harga_jual')
+            ->orderByDesc('tanggal_terbaru')
             ->get();
 
         $pengadaans = DB::table('log_stok')
@@ -325,13 +320,19 @@ $materialUsage = DB::table('produksis')
             ->where(function($q) {
                 $q->where('log_stok.jenis_transaksi', 'like', '%MASUK%')
                   ->orWhere('log_stok.jenis_transaksi', 'like', '%TAMBAH%')
-                  ->orWhere('log_stok.jenis_transaksi', 'like', '%INPUT%');
+                  ->orWhere('log_stok.jenis_transaksi', 'like', '%PENGADAAN%')
+                  ->orWhere('log_stok.jenis_transaksi', 'like', '%RESTOCK%')
+                  ->orWhere('log_stok.jenis_transaksi', 'like', '%INPUT%')
+                  ->orWhere('log_stok.jenis_transaksi', 'like', '%UPDATE OPERATOR%');
             })
             ->select('bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan', 'log_stok.jenis_transaksi',
+                'bahan_bakus.warna', 'bahan_bakus.harga_satuan',
                 DB::raw('SUM(log_stok.jumlah) as jumlah'),
-                DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as user_name") 
+                DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as operator_name"),
+                DB::raw('MAX(log_stok.created_at) as tanggal_terbaru')
             )
-            ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan', 'log_stok.jenis_transaksi')
+            ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan', 'bahan_bakus.warna', 'bahan_bakus.harga_satuan', 'log_stok.jenis_transaksi')
+            ->orderByDesc('tanggal_terbaru')
             ->get();
 
         $produkKeluars = DB::table('produk_keluars')
@@ -340,9 +341,11 @@ $materialUsage = DB::table('produksis')
             ->whereBetween('produk_keluars.created_at', [$from, $to])
             ->select('produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produk_jadis.harga_jual', 
                      DB::raw('SUM(produk_keluars.jumlah_keluar) as jumlah'), 
-                     DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as user_name"),
-                     DB::raw("GROUP_CONCAT(DISTINCT produk_keluars.alasan SEPARATOR ', ') as alasan"))
+                     DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as operator_name"),
+                     DB::raw("GROUP_CONCAT(DISTINCT produk_keluars.alasan SEPARATOR ', ') as alasan"),
+                     DB::raw('MAX(produk_keluars.created_at) as tanggal_terbaru'))
             ->groupBy('produk_jadis.id', 'produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produk_jadis.harga_jual')
+            ->orderByDesc('tanggal_terbaru')
             ->get();
 
         $materialUsage = DB::table('produksis')
@@ -351,16 +354,18 @@ $materialUsage = DB::table('produksis')
             ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
             ->whereBetween('produksis.created_at', [$from, $to])
             ->where('produksis.status', 'SELESAI')
-            ->select('bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan', 
+            ->select('bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan', 'bahan_bakus.warna',
                      DB::raw('SUM(produksis.jumlah_selesai * bom.jumlah_kebutuhan) as jumlah'),
-                     DB::raw("GROUP_CONCAT(DISTINCT produk_jadis.nama_produk SEPARATOR ', ') as nama_produk"))
-            ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan')
+                     DB::raw("GROUP_CONCAT(DISTINCT produk_jadis.nama_produk SEPARATOR ', ') as nama_produk"),
+                     DB::raw('MAX(produksis.created_at) as tanggal_terbaru'))
+            ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.kode_material', 'bahan_bakus.satuan', 'bahan_bakus.warna')
+            ->orderByDesc('tanggal_terbaru')
             ->get();
 
         $namaPerusahaan = Pengaturan::where('nama_pengaturan', 'nama_perusahaan')->first()?->nilai ?? 'Berliano Leather';
         $waktuSekarang = Carbon::now()->timezone('Asia/Jakarta');
 
-        // --- 2. BANGUN HTML (TANPA DESIMAL .00) ---
+        // --- 2. BANGUN HTML EXCEL ---
         $html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body>';
         $html .= '<table style="border-collapse: collapse; width: 100%; font-family: Arial;">';
         $html .= '<tr><td colspan="7" style="font-size: 18px; font-weight: bold; text-align: center;">LAPORAN OPERASIONAL - ' . strtoupper($namaPerusahaan) . '</td></tr>';
@@ -386,18 +391,19 @@ $materialUsage = DB::table('produksis')
             $html .= '<tr><td colspan="7" style="' . $subHeadStyle . '">📤 PRODUK KELUAR / TERJUAL</td></tr>';
             $html .= '<tr><th style="'.$headStyle.'">Kode</th><th style="'.$headStyle.'">Produk</th><th style="'.$headStyle.'">Keterangan</th><th style="'.$headStyle.'">User</th><th colspan="2" style="'.$headStyle.'">Jumlah</th><th style="'.$headStyle.'">Total (Rp)</th></tr>';
             foreach ($produkKeluars as $pk) {
-                $html .= '<tr><td style="'.$cellStyle.'">'.$pk->kode_produk.'</td><td style="'.$cellStyle.'">'.$pk->nama_produk.'</td><td style="'.$cellStyle.'">'.$pk->alasan.'</td><td style="'.$cellStyle.'">'.$pk->user_name.'</td><td colspan="2" style="'.$cellStyle.'; text-align:center;">'.number_format($pk->jumlah, 0, ',', '.').'</td><td style="'.$cellStyle.'">'.number_format($pk->jumlah * $pk->harga_jual, 0, ',', '.').'</td></tr>';
+                $html .= '<tr><td style="'.$cellStyle.'">'.$pk->kode_produk.'</td><td style="'.$cellStyle.'">'.$pk->nama_produk.'</td><td style="'.$cellStyle.'">'.$pk->alasan.'</td><td style="'.$cellStyle.'">'.$pk->operator_name.'</td><td colspan="2" style="'.$cellStyle.'; text-align:center;">'.number_format($pk->jumlah, 0, ',', '.').'</td><td style="'.$cellStyle.'">'.number_format($pk->jumlah * $pk->harga_jual, 0, ',', '.').'</td></tr>';
             }
             $html .= '<tr><td colspan="7"></td></tr>';
         }
 
         // BAHAN MASUK
         if ($mode == 'lengkap' || $mode == 'bahan') {
-            $html .= '<tr><td colspan="7" style="' . $subHeadStyle . '">📥 BAHAN MASUK / PENGADAAN</td></tr>';
-            $html .= '<tr><th style="'.$headStyle.'">Kode</th><th style="'.$headStyle.'">Bahan Baku</th><th style="'.$headStyle.'">Status</th><th style="'.$headStyle.'">Operator</th><th colspan="2" style="'.$headStyle.'">Jumlah</th><th style="'.$headStyle.'">Satuan</th></tr>';
+            $html .= '<tr><td colspan="7" style="' . $subHeadStyle . '">📥 BAHAN BAKU MASUK</td></tr>';
+            $html .= '<tr><th style="'.$headStyle.'">Kode</th><th style="'.$headStyle.'">Nama Bahan</th><th style="'.$headStyle.'">Harga Satuan</th><th style="'.$headStyle.'">Total Nilai</th><th style="'.$headStyle.'">Jumlah Masuk</th><th style="'.$headStyle.'">Satuan</th><th style="'.$headStyle.'">Operator / User</th></tr>';
             foreach ($pengadaans as $b) {
-                $status = (str_contains($b->jenis_transaksi, 'INPUT')) ? 'BARU' : 'NAMBAH';
-                $html .= '<tr><td style="'.$cellStyle.'">'.$b->kode_material.'</td><td style="'.$cellStyle.'">'.$b->nama_material.'</td><td style="'.$cellStyle.'">'.$status.'</td><td style="'.$cellStyle.'">'.$b->user_name.'</td><td colspan="2" style="'.$cellStyle.'; text-align:right;">'.number_format($b->jumlah, 0, ',', '.').'</td><td style="'.$cellStyle.'">'.$b->satuan.'</td></tr>';
+                $warna = (!empty($b->warna) && strtolower($b->warna) !== 'tidak ada warna') ? " [{$b->warna}]" : " [Tidak Ada Warna]";
+                $totalNilai = ($b->harga_satuan ?? 0) * $b->jumlah;
+                $html .= '<tr><td style="'.$cellStyle.'">'.$b->kode_material.'</td><td style="'.$cellStyle.'">'.$b->nama_material.$warna.'</td><td style="'.$cellStyle.'; text-align:right;">'.number_format($b->harga_satuan ?? 0, 0, ',', '.').'</td><td style="'.$cellStyle.'; text-align:right;">'.number_format($totalNilai, 0, ',', '.').'</td><td style="'.$cellStyle.'; text-align:center;">'.number_format($b->jumlah, 0, ',', '.').'</td><td style="'.$cellStyle.'; text-align:center;">'.$b->satuan.'</td><td style="'.$cellStyle.'">'.($b->operator_name ?? 'N/A').'</td></tr>'; 
             }
             $html .= '<tr><td colspan="7"></td></tr>';
         }
@@ -407,17 +413,18 @@ $materialUsage = DB::table('produksis')
             $html .= '<tr><td colspan="7" style="' . $subHeadStyle . '">🏭 BAHAN KELUAR / DIPAKAI PRODUKSI</td></tr>';
             $html .= '<tr><th style="'.$headStyle.'">Kode</th><th style="'.$headStyle.'">Bahan Baku</th><th colspan="3" style="'.$headStyle.'">Digunakan Untuk Produk</th><th style="'.$headStyle.'">Total Pakai</th><th style="'.$headStyle.'">Satuan</th></tr>';
             foreach ($materialUsage as $mu) {
-                $html .= '<tr><td style="'.$cellStyle.'">'.$mu->kode_material.'</td><td style="'.$cellStyle.'">'.$mu->nama_material.'</td><td colspan="3" style="'.$cellStyle.'">'.$mu->nama_produk.'</td><td style="'.$cellStyle.'; text-align:right;">'.number_format($mu->jumlah, 0, ',', '.').'</td><td style="'.$cellStyle.'">'.$mu->satuan.'</td></tr>';
+                $warna = (!empty($mu->warna) && strtolower($mu->warna) !== 'tidak ada warna') ? " [{$mu->warna}]" : " [Tidak Ada Warna]";
+                $html .= '<tr><td style="'.$cellStyle.'">'.$mu->kode_material.'</td><td style="'.$cellStyle.'">'.$mu->nama_material.$warna.'</td><td colspan="3" style="'.$cellStyle.'">'.$mu->nama_produk.'</td><td style="'.$cellStyle.'; text-align:right;">'.number_format($mu->jumlah, 0, ',', '.').'</td><td style="'.$cellStyle.'">'.$mu->satuan.'</td></tr>';
             }
         }
 
-        // TTD & WAKTU JAKARTA
+        // --- 3. TTD & WAKTU JAKARTA (EXCEL) ---
         $html .= '<tr><td colspan="7"></td></tr>';
         $html .= '<tr><td colspan="5"></td><td colspan="2" style="text-align:center;">Yogyakarta, '.$waktuSekarang->translatedFormat('d F Y').'</td></tr>';
         $html .= '<tr><td colspan="5"></td><td colspan="2" style="text-align:center;">Pukul: '.$waktuSekarang->format('H:i').' WIB</td></tr>';
-        $html .= '<tr><td colspan="7" style="height:50px;"></td></tr>';
-        $html .= '<tr><td colspan="5"></td><td colspan="2" style="text-align:center; font-weight:bold;">( '.auth()->user()->name.' )</td></tr>';
-        $html .= '<tr><td colspan="5"></td><td colspan="2" style="text-align:center; font-size:10px;">Admin Operasional</td></tr>';
+        $html .= '<tr><td colspan="7" style="height:60px;"></td></tr>';
+        $html .= '<tr><td colspan="5"></td><td colspan="2" style="text-align:center; font-weight:bold; text-decoration:underline;">'.auth()->user()->name.'</td></tr>';
+        $html .= '<tr><td colspan="5"></td><td colspan="2" style="text-align:center; font-size:11px;">Admin / Operator</td></tr>';
 
         $html .= '</table></body></html>';
 
@@ -436,32 +443,27 @@ $materialUsage = DB::table('produksis')
         $from = Carbon::parse($fromDate)->startOfDay();
         $to = Carbon::parse($toDate)->endOfDay();
 
-// Cari bagian ini di LaporanController.php
-$productions = DB::table('produksis')
-    ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
-    ->leftJoin('users', 'produksis.operator_id', '=', 'users.id')// Pastikan join ke tabel users
-    ->whereBetween('produksis.created_at', [$from, $to])
-    ->where('produksis.status', 'SELESAI')
-    ->select(
-        'produk_jadis.nama_produk',
-        'produk_jadis.kode_produk',
-        'produk_jadis.harga_jual',
-        DB::raw('SUM(produksis.jumlah_selesai) as jumlah_selesai'),
-        DB::raw('COUNT(produksis.id) as jumlah_spk'),
-        DB::raw('MIN(DATE(produksis.created_at)) as tanggal_mulai'),
-        DB::raw('MAX(DATE(produksis.created_at)) as tanggal_terakhir'),
-        DB::raw('MAX(DATE(produksis.created_at)) as tanggal_selesai'),
-        DB::raw("'-' as alasan"),
-        DB::raw("'-' as jenis_transaksi"),
-        
-        // 👈 UBAH BARIS INI: Jangan pakai '-' tapi panggil nama operator
-        DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as operator_name"), 
-        
-        DB::raw('"Produksi" as jenis_mutasi')
-    )
-    ->groupBy('produk_jadis.id', 'produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produk_jadis.harga_jual')
-    ->orderByDesc('jumlah_selesai')
-    ->get();
+        $productions = DB::table('produksis')
+        ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
+        ->leftJoin('users', 'produksis.operator_id', '=', 'users.id')
+        ->whereBetween('produksis.created_at', [$from, $to])
+        ->where('produksis.status', 'SELESAI')
+        ->select(
+            'produk_jadis.nama_produk',
+            'produk_jadis.kode_produk',
+            'produk_jadis.harga_jual',
+            DB::raw('SUM(produksis.jumlah_selesai) as jumlah_selesai'),
+            
+            // 👇 INI BARIS YANG SEMPAT TERTINGGAL 👇
+            DB::raw('COUNT(produksis.id) as jumlah_spk'), 
+            
+            DB::raw("GROUP_CONCAT(DISTINCT users.name SEPARATOR ', ') as operator_name"), 
+            DB::raw('"Produksi" as jenis_mutasi'),
+            DB::raw('MAX(produksis.created_at) as tanggal_terbaru')
+        )
+        ->groupBy('produk_jadis.id', 'produk_jadis.nama_produk', 'produk_jadis.kode_produk', 'produk_jadis.harga_jual')
+        ->orderByDesc('tanggal_terbaru')
+        ->get();
 
         $totalTarget = $productions->sum('total_target');
         $totalCapaian = $productions->sum('total_capaian');
@@ -542,72 +544,122 @@ $productions = DB::table('produksis')
         return $this->index($request);
     }
 
-    /**
+/**
      * Laporan untuk Operator - Menampilkan Produksi dan Penerimaan Bahan Baku
-     */
-    public function indexOperator(Request $request)
+     */public function indexOperator(Request $request)
+{
+    $user = auth()->user();
+    
+    // Filter tanggal (default bulan ini)
+    $fromDate = $request->query('from', now()->startOfMonth()->format('Y-m-d'));
+    $toDate = $request->query('to', now()->format('Y-m-d'));
+    $from = \Carbon\Carbon::parse($fromDate)->startOfDay();
+    $to = \Carbon\Carbon::parse($toDate)->endOfDay();
+
+    // Ambil Stok Kritis (Logika Admin: Stok < Stok Minimum)
+    $stokKritis = \App\Models\BahanBaku::whereRaw('stok < stok_minimum')->get();
+
+    // Query Gabungan Bahan Masuk & Produk Selesai
+    $riwayatProduksi = DB::table('produksis')
+        ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
+        ->where('produksis.status', 'SELESAI')
+        ->whereBetween('produksis.updated_at', [$from, $to])
+        ->select(
+            'produk_jadis.nama_produk as nama',
+            DB::raw("'produk' as jenis"),
+            'produksis.jumlah_selesai as qty',
+            'produksis.updated_at as tgl'
+        );
+
+    $riwayatBahan = DB::table('pengadaans')
+        ->join('bahan_bakus', 'pengadaans.bahan_baku_id', '=', 'bahan_bakus.id')
+        ->whereIn('pengadaans.status', ['SELESAI', 'DITERIMA'])
+        ->whereBetween('pengadaans.updated_at', [$from, $to])
+        ->select(
+            'bahan_bakus.nama_material as nama',
+            DB::raw("'bahan' as jenis"),
+            'pengadaans.received as qty',
+            'pengadaans.updated_at as tgl'
+        );
+
+    $riwayat = $riwayatProduksi->union($riwayatBahan)
+        ->orderBy('tgl', 'desc')
+        ->paginate(15);
+
+    return view('operator.laporan.index', compact('riwayat', 'stokKritis', 'fromDate', 'toDate', 'user'));
+}
+public function cetakPdfOperator(Request $request)
     {
         $user = auth()->user();
+        $kategori = $request->query('kategori', 'semua');
+        $fromDate = $request->query('from', \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $toDate = $request->query('to', \Carbon\Carbon::now()->format('Y-m-d'));
         
-        // Stats Counter
-        $pendingCount = \App\Models\Produksi::where('operator_id', $user->id)
-            ->where('status', 'PENDING')
-            ->count();
-            
-        $prosesCount = \App\Models\Produksi::where('operator_id', $user->id)
-            ->where('status', 'PROSES')
-            ->count();
-            
-        $selesaiCount = \App\Models\Produksi::where('operator_id', $user->id)
-            ->where('status', 'SELESAI')
-            ->count();
+        $from = \Carbon\Carbon::parse($fromDate)->startOfDay();
+        $to = \Carbon\Carbon::parse($toDate)->endOfDay();
 
-        // Hari ini & Minggu ini stats
-        $hariIniSelesaiQty = \App\Models\Produksi::where('operator_id', $user->id)
-            ->where('status', 'SELESAI')
-            ->whereDate('updated_at', today())
-            ->sum('jumlah_selesai');
+        $stokKritis = \App\Models\BahanBaku::whereRaw('stok < stok_minimum')->get();
 
-        $mingguIniSelesaiQty = \App\Models\Produksi::where('operator_id', $user->id)
-            ->where('status', 'SELESAI')
-            ->whereBetween('updated_at', [now()->startOfWeek(), now()->endOfWeek()])
-            ->sum('jumlah_selesai');
+        // 1. Query Produksi (Tambah jumlah_transaksi)
+        $riwayatProduksi = \Illuminate\Support\Facades\DB::table('produksis')
+            ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
+            ->whereBetween('produksis.updated_at', [$from, $to])
+            ->where('produksis.status', 'SELESAI')
+            ->select(
+                'produk_jadis.nama_produk as nama', 
+                \Illuminate\Support\Facades\DB::raw("'PRODUK' as jenis"), 
+                \Illuminate\Support\Facades\DB::raw('SUM(jumlah_selesai) as total_qty'), 
+                \Illuminate\Support\Facades\DB::raw('COUNT(produksis.id) as jumlah_transaksi'), // <-- AMBIL DATA INI
+                'produksis.updated_at as tanggal_terakhir'
+            )
+            ->groupBy('produk_jadis.id', 'produk_jadis.nama_produk', 'produksis.updated_at');
 
-        // Riwayat SPK Selesai
-        $riwayat = \App\Models\Produksi::where('operator_id', $user->id)
-            ->where('status', 'SELESAI')
-            ->with('product')
-            ->orderBy('updated_at', 'desc')
-            ->paginate(10);
-
-        // DATA BAHAN BAKU YANG DITERIMA (DIBELI) OLEH OPERATOR INI
-        // Grouping berdasarkan bahan_baku_id, jumlahkan total
-        $bahanDiterima = DB::table('pengadaans')
+        // 2. Query Bahan (Tambah jumlah_transaksi)
+        $riwayatBahan = \Illuminate\Support\Facades\DB::table('pengadaans')
             ->join('bahan_bakus', 'pengadaans.bahan_baku_id', '=', 'bahan_bakus.id')
-            ->where('pengadaans.operator_id', $user->id)
+            ->whereBetween('pengadaans.updated_at', [$from, $to])
             ->whereIn('pengadaans.status', ['SELESAI', 'DONE', 'DITERIMA'])
             ->select(
-                'bahan_bakus.nama_material',
-                'bahan_bakus.satuan',
-                DB::raw('SUM(pengadaans.received) as total_diterima'),
-                DB::raw('COUNT(pengadaans.id) as jumlah_transaksi'),
-                DB::raw('MAX(pengadaans.updated_at) as tanggal_terakhir')
+                'bahan_bakus.nama_material as nama', 
+                \Illuminate\Support\Facades\DB::raw("'BAHAN MASUK' as jenis"), 
+                \Illuminate\Support\Facades\DB::raw('SUM(received) as total_qty'), 
+                \Illuminate\Support\Facades\DB::raw('COUNT(pengadaans.id) as jumlah_transaksi'), // <-- AMBIL DATA INI
+                'pengadaans.updated_at as tanggal_terakhir'
             )
-            ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'bahan_bakus.satuan')
-            ->orderByDesc('tanggal_terakhir')
-            ->get();
+            ->groupBy('bahan_bakus.id', 'bahan_bakus.nama_material', 'pengadaans.updated_at');
 
-        return view('operator.laporan.index', compact(
-            'pendingCount',
-            'prosesCount',
-            'selesaiCount',
-            'hariIniSelesaiQty',
-            'mingguIniSelesaiQty',
-            'riwayat',
-            'bahanDiterima'
-        ));
+       // ... (bagian query select riwayatProduksi & riwayatBahan sudah benar) ...
+
+        // 3. Gabungkan dan Urutkan
+        // PERHATIKAN: Di orderBy cukup tulis nama aliasnya saja tanpa 'as'
+        if ($kategori == 'produk') {
+            $data = $riwayatProduksi->orderBy('tanggal_terakhir', 'desc')->get();
+        } elseif ($kategori == 'bahan') {
+            $data = $riwayatBahan->orderBy('tanggal_terakhir', 'desc')->get();
+        } else {
+            // Jika union, pengurutan dilakukan setelah data digabung
+            $data = $riwayatProduksi->union($riwayatBahan)
+                ->orderBy('tanggal_terakhir', 'desc') 
+                ->get();
+        }
+
+        $pengaturan = \App\Models\Pengaturan::first();
+
+        // Load PDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('operator.laporan.pdf', [
+            'riwayat' => $data,
+            'stokKritis' => $stokKritis,
+            'user' => $user,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'kategori' => $kategori,
+            'totalProduk' => ($kategori == 'bahan') ? 0 : $riwayatProduksi->get()->sum('total_qty'),
+            'totalBahan' => ($kategori == 'produk') ? 0 : $riwayatBahan->get()->sum('total_qty'),
+            'pengaturan' => $pengaturan
+        ]);
+
+        return $pdf->download('Laporan_Operator_'.now()->format('d-m-Y').'.pdf');
     }
-
     /**
      * Fast complete
      */

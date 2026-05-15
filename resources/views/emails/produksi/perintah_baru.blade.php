@@ -108,44 +108,47 @@
     </tr>
     @isset($spk->product->boms)
         @foreach ($spk->product->boms as $bom)
+        @php
+            $bahan = $bom->bahanBaku ?? null;
+            $fotoUrl = null;
+            if ($bahan && !empty($bahan->foto)) {
+                $fp = $bahan->foto;
+                if (!str_starts_with($fp, 'storage/')) $fp = 'storage/' . $fp;
+                $fotoUrl = asset($fp);
+            }
+        @endphp
         <tr>
-            <td style="padding: 5px; border: 1px solid #ddd; text-align: center;">
-                @php
-                    $fotoUrl = null;
-                    if (isset($bom->bahanBaku->foto) && $bom->bahanBaku->foto) {
-                        $fotoUrl = $bom->bahanBaku->foto;
-                    } else {
-                        $fallback = \App\Models\BahanBaku::where('nama_material', $bom->bahanBaku->nama_material)
-                            ->whereNotNull('foto')
-                            ->where('foto', '!=', '')
-                            ->first();
-                        if ($fallback) {
-                            $fotoUrl = $fallback->foto;
-                        }
-                    }
-                @endphp
-
+            <td style="padding:5px;border:1px solid #ddd;text-align:center;width:50px;vertical-align:middle;">
                 @if($fotoUrl)
-                    <img src="{{ Storage::disk('public')->url($fotoUrl) }}" width="40" height="40" style="border-radius: 4px;">
+                    <img src="{{ $fotoUrl }}" width="40" height="40" style="border-radius:4px;object-fit:cover;display:block;margin:auto;" alt="Foto Bahan">
                 @else
-                    <span style="color: #ccc; font-size: 8px;">No Pic</span>
+                    <span style="color:#ccc;font-size:10px;">📷</span>
                 @endif
             </td>
-            <td style="padding: 8px; border: 1px solid #ddd;">
-                <strong>{{ $bom->bahanBaku->nama_material ?? 'Bahan Tidak Diketahui' }}</strong>
-                <br><small style="color: #7f8c8d;">Warna: {{ $bom->bahanBaku->warna ?? '-' }}</small>
+            <td style="padding:8px;border:1px solid #ddd;">
+                <strong style="font-size:13px;">{{ $bahan->nama_material ?? 'Bahan Tidak Diketahui' }}</strong>
+                <br><small style="color:#7f8c8d;font-size:11px;">
+                    @php 
+                        $warna = trim($bahan->warna ?? '');
+                    @endphp
+                    @if(!empty($warna) && $warna !== '-')
+                        Warna: <strong style="color:#2c3e50;">{{ $warna }}</strong>
+                    @else
+                        <em style="color:#b0b0b0;">Tidak Ada Warna</em>
+                    @endif
+                </small>
             </td>
-            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                {{ (int)($bom->jumlah_kebutuhan * $spk->jumlah_produksi) }} 
-                {{ $bom->bahanBaku->satuan ?? 'Unit' }}
-            </td>
+            <td style="padding:8px;border:1px solid #ddd;text-align:center;white-space:nowrap;">
+    <strong>{{ (float)($bom->jumlah_kebutuhan * $spk->jumlah_produksi) }}</strong>
+    <span style="color:#7f8c8d;"> {{ optional($bom->bahanBaku)->satuan ?? 'Unit' }}</span>
+</td>
         </tr>
         @endforeach
     @endisset
 </table>
 
-<div style="text-align: center; margin: 20px 0; background: #ebf5fb; padding: 10px;">
-    Target: <strong>{{ (int)$spk->jumlah_produksi }} Pcs</strong>
+<div style="text-align:center;margin:20px 0;background:#ebf5fb;padding:12px;border-radius:8px;font-size:14px;">
+    🎯 Target: <strong style="color:#2c3e50;">{{ (int)$spk->jumlah_produksi }} Pcs</strong>
 </div>
 
 @if(!$loop->last) <hr style="margin: 40px 0; border: 2px solid #3498db;"> @endif
@@ -153,12 +156,28 @@
 @endif
 @endforeach
 
-<div style="text-align: center; margin-top: 20px;">
-    @if($isKepalaGudang)
-        <a href="{{ route('login') }}" style="background: #27ae60; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">LOGIN DASHBOARD</a>
-    @else
-        <p style="color: #7f8c8d; font-size: 12px;">Anda menerima instruksi ini sebagai Pekerja. Silakan hubungi Kepala Gudang untuk validasi.</p>
-    @endif
+{{-- 7. TOMBOL LOGIN / INFO PEKERJA --}}
+<div style="text-align: center; margin-top: 30px; margin-bottom: 20px;">
+@php
+$operatorId = count($spks) > 0 ? $spks[0]->operator_id : null;
+@endphp
+
+@if($isKepalaGudang)
+@if($operatorId)
+<a href="{{ route('autoLogin', ['user' => $operatorId]) }}" style="background: #27ae60; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">LOGIN & KERJAKAN TUGAS</a>
+@else
+<a href="{{ route('login') }}" style="background: #34495e; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">LOGIN DASHBOARD</a>
+@endif
+@else
+<div style="background: #f8f9fa; border-left: 4px solid #f39c12; padding: 15px; margin: 0 auto; max-width: 80%; text-align: left; border-radius: 4px;">
+<p style="margin: 0; color: #2c3e50; font-size: 14px;">
+<strong>📌 INFO PEKERJA:</strong><br>
+Harap segera berkoordinasi dengan Kepala Gudang untuk mulai mengerjakan instruksi produksi di atas sesuai dengan target yang ditentukan.
+</p>
+</div>
+@endif
+
+<p style="color: #7f8c8d; font-size: 12px; margin-top: 15px;">Segera kerjakan tugas ini sebelum tanggal target. Silakan hubungi admin jika ada kendala.</p>
 </div>
 
 @endcomponent

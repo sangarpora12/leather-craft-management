@@ -80,7 +80,7 @@
             <div class="bg-[#1C222D] rounded-xl p-8 text-center shadow-2xl max-w-sm mx-4 border border-gray-700">
                 <div class="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p class="text-white font-bold text-lg" id="loadingText">Memproses OCR...</p>
-                <p class="text-gray-400 text-sm mt-2">Mohon tunggu, sedang menganalisis nota</p>
+                <p class="text-gray-400 text-sm mt-2">Mohon tunggu</p>
             </div>
         </div>
     </div>

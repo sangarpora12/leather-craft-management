@@ -39,7 +39,8 @@ class PengadaanController extends Controller
     
         $kategories = \App\Models\Kategori::all();
         $suppliers = Supplier::all();
-        $operators = User::where('role', 'operator')->get();
+        // Hanya tampilkan operator dengan sub_role 'kepala_gudang' dan aktif
+        $operators = User::where('role', 'operator')->where('sub_role', 'kepala_gudang')->where('is_active', true)->get();
     
         // 1. Ambil data mentah untuk Alpine.js
         // Ambil semua bahan baku KECUALI yang kategorinya Bahan Pelengkap
@@ -90,7 +91,6 @@ $allBahanBakus = BahanBaku::whereRaw('LOWER(kategori) != ?', ['bahan pelengkap']
     public function showOperatorGroup($nama_material)
     {
         $user = Auth::user();
-        // Gunakan trim untuk jaga-jaga ada spasi di database
         $nama_material_decoded = trim(urldecode($nama_material));
     
         $items = Pengadaan::where('operator_id', $user->id)
@@ -102,27 +102,75 @@ $allBahanBakus = BahanBaku::whereRaw('LOWER(kategori) != ?', ['bahan pelengkap']
             ->orderBy('tanggal_dibutuhkan', 'asc')
             ->get();
     
-        // Debugging sementara: Kalau diklik muncul data mentah (JSON), 
-        // berarti masalahnya murni di file .blade.php kamu
-        // return $items; 
-    
         if ($items->isEmpty()) {
             return redirect()->route('operator.belanja.index')->with('error', 'Grup belanja tidak ditemukan.');
         }
-    
-        $firstItem = $items->first();
+
+        // --- PROSES GROUPING YANG AMAN ---
+        // Kita kelompokkan berdasarkan Warna dan Status (Prioritas)
+        $groupedItems = $items->groupBy(function($item) {
+            $warna = strtolower(trim($item->warna ?? $item->bahan->warna ?? 'tidak_ada'));
+            $statusUrgent = strtolower(trim($item->prioritas ?? 'biasa')); 
+            return $warna . '-' . $statusUrgent;
+        })->map(function($group) {
+            $perwakilan = $group->first();
+            
+            // Bikin objek (stdClass) baru biar Eloquent nggak ngamuk
+            $newItem = new \stdClass();
+            $newItem->id = $perwakilan->id; // Ambil 1 ID untuk referensi
+            $newItem->bahan = $perwakilan->bahan; // Bawa data relasi bahan bakunya
+            $newItem->warna = $perwakilan->warna ?? $perwakilan->bahan->warna ?? '-';
+            $newItem->prioritas = $perwakilan->prioritas ?? 'BIASA';
+            
+            // ✅ JUMLAHKAN QTY & AMBIL TANGGAL TERAWAL
+            // Gunakan (float) agar Accessor nggak rewel
+            $newItem->jumlah = (float) $group->sum('jumlah'); 
+            $newItem->received = (float) $group->sum('received'); 
+            $newItem->tanggal_dibutuhkan = $group->min('tanggal_dibutuhkan');
+            
+            return $newItem;
+        })->values();
+        // ... (kode yang ada sebelumnya) ...
+        $groupedItems = $items->groupBy(function($item) {
+            // ...
+        })->map(function($group) {
+            $perwakilan = $group->first();
+            
+            $newItem = new \stdClass();
+            $newItem->id = $perwakilan->id; 
+            $newItem->bahan = $perwakilan->bahan; 
+            $newItem->warna = $perwakilan->warna ?? $perwakilan->bahan->warna ?? '-';
+            $newItem->prioritas = $perwakilan->prioritas ?? 'BIASA';
+            
+            // ✅ TAMBAHKAN BARIS INI: Ambil catatan dari perwakilan
+            $newItem->catatan = $perwakilan->catatan ?? null; 
+            
+            $newItem->jumlah = (float) $group->sum('jumlah'); 
+            $newItem->received = (float) $group->sum('received'); 
+            $newItem->tanggal_dibutuhkan = $group->min('tanggal_dibutuhkan');
+            
+            return $newItem;
+        })->values();
+
+        $firstItem = $items->first(); // Buat Header/Judul halaman
         $totalJumlah = (float) $items->sum('jumlah');
         $totalReceived = (float) $items->sum('received');
         $totalSisa = $totalJumlah - $totalReceived;
     
+        // ✅ Bikin kloningan variabel biar Blade nggak cerewet nyariin
+        $pengadaans = $groupedItems; 
+
+        // ✅ Kirim SEMUANYA ke view
         return view('operator.belanja.show-group', compact(
             'items', 
+            'groupedItems', 
+            'pengadaans',     // <--- TAMBAHKAN INI
             'firstItem', 
             'totalJumlah', 
             'totalReceived', 
             'totalSisa', 
             'nama_material_decoded'
-        ));
+    ));
     }
 
     public function indexOperator(Request $request)
@@ -135,6 +183,32 @@ $allBahanBakus = BahanBaku::whereRaw('LOWER(kategori) != ?', ['bahan pelengkap']
             ->with('bahan')
             ->orderBy('prioritas', 'desc')
             ->orderBy('tanggal_dibutuhkan', 'asc');
+
+        // Filter pencarian berdasarkan nama bahan
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('bahan', function($q) use ($search) {
+                $q->where('nama_material', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Filter status
+        if ($request->filled('status')) {
+            switch ($request->status) {
+                case 'overdue':
+                    // Tanggal sudah lewat (kemarin atau sebelumnya)
+                    $query->where('tanggal_dibutuhkan', '<', today()->startOfDay());
+                    break;
+                case 'urgent':
+                    // Hanya yang prioritas URGENT
+                    $query->where('prioritas', 'URGENT');
+                    break;
+                case 'on_time':
+                    // Masih on time (hari ini atau setelahnya)
+                    $query->where('tanggal_dibutuhkan', '>=', today()->startOfDay());
+                    break;
+            }
+        }
 
         if ($request->filled('deadline_filter')) {
             switch ($request->deadline_filter) {
@@ -276,6 +350,21 @@ $allBahanBakus = BahanBaku::whereRaw('LOWER(kategori) != ?', ['bahan pelengkap']
                     'qty_sisa'      => $jumlahDiterima,
                     'harga_beli'    => $hargaManual ?? $bahan->harga_satuan,
                     'sumber_harga'  => 'Penerimaan Pengadaan',
+                ]);
+                // 6. CATAT RIWAYAT KE LOG STOK (Untuk Laporan)
+                DB::table('log_stok')->insert([
+                    'bahan_baku_id'   => $bahan->id,
+                    'jumlah'          => $jumlahDiterima,
+                    'jenis_transaksi' => 'PENGADAAN MASUK',
+                    'keterangan'      => 'Penerimaan bahan dari pengadaan',
+                    
+                    // Ini kunci utamanya agar nama user muncul di laporan!
+                    'operator_id'     => auth()->id(), 
+                    // Catatan: Jika di LaporanController sebelumnya Anda mengubahnya 
+                    // menjadi user_id, maka ubah tulisan 'operator_id' di atas menjadi 'user_id'
+                    
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
                 ]);
             });
 

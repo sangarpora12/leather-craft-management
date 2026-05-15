@@ -333,10 +333,8 @@ function bomForm() {
         materials: @json($materials ?? []),
 
         init() {
-            // Jika kosong, tambah 1 baris default
-            if (this.rows.length === 0) {
-                this.addRow();
-            }
+            // Kosongkan rows (tidak auto-add) agar user bisa simpan tanpa BOM
+            // User bisa klik "Tambah Bahan" jika ingin menambah
         },
 
         addRow() {

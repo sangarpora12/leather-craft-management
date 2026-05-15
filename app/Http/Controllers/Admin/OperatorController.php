@@ -31,12 +31,12 @@ class OperatorController extends Controller
         return 'http://' . $ip . ':8000';
     }
     /**
-     * Menampilkan daftar operator.
+     * Menampilkan daftar operator dengan statistik & info role.
+     * Menampilkan SEMUA operator (aktif & nonaktif) untuk manajemen penuh.
      */
    public function index()
 {
     $operators = User::where('role', 'operator')
-        ->where('is_active', true) // ✅ Filter aktif
         ->withCount(['bahanBakus as total_input_bahan'])
         ->withSum(['produksis as total_produk_dibuat' => function($q) {
             $q->where('status', 'SELESAI');
@@ -45,11 +45,13 @@ class OperatorController extends Controller
         ->paginate(12);
 
     foreach ($operators as $op) {
-        // ✅ PERBAIKAN: Query bahan_terbanyak dengan JOIN
+        // Query bahan_terbanyak
         $bahanTerbanyak = \DB::table('log_stok')
             ->join('bahan_bakus', 'log_stok.bahan_baku_id', '=', 'bahan_bakus.id')
-            ->where('bahan_bakus.user_id', $op->id) // ✅ Filter user via relasi
-            ->where('log_stok.jenis_transaksi', 'masuk') // ✅ Field benar
+            ->where('log_stok.operator_id', $op->id)
+            ->where(function($q) {
+                $q->whereIn('log_stok.jenis_transaksi', ['INPUT MANUAL OPERATOR', 'MASUK - BARU', 'MASUK', 'masuk']);
+            })
             ->select('bahan_bakus.nama_material', \DB::raw('SUM(log_stok.jumlah) as total'))
             ->groupBy('bahan_bakus.nama_material')
             ->orderByDesc('total')
@@ -61,7 +63,7 @@ class OperatorController extends Controller
             'satuan' => 'Lembar'
         ] : null;
 
-        // ✅ Query produk_terbanyak sudah benar
+        // Query produk_terbanyak
         $produkTerbanyak = \DB::table('produksis')
             ->join('produk_jadis', 'produksis.produk_jadi_id', '=', 'produk_jadis.id')
             ->where('produksis.operator_id', $op->id)
@@ -76,9 +78,14 @@ class OperatorController extends Controller
             'total' => (int)$produkTerbanyak->total,
             'satuan' => 'Pcs'
         ] : null;
+        
+        // Ambil jabatan jika null
+        if (empty($op->jabatan)) {
+            $op->jabatan = $op->sub_role === 'kepala_gudang' ? 'Kepala Gudang' : 'Staff Produksi';
+        }
     }
 
-    return view('admin.pekerja-master.index', compact('operators'));
+    return view('admin.operator.index', compact('operators'));
 }
     /**
      * Menampilkan form tambah operator.
@@ -188,20 +195,35 @@ class OperatorController extends Controller
     {
         $operator = User::where('role', 'operator')->findOrFail($id);
 
-        // Jika request meminta toggle sub_role
-        if (request()->has('toggle_sub_role')) {
-            $operator->sub_role = $operator->sub_role === 'kepala_gudang' ? 'pekerja' : 'kepala_gudang';
-            $operator->save();
-            $label = $operator->sub_role === 'kepala_gudang' ? 'Kepala Gudang' : 'Pekerja';
-            return redirect()->back()->with('success', "Role {$operator->name} berhasil diubah menjadi {$label}.");
-        }
-
         // Toggle status aktif/nonaktif
         $operator->is_active = !$operator->is_active;
         $operator->save();
 
         $status = $operator->is_active ? 'diaktifkan' : 'dinonaktifkan';
         return redirect()->back()->with('success', "Akun operator berhasil $status.");
+    }
+
+    /**
+     * Mengubah sub_role operator antara pekerja ↔ kepala_gudang.
+     * Saat diangkat jadi Kepala Gudang → akun otomatis aktif.
+     * Saat diturunkan jadi Pekerja → akun tetap bisa aktif (untuk notifikasi Gmail).
+     */
+    public function toggleRole($id)
+    {
+        $operator = User::where('role', 'operator')->findOrFail($id);
+
+        // Toggle sub_role
+        $operator->sub_role = $operator->sub_role === 'kepala_gudang' ? 'pekerja' : 'kepala_gudang';
+        
+        // Jika diangkat ke Kepala Gudang → otomatis aktifkan akun
+        if ($operator->sub_role === 'kepala_gudang') {
+            $operator->is_active = true;
+        }
+        
+        $operator->save();
+        
+        $label = $operator->sub_role === 'kepala_gudang' ? 'Kepala Gudang' : 'Pekerja';
+        return redirect()->back()->with('success', "Role {$operator->name} berhasil diubah menjadi {$label}.");
     }
 
     /**

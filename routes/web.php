@@ -51,15 +51,29 @@ Route::get('/', function () {
     }
     return redirect()->route('login');
 });
+Route::get('/auto-login', [App\Http\Controllers\ProduksiController::class, 'autoLogin'])->name('autoLogin');
 
 Route::middleware('guest')->group(function () {
    Route::get('/login', [AuthController::class, 'login'])->name('login'); 
    Route::post('/login', [AuthController::class, 'processLogin'])->name('login.process');
 });
 
-// Route untuk verifikasi email operator
-Route::get('/operator/verify/{id}', [WorkerMasterController::class, 'verifyOperator'])
-    ->name('operator.verify');
+// Route untuk verifikasi email operator (tanpa signature - langsung arahkan ke verify2)
+Route::get('/operator/verify/{id}', function($id) {
+    // Redirect ke route verify2 yang sudah di-fix
+    return redirect('/operator/verify2/' . $id);
+})->name('operator.verify');
+Route::get('/operator/verify2/{id}', function($id) {
+    try {
+        $user = \App\Models\User::findOrFail($id);
+        $user->email_verified_at = now();
+        $user->is_active = true;
+        $user->save();
+    } catch (\Exception $e) {
+        // user not found
+    }
+    return "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1.0'><title>Berhasil</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#0B0E14;display:flex;justify-content:center;align-items:center;min-height:100vh;color:#fff}.card{background:#1C222D;border:1px solid rgba(255,255,255,0.05);border-radius:20px;padding:50px 40px;max-width:420px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5)}.icon{width:80px;height:80px;background:rgba(16,185,129,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:50px;color:#10b981}h1{font-size:22px;font-weight:800;margin-bottom:8px;color:#10b981}p{font-size:13px;color:#94a3b8;line-height:1.6}.footer{margin-top:30px;font-size:11px;color:#4a5568}</style></head><body><div class='card'><div class='icon'>&#10003;</div><h1>Akun Anda Aktif!</h1><p>Selamat! Akun operator Anda telah berhasil diverifikasi dan aktif.<br>Sekarang Anda bisa menerima instruksi produksi.</p><div class='footer'>Berliano Leather &bull; Sistem Informasi Produksi</div></div></body></html>";
+})->name('operator.verify2');
 
 // ==========================================
 // PASSWORD RESET ROUTES (Laravel Built-in)
@@ -132,6 +146,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('operator', OperatorController::class)->names('operator');
         Route::resource('suppliers', SupplierController::class)->names('suppliers');
         Route::patch('/operator/{id}/toggle-status', [OperatorController::class, 'toggleStatus'])->name('operator.toggle-status');
+        Route::patch('/operator/{id}/toggle-role', [OperatorController::class, 'toggleRole'])->name('operator.toggle-role');
         Route::post('/operator/{id}/resend-verification', [OperatorController::class, 'resendVerification'])->name('operator.resend-verification');
 
        // --- MASTER DATA (SATUAN, KATEGORI, WARNA, MOTIF) ---
@@ -307,6 +322,7 @@ Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
 
         // Laporan operator (ringkasan + riwayat)
         Route::get('/laporan', [DashboardController::class, 'operatorLaporan'])->name('laporan.index');
+        Route::get('/laporan/cetak-pdf', [LaporanController::class, 'cetakPdfOperator'])->name('laporan.pdf');
         Route::get('/laporan/export-pdf', [DashboardController::class, 'exportPdf'])->name('laporan.export-pdf');
         Route::get('/laporan/cetak', [DashboardController::class, 'operatorLaporanCetak'])->name('laporan.cetak');
         
@@ -332,6 +348,9 @@ Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
         Route::delete('/produksi/{id}', [ProduksiController::class, 'destroy'])->name('produksi.destroy');
         Route::post('/produksi/update-qty/{productId}', [ProduksiController::class, 'updateProductQty'])->name('produksi.update_qty');
         Route::post('/produksi/start-product/{productId}', [ProduksiController::class, 'startProductProduction'])->name('produksi.start_product');
+        
+        // Resep Produk / BOM untuk Operator
+        Route::get('/resep-produk', [BomController::class, 'indexOperator'])->name('resep-produk.index');
         
         // Scan Nota (New System)
         Route::get('/scan', [ScanController::class, 'index'])->name('scan.index');

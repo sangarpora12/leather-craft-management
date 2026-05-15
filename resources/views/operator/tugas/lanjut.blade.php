@@ -347,9 +347,12 @@ body {
         $produkNama   = $produksi->produk_jadi->nama_produk ?? 'Produk';
         $totalProses  = (int) ($produksi->total_proses_gabungan ?? $produksi->jumlah_produksi);
         $totalSelesai = (int) ($produksi->total_selesai_gabungan ?? 0);
-        $sisaProses   = (int) ($produksi->total_sisa_proses_gabungan ?? max(0, $totalProses - $totalSelesai));
+        $sisaProses   = (int) ($produksi->sisa_proses_max_qty ?? max(0, $totalProses - $totalSelesai));
         $jumlahSpk    = (int) ($produksi->jumlah_spk_proses ?? 1);
-        $progressPct  = $totalProses > 0 ? min(100, ($totalSelesai / $totalProses) * 100) : 0;
+        $sedangProses = max(0, $sisaProses);
+        $totalDiproses = $totalSelesai + $sedangProses;
+        $progressPct  = $totalProses > 0 ? min(100, ($totalDiproses / $totalProses) * 100) : 0;
+        $deadlineData = $produksi->deadlineData ?? [];
     @endphp
 
     <form id="selesaiForm"
@@ -363,6 +366,68 @@ body {
 
         <main class="py-3 space-y-3">
 
+            {{-- ── PROGRESS KESELURUHAN (PALING ATAS) ─────────────────────────── --}}
+            <div class="slide-up">
+                <div class="flex items-center justify-between mb-1.5" 
+                     style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 14px">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                        <span class="text-xs font-bold text-white uppercase tracking-wider">Progress keseluruhan</span>
+                    </div>
+                    <span class="text-xs font-bold text-emerald-300">{{ (int) round($progressPct) }}%</span>
+                </div>
+                <div class="h-3 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.05)">
+                    <div class="h-full rounded-full" style="width:{{ $progressPct }}%;background:linear-gradient(90deg,#22c55e,#16a34a,#22c55e);background-size:200% 100%;animation:shimmer 2s linear infinite;transition:width 0.5s ease"></div>
+                </div>
+                <div class="flex justify-between mt-1.5 text-[9px] text-gray-500">
+                    <span>{{ (int) $totalDiproses }} / {{ (int) $totalProses }} Pcs</span>
+                    <span>{{ $jumlahSpk }} SPK</span>
+                </div>
+            </div>
+
+            {{-- Card Progress - Selesai, Proses, Sisa --}}
+            <div class="grid grid-cols-3 gap-2 text-[11px]">
+                <div class="text-center p-3 rounded-xl" style="background:rgba(34,197,94,0.1)">
+                    <span class="block text-emerald-400 font-bold text-lg">{{ $totalSelesai }}</span>
+                    <span class="text-gray-400 text-xs">Selesai</span>
+                </div>
+                <div class="text-center p-3 rounded-xl" style="background:rgba(245,158,11,0.1)">
+                    <span class="block text-amber-400 font-bold text-lg">{{ $sedangProses }}</span>
+                    <span class="text-gray-400 text-xs">Proses</span>
+                </div>
+                <div class="text-center p-3 rounded-xl" style="background:rgba(239,68,68,0.1)">
+                    <span class="block text-red-400 font-bold text-lg" id="statSisa">{{ $sisaProses }}</span>
+                    <span class="text-gray-400 text-xs">Sisa</span>
+                </div>
+            </div>
+
+            {{-- Deadline List --}}
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-orange-400 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        Deadline (Tanggal Target)
+                    </span>
+                </div>
+                <div class="space-y-2">
+                    @foreach($deadlineData as $dl)
+                        <div class="p-3 rounded-xl" style="background:rgba(249,115,22,0.1)">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                                <span class="text-orange-300 font-bold text-sm">{{ \Carbon\Carbon::parse($dl['tanggal'])->format('d M Y') }}</span>
+                                <span class="text-gray-300 text-xs font-medium">{{ $dl['jumlah_spk'] }} SPK | {{ $dl['selesai_qty'] }}/{{ $dl['total_qty'] }} pcs selesai</span>
+                            </div>
+                        </div>
+                    @endforeach
+                    @if(empty($deadlineData))
+                        <p class="text-sm text-gray-400">Tidak ada deadline yang tertera untuk SPK ini</p>
+                    @endif
+                </div>
+            </div>
+
             {{-- ── 1. Header Produk dengan detail & kode ─────────────────────────────── --}}
             <div class="header-card slide-up">
                 <div class="flex items-center justify-between">
@@ -375,51 +440,6 @@ body {
                             ⚙️ {{ $jumlahSpk }} SPK aktif
                         </span>
                     </div>
-                </div>
-            </div>
-
-            {{-- ── 2. Stats Cards (3 kolom dengan ikon Lucide) ─────────────────────────── --}}
-            <div class="stats-grid slide-up">
-                <div class="stat-card blue">
-                    <div class="stat-label">Total Diproses</div>
-                    <div class="stat-value">{{ $totalProses }}</div>
-                    <div class="stat-unit">Pcs</div>
-                    <div class="mt-2 text-xs text-blue-400/60">
-                        <svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                </div>
-                <div class="stat-card green">
-                    <div class="stat-label">Selesai</div>
-                    <div class="stat-value">{{ $totalSelesai }}</div>
-                    <div class="stat-unit">Pcs</div>
-                    <div class="mt-2 text-xs text-green-400/60">
-                        <svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                    </div>
-                </div>
-                <div class="stat-card yellow">
-                    <div class="stat-label">Sisa</div>
-                    <div class="stat-value" id="statSisa">{{ $sisaProses }}</div>
-                    <div class="stat-unit">Pcs</div>
-                    <div class="mt-2 text-xs text-amber-400/60">
-                        <svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-
-            {{-- ── 3. Progress Bar yang lebih tebal dengan efek animated ───────────────── --}}
-            <div class="progress-container slide-up">
-                <div class="flex justify-between text-[10px] text-gray-400 mb-1.5">
-                    <span>Progress keseluruhan</span>
-                    <span id="statPct" class="font-bold text-emerald-300">{{ (int) round($progressPct) }}%</span>
-                </div>
-                <div class="h-4 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.08)">
-                    <div class="h-full rounded-full progress-bar" id="progressBar" style="width:{{ $progressPct }}%"></div>
                 </div>
             </div>
 

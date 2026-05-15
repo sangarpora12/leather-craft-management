@@ -25,6 +25,32 @@
         </div>
     </div>
 
+    <!-- Filter Section -->
+    <div class="px-5 py-2">
+        <form id="filter-form" method="GET" class="space-y-3">
+            <!-- Search Input -->
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama bahan..." 
+                   class="w-full bg-[#1C222D] border border-white/5 rounded-2xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none pr-10"
+                   oninput="clearTimeout(searchTimer); searchTimer = setTimeout(() => document.getElementById('filter-form').submit(), 400)">
+            
+            <!-- Filter Dropdowns -->
+            <div class="flex gap-2 flex-wrap">
+                <select name="status" class="bg-[#1C222D] border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none min-w-[120px]"
+                        onchange="document.getElementById('filter-form').submit()">
+                    <option value="">Semua Status</option>
+                    <option value="overdue" {{ request('status') == 'overdue' ? 'selected' : '' }}>Terlambat</option>
+                    <option value="urgent" {{ request('status') == 'urgent' ? 'selected' : '' }}>Prioritas Urgent</option>
+                    <option value="on_time" {{ request('status') == 'on_time' ? 'selected' : '' }}>On Time</option>
+                </select>
+            </div>
+
+            <!-- Reset Button -->
+            <button type="button" onclick="document.querySelector('input[name=\'search\']').value=''; document.querySelectorAll('select').forEach(s => s.selectedIndex=0); document.getElementById('filter-form').submit();" class="w-full bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg text-sm font-medium">
+                Reset Filter
+            </button>
+        </form>
+    </div>
+
     <!-- Daftar Belanja Ter-grup -->
     <div class="px-5 pb-4">
         @forelse($groupedPengadaan as $namaMaterial => $items)
@@ -35,7 +61,8 @@
             $totalSisa = $totalJumlah - $totalReceived;
             $deadlineTerdekat = $items->min('tanggal_dibutuhkan');
             $isUrgent = $items->contains('prioritas', 'URGENT');
-            $isOverdue = \Carbon\Carbon::parse($deadlineTerdekat)->isPast();
+            // Hanya dianggap lewat jika tanggal sudah sebelum hari ini (kemarin atau lebih awal)
+            $isOverdue = \Carbon\Carbon::parse($deadlineTerdekat)->lt(\Carbon\Carbon::today());
         @endphp
         <div class="rounded-xl p-5 mb-4 {{ $isOverdue ? 'bg-red-500/10 border border-red-500/40' : 'bg-[#1C222D] border border-white/5' }}">
             <div class="flex gap-4 items-start mb-4">

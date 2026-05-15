@@ -78,4 +78,9 @@ class Bom extends Model
         // Di tabel `bom` relasi bahan baku menggunakan kolom `id_bahan`
         return $this->belongsTo(BahanBaku::class, 'id_bahan');
     }
+    // Membuang .00 di belakang jumlah kebutuhan bahan
+    public function getJumlahKebutuhanAttribute($value)
+    {
+        return (float) $value;
+    }
 }

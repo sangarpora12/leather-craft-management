@@ -197,7 +197,7 @@
     {{-- MODAL KONFIRMASI --}}
     <div x-show="showSubmitModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4">
         <div class="w-full max-w-2xl bg-[#1A1C24] rounded-2xl overflow-hidden flex flex-col">
-            <form action="{{ route('admin.pengadaan.store') }}" method="POST" x-ref="submitForm">
+        <form action="{{ route('admin.pengadaan.store') }}" method="POST" onsubmit="showLoadingPengadaan()">
                 @csrf
                 <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                     <table class="w-full text-left text-xs">
@@ -437,3 +437,20 @@ function procurementApp() {
 </script>
 @endpush
 @endsection
+<div id="pengadaanLoadingOverlay" class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm hidden" style="display: none;">
+    <div class="w-20 h-20 border-4 border-gray-300 border-t-emerald-500 rounded-full animate-spin mb-6 shadow-lg shadow-emerald-500/50"></div>
+    
+    <h2 class="text-2xl font-bold text-white mb-2 tracking-wide animate-pulse">Menerbitkan Perintah...</h2>
+    <p class="text-gray-100 text-center max-w-md px-4 shadow-sm">
+        Sistem sedang membuat surat perintah pengadaan bahan dan mengirim notifikasi tugas ke operator.<br>
+        <strong class="text-emerald-300 drop-shadow-md">Mohon jangan tutup halaman ini ya...</strong>
+    </p>
+</div>
+
+<script>
+    function showLoadingPengadaan() {
+        const overlay = document.getElementById('pengadaanLoadingOverlay');
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'flex';
+    }
+</script>

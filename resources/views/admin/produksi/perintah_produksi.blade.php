@@ -61,26 +61,27 @@
                             $data = $productsForJs[$produk->id] ?? [];
                             $isReady = $data['is_ready'] ?? false;
                             $reason = $data['reason'] ?? '';
+                            $maxProd = $data['max'] ?? 0;
                             $foto = $produk->foto ?? null;
 
-                            // Tentukan warna status berdasarkan ketersediaan bahan
+                            // Tentukan warna status berdasarkan data dari model (is_ready, max_production, reason)
                             $statusColor = 'gray';
-                            if ($isReady) {
-                                $statusColor = 'green';
-                            } elseif (!$bom) {
-                                // Jika produk TIDAK PUNYA BOM
+                            $statusLabel = 'Error';
+                            if (!$bom) {
                                 $statusColor = 'red';
+                                $statusLabel = 'Tidak Ada BOM';
+                            } elseif ($isReady) {
+                                $statusColor = 'green';
+                                $statusLabel = 'Siap Produksi';
+                            } elseif (str_contains($reason, 'dihapus') || str_contains($reason, 'ERROR')) {
+                                $statusColor = 'red';
+                                $statusLabel = 'Error BOM';
+                            } elseif ($maxProd > 0) {
+                                $statusColor = 'yellow';
+                                $statusLabel = 'Bahan Terbatas';
                             } else {
-                                // Periksa stok bahan
-                                $stokBahan = $bom->material->stok_saat_ini ?? 0;
-                                $totalKebutuhan = $bom->jumlah_kebutuhan;
-                                if ($stokBahan >= $totalKebutuhan) {
-                                    $statusColor = 'green';
-                                } elseif ($stokBahan > 0 && $stokBahan < $totalKebutuhan) {
-                                    $statusColor = 'yellow';
-                                } else {
-                                    $statusColor = 'red';
-                                }
+                                $statusColor = 'red';
+                                $statusLabel = 'Bahan Habis';
                             }
                         @endphp
 
@@ -117,11 +118,7 @@
                                         @elseif($statusColor === 'yellow') bg-yellow-500/20 text-yellow-400 border border-yellow-500/50
                                         @elseif($statusColor === 'red') bg-red-500/20 text-red-400 border border-red-500/50
                                         @else bg-gray-500/20 text-gray-400 border border-gray-500/50 @endif">
-                                        @if($statusColor === 'green') Siap Produksi
-                                        @elseif($statusColor === 'yellow') Stok Terbatas
-                                        @elseif($statusColor === 'red') Stok Habis
-                                        @else Error
-                                        @endif
+                                        {{ $statusLabel }}
                                     </span>
                                 </div>
                             </div>
@@ -210,7 +207,7 @@
                 <p class="text-xs text-gray-500">Buat surat perintah kerja.</p>
             </div>
             <div class="flex-1 p-5 overflow-y-auto custom-scrollbar">
-                <form action="{{ route('admin.produksi.store') }}" method="POST">
+                <form action="{{ route('admin.produksi.store') }}" method="POST" onsubmit="showLoadingSpk()">
                     @csrf
                     <div id="selectedProductsList" class="space-y-3">
                         {{-- Kartu produk yang dipilih akan muncul di sini --}}
@@ -227,7 +224,7 @@
                             <label for="operator_id" class="block text-xs font-bold text-gray-400 uppercase mb-2">Operator</label>
                             <select name="operator_id" id="operator_id" required class="w-full bg-[#111316] border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:border-orange-500 outline-none">
                                 <option value="">Pilih...</option>
-                                <option value="all" class="font-bold text-orange-400">-- Semua Operator (Tugas Umum) --</option>
+
                                 @foreach($operators as $operator)
                                     <option value="{{ $operator->id }}">{{ $operator->name }}</option>
                                 @endforeach
@@ -476,4 +473,22 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
+<div id="spkLoadingOverlay" class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm hidden" style="display: none;">
+    <div class="w-20 h-20 border-4 border-gray-600 border-t-blue-500 rounded-full animate-spin mb-6 shadow-lg shadow-blue-500/50"></div>
+    
+    <h2 class="text-2xl font-bold text-white mb-2 tracking-wide animate-pulse">Memproses SPK...</h2>
+    <p class="text-gray-300 text-center max-w-md">
+        Sistem sedang mengkalkulasi pemotongan stok dan mengirim email notifikasi ke operator.<br>
+        <strong class="text-amber-400">Mohon jangan tutup atau refresh halaman ini.</strong>
+    </p>
+</div>
+
+<script>
+    // Fungsi untuk menampilkan loading
+    function showLoadingSpk() {
+        const overlay = document.getElementById('spkLoadingOverlay');
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'flex';
+    }
+</script>
 @endsection

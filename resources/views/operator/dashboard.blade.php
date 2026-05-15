@@ -4,7 +4,7 @@
 <div class="min-h-screen bg-[#0B0E14] pb-24">
 
     {{-- HEADER HALAMAN --}}
-    <div class="px-6 py-6 safe-top">
+    <div class="px-6 py-6 safe-top bg-gray-800/90 backdrop-blur-sm border-b border-gray-700">
         <div class="flex items-center justify-between mb-6">
             <button onclick="window.dispatchEvent(new CustomEvent('operator:toggleSidebar'))" class="text-white text-xl p-2 -ml-2 rounded-lg hover:bg-white/5 transition">
                 <i class="fa-solid fa-bars"></i>
@@ -16,14 +16,16 @@
                 <a href="{{ route('operator.notifications') }}" class="relative text-white text-xl p-2 -mr-2 rounded-lg hover:bg-white/5 transition">
                     <i class="fa-solid fa-bell"></i>
                     @if(($unreadCount ?? 0) > 0)
-                    <div class="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-[#0B0E14]"></div>
+                    <div class="absolute top-0 right-0 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full border-2 border-[#0B0E14] flex items-center justify-center text-[10px] font-bold text-white">
+                        {{ $unreadCount > 99 ? '99+' : $unreadCount }}
+                    </div>
                     @endif
                 </a>
                 <a href="{{ route('operator.profile') }}" class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold hover:bg-blue-500 transition overflow-hidden">
-                    @if(Auth::user()->profile_photo_path)
-                        <img src="{{ asset('storage/'.Auth::user()->profile_photo_path) }}" class="w-full h-full object-cover rounded-full" alt="">
-                    @elseif(Auth::user()->avatar)
-                        <img src="{{ asset(Auth::user()->avatar) }}" class="w-full h-full object-cover rounded-full" alt="">
+                    @if(Auth::user()->foto)
+                        <img src="{{ asset('storage/' . Auth::user()->foto) }}" class="w-full h-full object-cover rounded-full" alt="Profil">
+                    @elseif(Auth::user()->profile_photo_path)
+                        <img src="{{ asset('storage/' . Auth::user()->profile_photo_path) }}" class="w-full h-full object-cover rounded-full" alt="Profil">
                     @else
                         {{ substr(Auth::user()->name, 0, 1) }}
                     @endif
@@ -43,10 +45,10 @@
         <div class="bg-[#1C222D] rounded-2xl border border-white/5 p-6 mb-6">
             <div class="flex items-start justify-between mb-6">
                 <div>
-                    <h2 class="text-3xl font-bold text-white">{{ Auth::user()->name }}</h2>
+                    <h2 class="text-lg font-bold text-white">{{ Auth::user()->name }}</h2>
                     <span class="inline-flex items-center mt-2 bg-green-500/15 text-green-400 text-sm font-medium px-3 py-1 rounded-full border border-green-500/25">
                         <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                        Operator Produksi
+                        {{ Auth::user()->jabatan ?? 'Operator' }}
                     </span>
                 </div>
                 <div class="text-right">
@@ -103,7 +105,7 @@
                 <div class="w-10 h-10 bg-green-500/15 rounded-full flex items-center justify-center mx-auto mb-3">
                     <i class="fa-solid fa-clipboard-check text-green-400"></i>
                 </div>
-                <p class="text-2xl font-bold text-white text-center mb-1">{{ $jumlahSelesai ?? 0 }}</p>
+                <p class="text-2xl font-bold text-white text-center mb-1">{{ number_format((int)$jumlahSelesai ?? 0) }}</p>
                 <p class="text-gray-400 text-xs text-center">Selesai</p>
             </a>
         </div>
@@ -128,7 +130,7 @@
                 </div>
                 <div class="flex items-center justify-between py-2">
                     <span class="text-gray-400 text-sm">Produksi Selesai Hari Ini</span>
-                    <span class="text-blue-400 font-semibold text-sm">{{ number_format($selesaiHariIni ?? 0) }} pcs</span>
+                    <span class="text-blue-400 font-semibold text-sm">{{ number_format((int)$selesaiHariIni ?? 0) }} pcs</span>
                 </div>
             </div>
         </div>
@@ -162,18 +164,17 @@
                     <p class="text-gray-500 text-xs">Daftar belanja</p>
                 </div>
             </a>
-            <a href="{{ route('operator.laporan.index') }}" class="bg-[#1C222D] rounded-2xl border border-white/5 p-4 flex items-center gap-3 hover:border-amber-500/30 transition">
-                <div class="w-10 h-10 bg-amber-500/15 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <i class="fa-solid fa-file-lines text-amber-400"></i>
+            <a href="{{ route('operator.resep-produk.index') }}" class="bg-[#1C222D] rounded-2xl border border-white/5 p-4 flex items-center gap-3 hover:border-orange-500/30 transition">
+                <div class="w-10 h-10 bg-orange-500/15 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-book text-orange-400"></i>
                 </div>
                 <div>
-                    <p class="text-white font-semibold text-sm">Laporan</p>
-                    <p class="text-gray-500 text-xs">Riwayat & PDF</p>
+                    <p class="text-white font-semibold text-sm">Resep Produk</p>
+                    <p class="text-gray-500 text-xs">Katalog produksi SOP</p>
                 </div>
             </a>
         </div>
 
     </div>
-
 </div>
 @endsection

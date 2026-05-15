@@ -101,19 +101,49 @@ document.addEventListener('DOMContentLoaded', function() {
                      <div>
                           <div class="text-xs text-gray-400 uppercase tracking-wider mb-1"><i class="fa-solid fa-tags mr-1"></i> Kategori</div>
                           <div class="text-white text-capitalize">
-                             {{ $produksi->produk_jadi && is_array(json_decode($produksi->produk_jadi->kategori, true)) ? implode(', ', json_decode($produksi->produk_jadi->kategori, true)) : ($produksi->produk_jadi->kategori ?? '-') }}
+                             @php
+                                 $kategoriVal = $produksi->produk_jadi->kategori ?? '-';
+                                 if (is_string($kategoriVal)) {
+                                     $kategoriArr = json_decode($kategoriVal, true) ?: [$kategoriVal];
+                                 } elseif (is_array($kategoriVal)) {
+                                     $kategoriArr = $kategoriVal;
+                                 } else {
+                                     $kategoriArr = ['-'];
+                                 }
+                             @endphp
+                             {{ is_array($kategoriArr) ? implode(', ', $kategoriArr) : $kategoriArr }}
                          </div>
                      </div>
                      <div>
                           <div class="text-xs text-gray-400 uppercase tracking-wider mb-1"><i class="fa-solid fa-brush mr-1"></i> Jenis Motif</div>
                           <div class="text-white text-capitalize">
-                             {{ $produksi->produk_jadi && is_array(json_decode($produksi->produk_jadi->jenis_motif, true)) ? implode(', ', json_decode($produksi->produk_jadi->jenis_motif, true)) : ($produksi->produk_jadi->jenis_motif ?? '-') }}
+                             @php
+                                 $motifVal = $produksi->produk_jadi->jenis_motif ?? '-';
+                                 if (is_string($motifVal)) {
+                                     $motifArr = json_decode($motifVal, true) ?: [$motifVal];
+                                 } elseif (is_array($motifVal)) {
+                                     $motifArr = $motifVal;
+                                 } else {
+                                     $motifArr = ['-'];
+                                 }
+                             @endphp
+                             {{ is_array($motifArr) ? implode(', ', $motifArr) : $motifArr }}
                          </div>
                      </div>
                      <div>
                           <div class="text-xs text-gray-400 uppercase tracking-wider mb-1"><i class="fa-solid fa-palette mr-1"></i> Warna</div>
                           <div class="text-white text-capitalize">
-                             {{ $produksi->produk_jadi && is_array(json_decode($produksi->produk_jadi->warna, true)) ? implode(', ', json_decode($produksi->produk_jadi->warna, true)) : ($produksi->produk_jadi->warna ?? '-') }}
+                             @php
+                                 $warnaVal = $produksi->produk_jadi->warna ?? '-';
+                                 if (is_string($warnaVal)) {
+                                     $warnaArr = json_decode($warnaVal, true) ?: [$warnaVal];
+                                 } elseif (is_array($warnaVal)) {
+                                     $warnaArr = $warnaVal;
+                                 } else {
+                                     $warnaArr = ['-'];
+                                 }
+                             @endphp
+                             {{ is_array($warnaArr) ? implode(', ', $warnaArr) : $warnaArr }}
                          </div>
                      </div>
                 </div>

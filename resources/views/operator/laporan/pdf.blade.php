@@ -31,15 +31,15 @@
     <div class="summary">
         <div style="font-weight: bold; margin-bottom: 8px;">RINGKASAN</div>
         <div class="summary-row">
-            <span>✅ Total Produk Selesai:</span>
+            <span>&bull; Total Produk Selesai:</span>
             <span><strong>{{ $totalProduk }} pcs</strong></span>
         </div>
         <div class="summary-row">
-            <span>✅ Total Bahan Diterima:</span>
+            <span>&bull; Total Bahan Diterima:</span>
             <span><strong>{{ $totalBahan }} unit</strong></span>
         </div>
         <div class="summary-row">
-            <span>📋 Kategori:</span>
+            <span>&bull; Kategori:</span>
             <span>{{ $kategori == 'semua' ? 'Semua (Produk + Bahan)' : ($kategori == 'produk' ? 'Hanya Produk Jadi' : 'Hanya Bahan Baku') }}</span>
         </div>
     </div>

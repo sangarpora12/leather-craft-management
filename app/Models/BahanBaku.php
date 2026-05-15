@@ -80,4 +80,9 @@ class BahanBaku extends Model
         $existing = self::whereRaw('LOWER(nama_material) = LOWER(?)', [$namaMaterial])->first();
         return $existing ? $existing->kode_material : self::generateKodeMaterial();
     }
+    // Membuang .00 di belakang stok
+    public function getStokAttribute($value)
+    {
+        return (float) $value;
+    }
 }

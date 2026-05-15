@@ -31,21 +31,45 @@
                 <option value="active">Aktif</option>
                 <option value="inactive">Nonaktif</option>
             </select>
+            <select x-model="filterRole" @change="filterOperators()"
+                    class="bg-[#1C222D] border border-gray-700 text-white text-xs px-3 py-1.5 rounded-lg focus:outline-none focus:border-orange-500 cursor-pointer">
+                <option value="all">Semua Role</option>
+                <option value="kepala_gudang">Kepala Gudang</option>
+                <option value="pekerja">Pekerja</option>
+            </select>
         </div>
     </div>
 
-
+    {{-- INFORMASI SISTEM --}}
+    <div class="bg-[#1C222D] border border-blue-500/20 rounded-xl p-4 mb-6">
+        <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-info-circle text-blue-400 text-sm"></i>
+            </div>
+            <div class="text-xs text-gray-400 leading-relaxed">
+                <span class="text-white font-bold">Sistem Role Operator:</span><br>
+                • <span class="text-emerald-400 font-bold">Kepala Gudang</span> → Bisa login & punya akses semi-penuh ke sistem<br>
+                • <span class="text-yellow-400 font-bold">Pekerja</span> → Tidak bisa login, hanya menerima notifikasi via Gmail<br>
+                • Notifikasi Gmail hanya dikirim jika akun <span class="text-green-400">Aktif</span> & Email sudah <span class="text-purple-400">Terverifikasi</span>
+            </div>
+        </div>
+    </div>
 
     {{-- GRID CARD OPERATOR --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         @forelse($operators as $op)
             @php
                 $isActive = $op->is_active == true || $op->is_active === 1 || is_null($op->is_active);
+                $isKepalaGudang = $op->sub_role === 'kepala_gudang';
+                $isVerified = !is_null($op->email_verified_at);
+                $roleBadgeClass = $isKepalaGudang ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
+                $roleIcon = $isKepalaGudang ? 'fa-crown' : 'fa-user';
             @endphp
 
             <div class="bg-[#1C222D] rounded-2xl border {{ $isActive ? 'border-white/5' : 'border-red-500/30' }} overflow-hidden relative transition-all duration-300 hover:translate-y-[-2px] shadow-xl"
                  data-name="{{ strtolower($op->name) }}"
                  data-status="{{ $isActive ? 'active' : 'inactive' }}"
+                 data-role="{{ $op->sub_role ?? 'pekerja' }}"
 
                 {{-- OVERLAY GELAP UNTUK NON-AKTIF --}}
                 @if(!$isActive)
@@ -67,10 +91,26 @@
                                 @endif
                             </div>
 
-                            {{-- Nama & Role --}}
+                            {{-- Nama & Badge Role --}}
                             <div>
                                 <h3 class="text-base font-bold text-white">{{ $op->name }}</h3>
-                                <p class="text-xs text-purple-400 font-medium">{{ $op->jabatan ?? 'Staff Produksi' }}</p>
+                                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                    {{-- Badge Role --}}
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border {{ $roleBadgeClass }}">
+                                        <i class="fa-solid {{ $roleIcon }}"></i>
+                                        {{ $isKepalaGudang ? 'KEPALA GUDANG' : 'PEKERJA' }}
+                                    </span>
+                                    {{-- Badge Status --}}
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full {{ $isActive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400' }}">
+                                        <i class="fa-solid {{ $isActive ? 'fa-circle text-[6px]' : 'fa-circle-xmark' }}"></i>
+                                        {{ $isActive ? 'AKTIF' : 'NONAKTIF' }}
+                                    </span>
+                                    {{-- Badge Email Verified --}}
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full {{ $isVerified ? 'bg-purple-500/10 text-purple-400' : 'bg-gray-500/10 text-gray-500' }}">
+                                        <i class="fa-solid {{ $isVerified ? 'fa-envelope-circle-check' : 'fa-envelope' }}"></i>
+                                        {{ $isVerified ? 'EMAIL VERIFIED' : 'UNVERIFIED' }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -90,25 +130,52 @@
                                  x-transition:leave="transition ease-in duration-75"
                                  x-transition:leave-start="transform opacity-100 scale-100"
                                  x-transition:leave-end="transform opacity-0 scale-95"
-                                 class="absolute right-0 mt-2 w-48 bg-[#1C222D] border border-gray-700 rounded-xl shadow-xl shadow-black/50 z-20 overflow-hidden"
+                                 class="absolute right-0 mt-2 w-56 bg-[#1C222D] border border-gray-700 rounded-xl shadow-xl shadow-black/50 z-20 overflow-hidden"
                                  style="display: none;">
 
                                 <a href="{{ route('admin.operator.edit', $op->id) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition border-b border-gray-800/50">
                                     <i class="fa-solid fa-pen text-blue-400 text-xs"></i> Edit User
                                 </a>
 
+                                {{-- Promote/Demote Sub Role --}}
+                                @if(!$isKepalaGudang)
+                                <form action="{{ route('admin.operator.toggle-role', $op->id) }}" method="POST" class="block w-full">
+                                    @csrf @method('PATCH')
+                                    <button type="button" onclick="swalConfirm({title: 'Angkat jadi Kepala Gudang?', text: 'Operator ini akan mendapatkan akses login & hak semi-penuh. Akun akan otomatis diaktifkan.', icon: 'question', confirmText: 'Ya, Angkat', onConfirm: () => this.closest('form').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-emerald-400 hover:bg-emerald-900/20 hover:text-emerald-300 transition w-full text-left border-b border-gray-800/50">
+                                        <i class="fa-solid fa-arrow-up text-xs"></i> Angkat jadi Kepala Gudang
+                                    </button>
+                                </form>
+                                @else
+                                <form action="{{ route('admin.operator.toggle-role', $op->id) }}" method="POST" class="block w-full">
+                                    @csrf @method('PATCH')
+                                    <button type="button" onclick="swalConfirm({title: 'Turunkan jadi Pekerja?', text: 'Operator ini akan kehilangan akses login. Namun tetap bisa terima notifikasi Gmail selama akun aktif & email terverifikasi.', icon: 'warning', confirmText: 'Ya, Turunkan', onConfirm: () => this.closest('form').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-yellow-400 hover:bg-yellow-900/20 hover:text-yellow-300 transition w-full text-left border-b border-gray-800/50">
+                                        <i class="fa-solid fa-arrow-down text-xs"></i> Turunkan jadi Pekerja
+                                    </button>
+                                </form>
+                                @endif
+
                                 @if($isActive)
                                 <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full">
                                     @csrf @method('PATCH')
-                                    <button type="button" onclick="swalConfirm({title: 'Nonaktifkan Akun?', text: 'Akun operator ini akan dinonaktifkan dan tidak bisa login.', icon: 'warning', confirmText: 'Ya, Nonaktifkan', onConfirm: () => this.closest('form').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-orange-400 hover:bg-orange-900/20 hover:text-orange-300 transition w-full text-left border-b border-gray-800/50">
+                                    <button type="button" onclick="swalConfirm({title: 'Nonaktifkan Akun?', text: 'Akun operator ini akan dinonaktifkan dan tidak bisa login. Juga tidak akan terima notifikasi Gmail.', icon: 'warning', confirmText: 'Ya, Nonaktifkan', onConfirm: () => this.closest('form').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-orange-400 hover:bg-orange-900/20 hover:text-orange-300 transition w-full text-left border-b border-gray-800/50">
                                         <i class="fa-solid fa-ban text-xs"></i> Nonaktifkan Akun
                                     </button>
                                 </form>
                                 @else
                                 <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full">
                                     @csrf @method('PATCH')
-                                    <button type="button" onclick="swalConfirm({title: 'Aktifkan Akun?', text: 'Akun operator ini akan diaktifkan kembali.', icon: 'question', confirmText: 'Ya, Aktifkan', onConfirm: () => this.closest('form').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-green-400 hover:bg-green-900/20 hover:text-green-300 transition w-full text-left border-b border-gray-800/50">
+                                    <button type="button" onclick="swalConfirm({title: 'Aktifkan Akun?', text: 'Akun operator ini akan diaktifkan kembali. Notifikasi Gmail akan kembali dikirim jika email sudah terverifikasi.', icon: 'question', confirmText: 'Ya, Aktifkan', onConfirm: () => this.closest('form').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-green-400 hover:bg-green-900/20 hover:text-green-300 transition w-full text-left border-b border-gray-800/50">
                                         <i class="fa-solid fa-check-circle text-xs"></i> Aktifkan Akun
+                                    </button>
+                                </form>
+                                @endif
+
+                                {{-- Kirim Ulang Verifikasi --}}
+                                @if(!$isVerified)
+                                <form action="{{ route('admin.operator.resend-verification', $op->id) }}" method="POST" class="block w-full">
+                                    @csrf
+                                    <button type="submit" class="flex items-center gap-3 px-4 py-3 text-sm text-purple-400 hover:bg-purple-900/20 hover:text-purple-300 transition w-full text-left border-b border-gray-800/50">
+                                        <i class="fa-solid fa-envelope text-xs"></i> Kirim Ulang Verifikasi Email
                                     </button>
                                 </form>
                                 @endif
@@ -158,6 +225,28 @@
                         </div>
                     </div>
 
+                    {{-- INFO NOTIFIKASI --}}
+                    <div class="bg-[#0B0E14] rounded-xl p-3 border border-white/5 mb-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-bell text-[10px] {{ $isActive && $isVerified ? 'text-green-400' : 'text-gray-600' }}"></i>
+                                <span class="text-[10px] text-gray-500">Notifikasi Gmail:</span>
+                            </div>
+                            <span class="text-[10px] font-bold {{ $isActive && $isVerified ? 'text-green-400' : 'text-red-400' }}">
+                                @if(!$isActive)
+                                    ✕ Akun Nonaktif
+                                @elseif(!$isVerified)
+                                    ⏳ Email Belum Verifikasi
+                                @else
+                                    ✓ Siap Dikirim
+                                @endif
+                            </span>
+                        </div>
+                        <div class="mt-1.5 text-[9px] text-gray-600">
+                            {{ $isKepalaGudang ? 'Dapat login + notifikasi in-app & email' : 'Hanya notifikasi via Gmail' }}
+                        </div>
+                    </div>
+
                     {{-- ACTION BUTTONS --}}
                     <div class="flex gap-3">
                         @if($isActive)
@@ -165,7 +254,7 @@
                                class="flex-1 h-9 border border-zinc-600 rounded-lg flex items-center justify-center text-gray-300 text-xs font-semibold hover:bg-zinc-700 hover:text-white transition-colors">
                                 <i class="fa-solid fa-pen mr-1.5 text-[10px]"></i> Edit Akun
                             </a>
-                            <a href="#" onclick="alert('Halaman kinerja sedang dalam pengembangan')"
+                            <a href="{{ route('admin.pekerja-master.kinerja', $op->id) }}"
                                class="flex-1 h-9 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg text-white text-xs font-semibold flex items-center justify-center transition-all shadow-lg shadow-purple-900/20">
                                 <i class="fa-solid fa-chart-line mr-1.5 text-[10px]"></i> Lihat Kinerja
                             </a>
@@ -225,6 +314,7 @@
                 <label class="block text-[10px] font-bold text-gray-400 mb-1.5 uppercase">Email Login</label>
                 <input type="email" name="email" required placeholder="budi@berliano.com"
                     class="w-full bg-[#0f1115] border border-gray-700 rounded-lg px-4 py-3 text-xs text-white focus:border-orange-500 focus:outline-none placeholder-gray-600">
+                <p class="text-[9px] text-gray-600 mt-1">*Untuk notifikasi Gmail, pastikan email aktif & bisa diverifikasi</p>
             </div>
 
             {{-- Jabatan --}}
@@ -236,6 +326,16 @@
                     <option value="Operator Finishing">Operator Finishing</option>
                     <option value="Kepala Gudang">Kepala Gudang</option>
                 </select>
+            </div>
+
+            {{-- Role --}}
+            <div>
+                <label class="block text-[10px] font-bold text-gray-400 mb-1.5 uppercase">Role / Hak Akses</label>
+                <select name="sub_role" class="w-full bg-[#0f1115] border border-gray-700 rounded-lg px-4 py-3 text-xs text-white focus:border-orange-500 focus:outline-none">
+                    <option value="pekerja">Pekerja (Hanya notif Gmail, tidak bisa login)</option>
+                    <option value="kepala_gudang">Kepala Gudang (Bisa login & akses semi-penuh)</option>
+                </select>
+                <p class="text-[9px] text-gray-600 mt-1">*Pekerja hanya terima instruksi via email. Kepala Gudang bisa login sistem.</p>
             </div>
 
             {{-- Password --}}
@@ -268,19 +368,45 @@
         return {
             search: '',
             filterStatus: 'all',
+            filterRole: 'all',
             filterOperators() {
                 const cards = document.querySelectorAll('[data-name]');
                 cards.forEach(card => {
                     const name = card.dataset.name;
                     const status = card.dataset.status;
+                    const role = card.dataset.role;
 
                     const matchSearch = name.includes(this.search.toLowerCase());
                     const matchStatus = this.filterStatus === 'all' || status === this.filterStatus;
+                    const matchRole = this.filterRole === 'all' || role === this.filterRole;
 
-                    card.style.display = (matchSearch && matchStatus) ? '' : 'none';
+                    card.style.display = (matchSearch && matchStatus && matchRole) ? '' : 'none';
                 });
             }
         };
     }
+
+    // SweetAlert2 wrapper
+    function swalConfirm({ title, text, icon, confirmText, onConfirm }) {
+        Swal.fire({
+            title: title,
+            text: text,
+            icon: icon || 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f97316',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: confirmText || 'Ya',
+            cancelButtonText: 'Batal',
+            background: '#1C222D',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed && onConfirm) {
+                onConfirm();
+            }
+        });
+    }
 </script>
+
+{{-- SweetAlert2 CDN --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 @endsection

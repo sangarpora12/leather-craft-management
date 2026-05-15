@@ -74,7 +74,8 @@ class ProduksiController extends Controller
      */
     public function perintahProduksi()
     {
-        $operators = User::where('role', 'operator')->get();
+        // Hanya tampilkan operator dengan sub_role 'kepala_gudang' dan aktif
+        $operators = User::where('role', 'operator')->where('sub_role', 'kepala_gudang')->where('is_active', true)->get();
         $boms = ProdukJadi::with(['boms.bahanBaku'])->get();
 
         $boms = $boms->map(function ($produk) {
@@ -124,7 +125,7 @@ class ProduksiController extends Controller
             'tanggal_target'    => 'required|date|after_or_equal:today',
             'products'          => 'required|array|min:1',
             'products.*.bom_id' => 'required|exists:bom,id',
-            'products.*.jumlah' => 'required|numeric|min:1',
+            'products.*.jumlah' => 'required|integer|min:1',
             'products.*.catatan'=> 'nullable|string|max:255',
         ], [
             'products.required'              => 'Pilih setidaknya satu produk untuk dibuatkan SPK.',
@@ -154,22 +155,27 @@ foreach ($validated['products'] as $productData) {
         if (!$item->bahanBaku) continue;
 
         $totalKebutuhan = $item->jumlah_kebutuhan * $productData['jumlah'];
-        if (!isset($bahanDibutuhkan[$item->id_bahan])) {
-            $bahanDibutuhkan[$item->id_bahan] = [
+        
+        // Gunakan kode_material sebagai key agar stok digabung semua varian
+        $kodeMaterial = $item->bahanBaku->kode_material;
+        if (!isset($bahanDibutuhkan[$kodeMaterial])) {
+            // Hitung total stok dari semua varian dengan kode_material yang sama
+            $totalStokSemuaVarian = (float) \App\Models\BahanBaku::where('kode_material', $kodeMaterial)->sum('stok');
+            $bahanDibutuhkan[$kodeMaterial] = [
                 'nama'  => $item->bahanBaku->nama_material,
                 'total' => 0,
-                'stok'  => $item->bahanBaku->stok ?? 0,
+                'stok'  => $totalStokSemuaVarian,
                 'is_inventory' => $item->bahanBaku->is_inventory ?? 1,
-                'kategori' => $item->bahanBaku->kategori ?? '', // 1. ✅ TANGKAP DATA KATEGORI DI SINI
+                'kategori' => $item->bahanBaku->kategori ?? '',
             ];
         }
-        $bahanDibutuhkan[$item->id_bahan]['total'] += $totalKebutuhan;
+        $bahanDibutuhkan[$kodeMaterial]['total'] += $totalKebutuhan;
     }
 }
 
 foreach ($bahanDibutuhkan as $id => $bahan) {
-    // Skip validasi stok untuk bahan pelengkap (is_inventory = 0)
-    if (($bahan['is_inventory'] ?? 1) == 0) {
+    // ✅ PERBAIKAN: Skip validasi stok untuk bahan pelengkap ATAU is_inventory = 0
+    if (($bahan['is_inventory'] ?? 1) == 0 || strtolower($bahan['kategori']) === 'bahan pelengkap') {
         continue;
     }
     
@@ -181,50 +187,56 @@ foreach ($bahanDibutuhkan as $id => $bahan) {
 }
 
 // ── Potong stok (Dengan Logika FIFO yang Benar) ───────────────
-foreach ($bahanDibutuhkan as $id => $bahan) {
-    // Skip pengurangan stok untuk bahan pelengkap (is_inventory = 0)
-    if (($bahan['is_inventory'] ?? 1) == 0) {
+foreach ($bahanDibutuhkan as $kodeMaterial => $bahan) {
+    // ✅ PERBAIKAN: Skip pemotongan stok untuk bahan pelengkap ATAU is_inventory = 0
+    if (($bahan['is_inventory'] ?? 1) == 0 || strtolower($bahan['kategori']) === 'bahan pelengkap') {
         continue;
     }
 
     $sisaKebutuhan = $bahan['total'];
 
-    // 1. Ambil layer stok yang masih ada isinya (FIFO: urut dari tanggal masuk terlama)
-    $layers = \App\Models\BahanStokLayer::where('bahan_baku_id', $id)
-        ->where('qty_sisa', '>', 0)
-        ->orderBy('tanggal_masuk', 'asc')
+    // Ambil semua varian bahan dengan kode_material ini, urut FIFO
+    $semuaVarian = BahanBaku::where('kode_material', $kodeMaterial)
         ->orderBy('id', 'asc')
-        ->lockForUpdate()
         ->get();
 
-    // 2. Kurangi qty_sisa di tiap layer sampai sisaKebutuhan = 0
-    foreach ($layers as $layer) {
+    foreach ($semuaVarian as $varian) {
         if ($sisaKebutuhan <= 0) break;
 
-        if ($layer->qty_sisa >= $sisaKebutuhan) {
-            $layer->qty_sisa -= $sisaKebutuhan;
-            $layer->save();
-            $sisaKebutuhan = 0;
-        } else {
-            $sisaKebutuhan -= $layer->qty_sisa;
-            $layer->qty_sisa = 0;
+        // Ambil layer stok untuk varian ini
+        $layers = \App\Models\BahanStokLayer::where('bahan_baku_id', $varian->id)
+            ->where('qty_sisa', '>', 0)
+            ->orderBy('tanggal_masuk', 'asc')
+            ->orderBy('id', 'asc')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($layers as $layer) {
+            if ($sisaKebutuhan <= 0) break;
+
+            $ambil = min($layer->qty_sisa, $sisaKebutuhan);
+            $layer->qty_sisa -= $ambil;
+            $sisaKebutuhan -= $ambil;
             $layer->save();
         }
+
+        // Potong stok di master bahan_bakus untuk varian ini
+        $potongVarian = min($varian->stok, $bahan['total'] - ($sisaKebutuhan > 0 ? 0 : $bahan['total'] - $sisaKebutuhan));
+        if ($potongVarian > 0) {
+            BahanBaku::where('id', $varian->id)->decrement('stok', $potongVarian);
+        }
+
+        // Catat aktivitas di log_stok untuk varian ini
+        DB::table('log_stok')->insert([
+            'bahan_baku_id'    => $varian->id,
+            'operator_id'      => auth()->id(), 
+            'jenis_transaksi'  => 'PENGELUARAN_PRODUKSI',
+            'jumlah'           => $ambil ?? 0,
+            'keterangan'       => 'Pengeluaran otomatis untuk pembuatan SPK Baru (kode: ' . $kodeMaterial . ')',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
     }
-
-    // 3. Potong stok di tabel master bahan_bakus
-    BahanBaku::where('id', $id)->decrement('stok', $bahan['total']);
-
-    // 4. Catat aktivitas di log_stok
-    DB::table('log_stok')->insert([
-        'bahan_baku_id'    => $id,
-        'operator_id'      => auth()->id(), 
-        'jenis_transaksi'  => 'PENGELUARAN_PRODUKSI',
-        'jumlah'           => $bahan['total'],
-        'keterangan'       => 'Pengeluaran otomatis untuk pembuatan SPK Baru',
-        'created_at'       => now(),
-        'updated_at'       => now(),
-    ]);
 }
 
             // ── Buat SPK per produk ───────────────────────────────────────
@@ -256,18 +268,35 @@ foreach ($bahanDibutuhkan as $id => $bahan) {
 
             DB::commit();
 
-            // ── Kirim notifikasi ──────────────────────────────────────────
-            $adminName = auth()->user()->name ?? 'Admin';
+// ── Kirim notifikasi ──────────────────────────────────────────
+$adminName = auth()->user()->name ?? 'Admin';
 
-            if ($operatorId) {
-                $operator = User::find($operatorId);
-                if ($operator && $operator->email) {
-                    Notification::send($operator, new PerintahProduksiNotification($createdSpks, $adminName, true));
-                }
-            } else {
-                $allOperators = User::where('role', 'operator')->whereNotNull('email')->get();
-                Notification::send($allOperators, new PerintahProduksiNotification($createdSpks, $adminName, false));
-            }
+// 1. Kirim notifikasi ke Kepala Gudang yang ditugaskan di sistem
+if ($operatorId) {
+    $kepalaGudang = User::find($operatorId);
+    if ($kepalaGudang && $kepalaGudang->email) {
+        Notification::send($kepalaGudang, new PerintahProduksiNotification($createdSpks, $adminName, true));
+    }
+} else {
+    // Jika tidak ada Kepala Gudang spesifik yang dipilih (pilih "All")
+    $semuaKepalaGudang = User::where('role', 'operator')
+        ->where('sub_role', 'kepala_gudang')
+        ->where('is_active', true)
+        ->whereNotNull('email')
+        ->get();
+    Notification::send($semuaKepalaGudang, new PerintahProduksiNotification($createdSpks, $adminName, true));
+}
+
+// 2. WAJIB: Selalu kirim email instruksi ke SEMUA Pekerja yang statusnya AKTIF
+$pekerjaAktif = User::where('role', 'operator')
+    ->where('sub_role', 'pekerja')
+    ->where('is_active', true) // Memastikan email cuma dikirim kalau akun belum dinonaktifkan
+    ->whereNotNull('email')
+    ->get();
+
+if ($pekerjaAktif->isNotEmpty()) {
+    Notification::send($pekerjaAktif, new PerintahProduksiNotification($createdSpks, $adminName, false));
+}
 
             $total = count($createdSpks);
             return redirect()->route('admin.produksi.index')
@@ -276,7 +305,10 @@ foreach ($bahanDibutuhkan as $id => $bahan) {
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Gagal membuat SPK baru: ' . $e->getMessage());
-            return back()->withInput()->with('error', 'Terjadi kesalahan saat membuat SPK: ' . $e->getMessage());
+            
+            // Ubah tanda \ menjadi / agar tidak bikin crash JavaScript XAMPP
+            $pesanAman = str_replace('\\', '/', $e->getMessage());
+            return back()->withInput()->with('error', 'Gagal kirim tugas: ' . $pesanAman);
         }
     }
 
@@ -295,6 +327,7 @@ foreach ($bahanDibutuhkan as $id => $bahan) {
             ->delete();
 
         if ($count > 0) {
+            $total = (float) count($createdSpks);
             return redirect()->route('admin.produksi.index')
                 ->with('success', "Berhasil menghapus {$count} SPK yang sudah selesai.");
         }
@@ -310,16 +343,43 @@ foreach ($bahanDibutuhkan as $id => $bahan) {
     /**
      * Daftar tugas operator — di-group per kode produk + status.
      */
-    public function operatorIndex()
+/**
+     * Daftar tugas operator — di-group per kode produk + status + Fitur Filter.
+     */
+    public function operatorIndex(Request $request)
     {
         $operatorId = auth()->id();
+        
+        // 1. Ambil Input Filter dari Request
+        $search = $request->query('search');
+        $fromDate = $request->query('from');
+        $toDate = $request->query('to');
 
-        $produksis = Produksi::with(['product', 'operator', 'produk_jadi'])
-            ->where('operator_id', $operatorId)
-            ->latest()
-            ->get(['id', 'produk_jadi_id', 'operator_id', 'jumlah_produksi', 'jumlah_selesai', 'status', 'created_at', 'tanggal_target', 'catatan', 'kode_spk', 'tanggal_mulai']);
+        // 2. Query Dasar
+        $query = Produksi::with(['product', 'operator', 'produk_jadi'])
+            ->where('operator_id', $operatorId);
 
-        // Group by produk_jadi_id + status agar gabungan per produk tampil rapi
+        // 3. Logika Pencarian (Nama Produk atau Kode SPK)
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->whereHas('product', function($pq) use ($search) {
+                    $pq->where('nama_produk', 'like', "%{$search}%");
+                })
+                ->orWhere('kode_spk', 'like', "%{$search}%");
+            });
+        }
+
+        // 4. Logika Filter Tanggal
+        if ($fromDate && $toDate) {
+            $query->whereBetween('updated_at', [
+                \Carbon\Carbon::parse($fromDate)->startOfDay(),
+                \Carbon\Carbon::parse($toDate)->endOfDay()
+            ]);
+        }
+
+        $produksis = $query->latest()->get();
+
+        // 5. Grouping Data untuk Tampilan Dashboard
         $grouped = $produksis->groupBy(fn($item) => $item->produk_jadi_id . '-' . $item->status);
 
         $result = collect();
@@ -330,14 +390,13 @@ foreach ($bahanDibutuhkan as $id => $bahan) {
                 'id'              => $first->id,
                 'produk_jadi_id'  => $first->produk_jadi_id,
                 'product'         => $first->produk_jadi,
-                // ✅ SUM untuk total yang akurat di dashboard
-                'jumlah_produksi' => $items->sum('jumlah_produksi'),
-                'jumlah_selesai'  => $items->sum('jumlah_selesai'),
+                // ✅ Perbaikan: Pakai (int) agar angka seperti 7,94 otomatis jadi 7
+                'jumlah_produksi' => (int) $items->sum('jumlah_produksi'),
+                'jumlah_selesai'  => (int) $items->sum('jumlah_selesai'),
                 'status'          => $first->status,
                 'created_at'      => $items->max('created_at'),
                 'tanggal_target'  => $items->min('tanggal_target'),
                 'tanggal_mulai'   => $items->min('tanggal_mulai'),
-                'catatan_list'    => $items->pluck('catatan')->filter()->unique()->values(),
                 'kode_spk_list'   => $items->pluck('kode_spk')->unique()->values(),
                 'total_spk'       => $items->count(),
             ]);
@@ -347,7 +406,8 @@ foreach ($bahanDibutuhkan as $id => $bahan) {
         $processTasks = $result->where('status', 'PROSES')->values();
         $doneTasks    = $result->where('status', 'SELESAI')->values();
 
-        return view('operator.tugas.index_v2', compact('pendingTasks', 'processTasks', 'doneTasks'));
+        // Kirim data filter balik ke view agar input tetap terisi
+        return view('operator.tugas.index_v2', compact('pendingTasks', 'processTasks', 'doneTasks', 'search', 'fromDate', 'toDate'));
     }
 
     /**
@@ -422,29 +482,60 @@ foreach ($bahanDibutuhkan as $id => $bahan) {
                 // Ini menghindari bug MySQL di mana LIMIT pada UPDATE diabaikan.
                 // ─────────────────────────────────────────────────────
 
-                // Kumpulkan baris PENDING untuk produk ini, urutkan dari terlama
-                $pendingRows = Produksi::where('produk_jadi_id', $produkJadiId)
-                    ->where('operator_id', auth()->id())
-                    ->where('status', 'PENDING')
-                    ->orderBy('created_at', 'asc')
-                    ->get(['id', 'jumlah_produksi']);
+                // Pendekatan yang lebih aman: proses satu per satu dari database
+                $remainingToProcess = $qtyNow;
+                $idsToUpdate = [];
 
-                // Tentukan ID mana yang akan diubah statusnya
-                // berdasarkan akumulasi jumlah_produksi tiap baris
-                $idsToUpdate  = [];
-                $accumulated  = 0;
+                while ($remainingToProcess > 0) {
+                    // Ambil baris PENDING tertua yang masih ada
+                    $row = Produksi::where('produk_jadi_id', $produkJadiId)
+                        ->where('operator_id', auth()->id())
+                        ->where('status', 'PENDING')
+                        ->orderBy('created_at', 'asc')
+                        ->first();
 
-                foreach ($pendingRows as $row) {
-                    if ($accumulated >= $qtyNow) break;
+                    if (!$row) {
+                        break; // Tidak ada lagi baris yang bisa diproses
+                    }
 
-                    $idsToUpdate[] = $row->id;
-                    $accumulated  += (int) $row->jumlah_produksi;
+                    $rowJumlah = (int) $row->jumlah_produksi;
+                    $ambil = min($rowJumlah, $remainingToProcess);
+
+                    if ($ambil == $rowJumlah) {
+                        // Ambil SEMUA jumlah dari baris ini
+                        $idsToUpdate[] = $row->id;
+                        $remainingToProcess -= $rowJumlah;
+                    } else {
+                        // Hanya ambil SEBAGIAN, bagi barisnya
+                        // Update baris asli
+                        $row->jumlah_produksi = $ambil;
+                        $row->save();
+                        $idsToUpdate[] = $row->id;
+                        $remainingToProcess -= $ambil;
+
+                        // Buat baris baru untuk sisa
+                        $sisa = $rowJumlah - $ambil;
+                        if ($sisa > 0) {
+                            $lastSpk   = Produksi::latest('id')->first();
+                            $nextNumber = $lastSpk ? $lastSpk->id + 1 : 1;
+                            $kodeSpk   = 'SPK-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+                            
+                            $newSpk = $row->replicate();
+                            $newSpk->kode_spk = $kodeSpk;
+                            $newSpk->jumlah_produksi = $sisa;
+                            $newSpk->jumlah_selesai = 0;
+                            $newSpk->status = 'PENDING';
+                            $newSpk->tanggal_mulai_proses = null;
+                            $newSpk->tanggal_selesai = null;
+                            $newSpk->save();
+                        }
+                    }
                 }
 
                 if (empty($idsToUpdate)) {
                     throw new \Exception('Tidak ada SPK PENDING yang cocok untuk diproses.');
                 }
-                // --- 4. Update baris yang dipilih → SELESAI --------------------
+                // --- 4. Update baris yang dipilih → PROSES --------------------
                 // ✅ Update hanya ID yang sudah dipilih — dijamin tepat jumlahnya
                 $rowsToUpdate = Produksi::whereIn('id', $idsToUpdate)->get();
                 foreach ($rowsToUpdate as $row) {
@@ -504,15 +595,58 @@ foreach ($bahanDibutuhkan as $id => $bahan) {
             return redirect()->route('operator.tugas.index')->with('success', 'Tugas ini sudah selesai.');
         }
 
-        // ── Hitung total gabungan SPK PROSES untuk produk yang sama ──
-        $baseQuery = Produksi::where('operator_id', auth()->id())
+        // ── Hitung data SEMUA SPK produk yang sama (PENDING + PROSES) ──
+        //   Sama seperti perhitungan di operatorDetail / detail.blade.php
+        $allSpk = Produksi::where('operator_id', auth()->id())
             ->where('produk_jadi_id', $produksi->produk_jadi_id)
-            ->where('status', 'PROSES');
+            ->get();
 
-        $produksi->total_proses_gabungan      = (int) $baseQuery->sum('jumlah_produksi');
-        $produksi->total_selesai_gabungan     = (int) $baseQuery->sum('jumlah_selesai');
-        $produksi->total_sisa_proses_gabungan = $produksi->total_proses_gabungan - $produksi->total_selesai_gabungan;
-        $produksi->jumlah_spk_proses          = $baseQuery->count();
+        $selesaiTotal = 0;
+        $prosesTotal  = 0;
+        $targetTotal  = 0;
+
+        foreach ($allSpk as $spk) {
+            $targetTotal  += (float) $spk->jumlah_produksi;
+            $selesaiTotal += (float) $spk->jumlah_selesai;
+
+            if ($spk->status === 'PROSES') {
+                $prosesTotal += ((float) $spk->jumlah_produksi - (float) $spk->jumlah_selesai);
+            }
+        }
+
+        $totalDiproses   = $selesaiTotal + $prosesTotal;
+        $sisa            = max(0, $targetTotal - $totalDiproses);
+        $progressPercent = $targetTotal > 0 ? ($totalDiproses / $targetTotal) * 100 : 0;
+
+        $produksi->total_proses_gabungan      = (int) $targetTotal;
+        $produksi->total_selesai_gabungan     = (int) $selesaiTotal;
+        $produksi->total_sisa_proses_gabungan = (int) $sisa;
+        $produksi->jumlah_spk_proses          = $allSpk->count();
+
+        // ── Data tambahan untuk MAX_QTY (hitung sisa PROSES yang bisa diselesaikan) ──
+        $produksi->sisa_proses_max_qty = (int) Produksi::where('operator_id', auth()->id())
+            ->where('produk_jadi_id', $produksi->produk_jadi_id)
+            ->where('status', 'PROSES')
+            ->sum(DB::raw('jumlah_produksi - jumlah_selesai'));
+
+        // ── Kumpulkan deadline unik dengan qty (sama seperti di detail.blade.php) ──
+        $deadlineData = [];
+        $deadlines = $allSpk->pluck('tanggal_target')
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        foreach ($deadlines as $dl) {
+            $spkByDl = $allSpk->where('tanggal_target', $dl);
+            $deadlineData[] = [
+                'tanggal'      => $dl,
+                'total_qty'    => (int) $spkByDl->sum('jumlah_produksi'),
+                'selesai_qty'  => (int) $spkByDl->sum('jumlah_selesai'),
+                'jumlah_spk'   => $spkByDl->count(),
+            ];
+        }
+        $produksi->deadlineData = $deadlineData;
 
         return view('operator.tugas.lanjut', compact('produksi'));
     }
@@ -570,9 +704,19 @@ foreach ($bahanDibutuhkan as $id => $bahan) {
 $idsToFinish = [];
 $accumulated = 0;
 foreach ($prosesRows as $row) {
-    if ($accumulated >= $qtySelesai) break;
+    $rowJumlah = (int) $row->jumlah_produksi;
+    
+    // Cek SEBELUM menambah, jika sudah cukup maka berhenti
+    if ($accumulated >= $qtySelesai) {
+        break;
+    }
+
+    // Hitung berapa banyak yang bisa diambil dari baris ini
+    $ambil = min($rowJumlah, $qtySelesai - $accumulated);
+    
+    // Tambahkan ID ke list untuk diupdate
     $idsToFinish[] = $row->id;
-    $accumulated  += (int) $row->jumlah_produksi;
+    $accumulated += $ambil;
 }
 
 if (empty($idsToFinish)) {
@@ -691,6 +835,7 @@ if (empty($idsToFinish)) {
                 ->where('status', 'PROSES')
                 ->sum('jumlah_produksi');
 
+                $totalQtySelesaiBersih = (float) $totalQtyDiselesaikan;
             $pesanSukses = "✅ {$totalQtyDiselesaikan} Pcs berhasil diselesaikan"
                 . ($sisaProses > 0 ? " — masih ada {$sisaProses} Pcs lagi di tab PROSES." : ". Semua produksi selesai!");
 
@@ -847,4 +992,22 @@ if (empty($idsToFinish)) {
     {
         return response()->json(['success' => false, 'message' => 'Fitur belum diaktifkan.']);
     }
+    public function destroy($id)
+{
+    // Cari data produksinya
+    $produksi = \App\Models\Produksi::find($id);
+
+    // Cek kalau datanya ada
+    if ($produksi) {
+        // Cek status, biasanya operator cuma boleh hapus yang PENDING
+        if ($produksi->status != 'PENDING') {
+            return back()->with('error', 'Hanya tugas PENDING yang bisa dihapus, Bang!');
+        }
+
+        $produksi->delete();
+        return redirect()->route('operator.tugas.index')->with('success', 'Data produksi berhasil dihapus!');
+    }
+
+    return back()->with('error', 'Aduh, datanya nggak ketemu!');
+}
 }

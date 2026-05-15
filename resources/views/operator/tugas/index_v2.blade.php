@@ -14,13 +14,6 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 24px;
     }
-    .task-checkbox:checked + .glass-card {
-        background: rgba(50, 20, 20, 0.8) !important;
-        border-color: rgba(239, 68, 68, 0.5);
-    }
-    .task-checkbox:checked + .glass-card .check-icon {
-        opacity: 1;
-    }
 </style>
 @endsection
 
@@ -126,32 +119,26 @@
 
             {{-- ====================== RIWAYAT (SELESAI) ====================== --}}
             <section id="section-done" class="{{ $activeTab !== 'done' ? 'hidden' : '' }}">
-                <form action="{{ route('operator.tugas.bulk-delete') }}" method="POST" id="delete-form">
-                    @csrf
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="text-sm font-black tracking-widest text-slate-300 uppercase">Riwayat</h2>
                         <div class="flex items-center gap-2">
-                            <button type="button" id="select-all-btn"
-                                    class="text-xs font-semibold text-slate-400 bg-slate-500/10 border border-slate-500/30 rounded-lg px-3 py-1.5 transition-all">
-                                Pilih Semua
-                            </button>
-                            <button type="button" id="delete-btn" disabled
-                                    class="text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                                Hapus <span id="delete-counter" class="hidden ml-1"></span>
+                            <button id="reset-filter" class="text-xs font-semibold text-slate-400 bg-black border border-slate-500/30 rounded-lg px-3 py-1.5 transition-all cursor-pointer hover:bg-slate-800">
+                                Reset Filter
                             </button>
                         </div>
                     </div>
 
-                    <div class="space-y-4">
+                    <div class="space-y-4" id="done-tasks-list">
                         @forelse($doneTasks as $spk)
-                            @include('operator.tugas.partials.spk-card', ['spk' => $spk])
+                            <div class="task-item" data-date="{{ $spk->created_at }}">
+                                @include('operator.tugas.partials.spk-card', ['spk' => $spk])
+                             </div>
                         @empty
                             <div class="glass-card p-6 text-center text-slate-500 text-sm">
                                 Belum ada tugas yang selesai.
                             </div>
                         @endforelse
                     </div>
-                </form>
             </section>
 
         </div>
@@ -172,78 +159,49 @@ document.addEventListener('DOMContentLoaded', function() {
         sections[2].scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    // Bulk delete functionality
-    const deleteBtn = document.getElementById('delete-btn');
-    const deleteForm = document.getElementById('delete-form');
-    const checkboxes = document.querySelectorAll('.task-checkbox');
-    const deleteCounter = document.getElementById('delete-counter');
-    const selectAllBtn = document.getElementById('select-all-btn');
+    // Filter functionality for done tasks - auto filter month
+    const resetButton = document.getElementById('reset-filter');
+    const taskItems = document.querySelectorAll('.task-item');
 
-    function updateDeleteButton() {
-        const checkedCount = document.querySelectorAll('.task-checkbox:checked').length;
-        if (checkedCount > 0) {
-            deleteBtn.disabled = false;
-            deleteCounter.textContent = `(${checkedCount})`;
-            deleteCounter.classList.remove('hidden');
-        } else {
-            deleteBtn.disabled = true;
-            deleteCounter.classList.add('hidden');
-        }
+    function filterTasks(filterValue) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
 
-        if (checkedCount === checkboxes.length && checkboxes.length > 0) {
-            selectAllBtn.textContent = 'Batal Pilih';
-        } else {
-            selectAllBtn.textContent = 'Pilih Semua';
-        }
+        taskItems.forEach(item => {
+            const itemDate = new Date(item.dataset.date);
+            let showItem = true;
+
+            switch(filterValue) {
+                case 'today':
+                    showItem = itemDate >= today;
+                    break;
+                case 'week':
+                    showItem = itemDate >= weekAgo;
+                    break;
+                case 'month':
+                    showItem = itemDate >= monthAgo;
+                    break;
+                default: // all - reset filter
+                    showItem = true;
+            }
+
+            item.style.display = showItem ? 'block' : 'none';
+        });
     }
 
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            updateDeleteButton();
-            const label = this.closest('label');
-            if (this.checked) {
-                label.classList.add('is-checked');
-            } else {
-                label.classList.remove('is-checked');
-            }
+    // Auto apply filter bulan ini saat halaman dimuat
+    filterTasks('month');
+
+    // Reset filter button functionality
+    if (resetButton) {
+        resetButton.addEventListener('click', function() {
+            filterTasks('all');
         });
-    });
-
-    selectAllBtn.addEventListener('click', function() {
-        const areAllChecked = checkboxes.length > 0 && Array.from(checkboxes).every(c => c.checked);
-        const shouldSelect = !areAllChecked;
-
-        checkboxes.forEach(checkbox => {
-            if (checkbox.checked !== shouldSelect) {
-                checkbox.checked = shouldSelect;
-                checkbox.dispatchEvent(new Event('change'));
-            }
-        });
-    });
-
-    deleteBtn.addEventListener('click', function() {
-        const checkedCount = document.querySelectorAll('.task-checkbox:checked').length;
-        if (checkedCount > 0) {
-            Swal.fire({
-                title: `Hapus ${checkedCount} tugas?`,
-                text: "Tugas yang sudah dihapus tidak dapat dikembalikan.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Ya, hapus!',
-                cancelButtonText: 'Batal',
-                background: '#1e293b',
-                color: '#cbd5e1'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    deleteForm.submit();
-                }
-            })
-        }
-    });
-
-    updateDeleteButton(); // Initial check
+    }
 });
 </script>
 @endsection

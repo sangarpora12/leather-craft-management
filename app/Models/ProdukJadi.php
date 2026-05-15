@@ -134,6 +134,14 @@ class ProdukJadi extends Model
      * Menghitung maksimal produk yang bisa dibuat berdasarkan stok bahan baku saat ini.
      * (Mencari bahan baku mana yang paling membatasi / bottleneck)
      */
+// ====================================================================
+    // RUMUS PENGECEKAN KESIAPAN BAHAN BAKU UNTUK SPK (VERSI ANTI NGELES)
+    // ====================================================================
+
+    /**
+     * Menghitung maksimal produk yang bisa dibuat berdasarkan stok bahan baku saat ini.
+     * (Mencari bahan baku mana yang paling membatasi / bottleneck)
+     */
     public function getMaxProductionAttribute()
     {
         // Kalau resepnya belum dibikin, berarti max produksinya 0
@@ -149,13 +157,19 @@ class ProdukJadi extends Model
                 return 0; 
             }
 
+            // ✅ PERBAIKAN 1: Tangani nilai NULL dengan aman (Anggap defaultnya 1 / Inventori Utama)
+            $isInventory = $bom->bahanBaku->is_inventory ?? 1;
+
             // ✅ BYPASS: Abaikan jika kategorinya Bahan Pelengkap atau is_inventory = 0
-            if (($bom->bahanBaku->is_inventory == 0) || strtolower($bom->bahanBaku->kategori) === 'bahan pelengkap') {
+            if ($isInventory == 0 || strtolower($bom->bahanBaku->kategori) === 'bahan pelengkap') {
                 continue;
             }
 
-            // Rumus: Stok di Gudang dibagi Kebutuhan per Resep (HASIL INTEGER TANPA DESIMAL)
-            $possible = (int) floor($bom->bahanBaku->stok / $bom->jumlah_kebutuhan);
+            // ✅ PERBAIKAN 2 (MASTER-VARIANT): Hitung total stok gabungan semua varian warna
+            $totalStok = \App\Models\BahanBaku::where('kode_material', $bom->bahanBaku->kode_material)->sum('stok');
+
+            // Rumus: Stok Gabungan dibagi Kebutuhan per Resep
+            $possible = (int) floor($totalStok / $bom->jumlah_kebutuhan);
             
             // Cari angka yang paling kecil (bottleneck)
             if ($maxQty === null || $possible < $maxQty) {
@@ -163,8 +177,7 @@ class ProdukJadi extends Model
             }
         }
 
-        // Jika semua bahan ternyata pelengkap (kemungkinan kecil), anggap bisa produksi tak terbatas (999)
-        return $maxQty ?? 999;
+        return $maxQty ?? 0;
     }
 
     /**
@@ -195,14 +208,20 @@ class ProdukJadi extends Model
                 return "ERROR: Jumlah kebutuhan bahan di BOM adalah 0. Silakan edit resep BOM.";
             }
 
+            // ✅ PERBAIKAN 1: Tangani nilai NULL
+            $isInventory = $bom->bahanBaku->is_inventory ?? 1;
+
             // ✅ BYPASS: Abaikan error stok kalau kategorinya Bahan Pelengkap
-            if (($bom->bahanBaku->is_inventory == 0) || strtolower($bom->bahanBaku->kategori) === 'bahan pelengkap') {
+            if ($isInventory == 0 || strtolower($bom->bahanBaku->kategori) === 'bahan pelengkap') {
                 continue;
             }
 
+            // ✅ PERBAIKAN 2 (MASTER-VARIANT): Ambil stok gabungan
+            $totalStok = \App\Models\BahanBaku::where('kode_material', $bom->bahanBaku->kode_material)->sum('stok');
+
             // 3. Cek kasus stok murni kurang
-            if ($bom->bahanBaku->stok < $bom->jumlah_kebutuhan) {
-                return "Stok '{$bom->bahanBaku->nama_material}' kurang. Butuh: {$bom->jumlah_kebutuhan}, Sisa: {$bom->bahanBaku->stok}.";
+            if ($totalStok < $bom->jumlah_kebutuhan) {
+                return "Stok '{$bom->bahanBaku->nama_material}' kurang. Butuh: {$bom->jumlah_kebutuhan}, Sisa: {$totalStok}.";
             }
         }
 
@@ -297,5 +316,10 @@ class ProdukJadi extends Model
 
         // ✅ JIKA 0 ATAU NULL: TAMPILKAN HARGA OTOMATIS
         return $this->harga_jual_otomatis;
+    }
+    // Membuang .00 di belakang stok produk jadi
+    public function getStokAttribute($value)
+    {
+        return (float) $value;
     }
 }

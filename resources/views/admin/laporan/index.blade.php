@@ -19,90 +19,24 @@ if (!isset($mode) || empty($mode)) {
 
 <style>
 @media print {
-    /* AGGRESSIVE - Reset ALL overflow restrictions */
-    * {
-        overflow: visible !important;
-        height: auto !important;
-        max-height: none !important;
-    }
-    
-    /* Hide sidebar and nav elements */
-    .sidebar, nav, .no-print, .print\:hidden, .hidden {
-        display: none !important;
-    }
-    
-    /* Force print block for all elements */
+    * { overflow: visible !important; height: auto !important; max-height: none !important; }
+    .sidebar, nav, .no-print, .print\:hidden, .hidden { display: none !important; }
     .print\:flex { display: flex !important; }
     .print\:block { display: block !important; }
     .print\:grid { display: grid !important; }
     .print\:table { display: table !important; }
-    
-    /* Body and container reset - FULLY VISIBLE */
-    html, body { 
-        background-color: white !important; 
-        color: black !important;
-        font-size: 10pt !important;
-        overflow: visible !important;
-        height: auto !important;
-    }
-    
-    .container, .bg-zinc-900, .bg-neutral-900, .main-content, .card { 
-        background-color: white !important; 
-        color: black !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        overflow: visible !important;
-        height: auto !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-    }
-    
-    /* Remove overflow restrictions from table containers */
-    .overflow-auto, .overflow-x-auto, .rounded-xl, .shadow-lg {
-        overflow: visible !important;
-        height: auto !important;
-    }
-    
-    /* Text colors - make readable */
-    .text-white, .text-gray-300, .text-gray-400 { 
-        color: black !important; 
-    }
-    
-    /* Print header styles */
-    .print-header-container {
-        display: flex !important;
-        visibility: visible !important;
-    }
-    
-    /* Table styles - ensure full width */
-    table { 
-        border: 1px solid #333 !important; 
-        width: 100% !important;
-        font-size: 9pt !important;
-        page-break-inside: auto;
-    }
+    html, body { background-color: white !important; color: black !important; font-size: 10pt !important; overflow: visible !important; height: auto !important; }
+    .container, .bg-zinc-900, .bg-neutral-900, .main-content, .card { background-color: white !important; color: black !important; padding: 0 !important; margin: 0 !important; overflow: visible !important; height: auto !important; box-shadow: none !important; border-radius: 0 !important; }
+    .overflow-auto, .overflow-x-auto, .rounded-xl, .shadow-lg { overflow: visible !important; height: auto !important; }
+    .text-white, .text-gray-300, .text-gray-400 { color: black !important; }
+    .print-header-container { display: flex !important; visibility: visible !important; }
+    table { border: 1px solid #333 !important; width: 100% !important; font-size: 9pt !important; page-break-inside: auto; }
     tr { page-break-inside: avoid; page-break-after: auto; }
     thead { display: table-header-group; }
     tbody { display: table-row-group; }
-    
-    th, td { 
-        border: 1px solid #333 !important; 
-        color: black !important;
-        padding: 4px 8px !important;
-        font-size: 9pt !important;
-    }
-    th { 
-        background-color: #f5f5f5 !important; 
-        font-weight: bold !important;
-    }
-    
-    /* Card/Summary styles */
-    .summary-card { 
-        border: 1px solid #ddd !important; 
-        page-break-inside: avoid;
-    }
-    
-    /* Financial Cards Print Styles - Light backgrounds */
+    th, td { border: 1px solid #333 !important; color: black !important; padding: 4px 8px !important; font-size: 9pt !important; }
+    th { background-color: #f5f5f5 !important; font-weight: bold !important; }
+    .summary-card { border: 1px solid #ddd !important; page-break-inside: avoid; }
     .bg-gradient-to-br { background: none !important; }
     .from-red-900\/30, .from-red-800\/20 { background-color: #fef2f2 !important; border-color: #fecaca !important; }
     .from-green-900\/30, .from-green-800\/20 { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
@@ -114,28 +48,10 @@ if (!isset($mode) || empty($mode)) {
     .text-green-300\/60 { color: #166534 !important; }
     .text-blue-300\/60 { color: #1e40af !important; }
     .text-yellow-400 { color: #ca8a04 !important; }
-    
-    /* Grid for print */
-    .print-grid-cols-3 {
-        display: grid !important;
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 10px !important;
-    }
-    
-    /* Avoid page breaks inside cards */
-    .mb-6, .summary-card {
-        page-break-inside: avoid !important;
-    }
-    
-    /* Print break before for second tables */
-    .print-break-before {
-        page-break-before: always;
-    }
-    
-    /* Make sure print header is visible */
-    .hidden.print\:block {
-        display: block !important;
-    }
+    .print-grid-cols-3 { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 10px !important; }
+    .mb-6, .summary-card { page-break-inside: avoid !important; }
+    .print-break-before { page-break-before: always; }
+    .hidden.print\:block { display: block !important; }
 }
 </style>
 
@@ -176,7 +92,7 @@ if (!isset($mode) || empty($mode)) {
             </form>
         </div>
 
-        <!-- Print Header (Kop Surat) - Hidden on screen, shown only when printing -->
+        <!-- Print Header (Kop Surat) -->
         <div class="hidden print:block" style="display: none;">
             <div class="print-header-container" style="text-align: center; margin-bottom: 20px;">
                 <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">{{ $namaPerusahaan }}</div>
@@ -189,7 +105,8 @@ if (!isset($mode) || empty($mode)) {
 
         <!-- Content -->
         <div class="p-4">
-            <!-- RINGKASAN KEUANGAN (Financial Summary) - Visible in all modes - NOW AT TOP -->
+            
+            <!-- RINGKASAN KEUANGAN (Financial Summary) -->
             <div class="mb-6">
                 <h3 class="text-white text-sm font-bold mb-3 flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -198,19 +115,16 @@ if (!isset($mode) || empty($mode)) {
                     Ringkasan Keuangan
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 print-grid-cols-3">
-                    <!-- Total Pengeluaran -->
                     <div class="summary-card bg-gradient-to-br from-red-900/30 to-red-800/20 rounded-lg p-4 border border-red-700/50">
                         <p class="text-red-300 text-xs font-semibold">Total Pengeluaran (Produksi)</p>
                         <p class="text-red-400 text-xl font-bold">Rp {{ number_format($totalPengeluaran ?? 0, 0, ',', '.') }}</p>
                         <p class="text-red-300/60 text-xs mt-1">Biaya bahan & upah SPK selesai</p>
                     </div>
-                    <!-- Total Pemasukan -->
                     <div class="summary-card bg-gradient-to-br from-green-900/30 to-green-800/20 rounded-lg p-4 border border-green-700/50">
                         <p class="text-green-300 text-xs font-semibold">Total Pemasukan (Penjualan)</p>
                         <p class="text-green-400 text-xl font-bold">Rp {{ number_format($totalPemasukan ?? 0, 0, ',', '.') }}</p>
                         <p class="text-green-300/60 text-xs mt-1">Nilai produk terjual keluar</p>
                     </div>
-                    <!-- Estimasi Laba -->
                     <div class="summary-card bg-gradient-to-br from-blue-900/30 to-blue-800/20 rounded-lg p-4 border border-blue-700/50">
                         <p class="text-blue-300 text-xs font-semibold">Estimasi Laba Kotor</p>
                         <p class="text-blue-400 text-xl font-bold {{ ($estimasiLaba ?? 0) < 0 ? 'text-red-400' : 'text-blue-400' }}">Rp {{ number_format($estimasiLaba ?? 0, 0, ',', '.') }}</p>
@@ -244,23 +158,20 @@ if (!isset($mode) || empty($mode)) {
             </div>
             @endif
 
-            <!-- RINGKASAN STATISTIK (untuk mode bahan) -->
+            <!-- RINGKASAN STATISTIK BAHAN -->
             @if($mode == 'bahan' || $mode == 'lengkap')
             <div class="mb-2">
                 <h3 class="text-white text-sm font-bold uppercase tracking-wider">📦 BAHAN</h3>
             </div>
             <div class="grid grid-cols-3 gap-4 mb-6 print-grid-cols-3">
-                <!-- Card: Total Bahan Masuk -->
                 <div class="summary-card bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
                     <p class="text-gray-400 text-xs">Total Bahan Masuk</p>
                     <p class="text-green-400 text-xl font-bold">+{{ number_format($totalBahanMasuk ?? 0) }}</p>
                 </div>
-                <!-- Card: Total Bahan Keluar -->
                 <div class="summary-card bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
                     <p class="text-gray-400 text-xs">Total Bahan Keluar</p>
                     <p class="text-red-400 text-xl font-bold">-{{ number_format($totalBahanKeluar ?? 0) }}</p>
                 </div>
-                <!-- Card: Stok Tersedia -->
                 <div class="summary-card bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
                     <p class="text-gray-400 text-xs">Total bahan di gudang</p>
                     <p class="text-white text-xl font-bold">{{ number_format($stokTersedia ?? 0) }}</p>
@@ -268,26 +179,23 @@ if (!isset($mode) || empty($mode)) {
             </div>
             @endif
 
-            <!-- METRIK ERP TAMBAHAN (untuk mode lengkap) -->
+            <!-- METRIK ERP TAMBAHAN -->
             @if($mode == 'lengkap')
             <div class="mb-2">
                 <h3 class="text-white text-sm font-bold uppercase tracking-wider">💰 METRIK KEUANGAN (ERP)</h3>
             </div>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <!-- Card: Estimasi Nilai Aset -->
                 <div class="summary-card bg-gradient-to-br from-purple-900/30 to-purple-800/20 rounded-lg p-4 border border-purple-700/50">
                     <p class="text-purple-300 text-xs font-semibold">Estimasi Nilai Aset</p>
                     <p class="text-purple-400 text-lg font-bold">Rp {{ number_format($estimasiNilaiAset ?? 0, 0, ',', '.') }}</p>
                     <p class="text-purple-300/60 text-xs mt-1">Stok gudang (Bahan + Produk)</p>
                 </div>
-                <!-- Card: Laba Bersih -->
                 <div class="summary-card bg-gradient-to-br from-emerald-900/30 to-emerald-800/20 rounded-lg p-4 border border-emerald-700/50">
                     <p class="text-emerald-300 text-xs font-semibold">Laba Bersih</p>
                     <p class="text-emerald-400 text-lg font-bold {{ ($labaBersih ?? 0) < 0 ? 'text-red-400' : '' }}">Rp {{ number_format($labaBersih ?? 0, 0, ',', '.') }}</p>
                     <p class="text-emerald-300/60 text-xs mt-1">Setelah biaya operasional</p>
                 </div>
             </div>
-
 
             <!-- TOP PRODUK & BAHAN CEPAT HABIS -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -338,8 +246,9 @@ if (!isset($mode) || empty($mode)) {
             @endif
 
             
-      <!-- TABEL OUTPUT PRODUKSI (mode produk atau lengkap) -->
-      @if($mode == 'produk' || $mode == 'lengkap')
+            <!-- TABEL OUTPUT PRODUKSI -->
+<!-- TABEL OUTPUT PRODUKSI -->
+@if($mode == 'produk' || $mode == 'lengkap')
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
                 <div class="px-4 py-3 border-b border-zinc-800">
                     <h3 class="text-white text-sm font-bold">Ringkasan Output Produksi (Produk Selesai)</h3>
@@ -350,9 +259,10 @@ if (!isset($mode) || empty($mode)) {
                             <tr>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Kode</th>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Produk</th>
-                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Keterangan (Operator)</th>
-                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Total Selesai</th>
-                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Nilai Total (Rp)</th>
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Operator</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Harga Satuan</th>
+                                <th class="px-3 py-2 text-center text-xs font-bold text-gray-500">Qty (SPK)</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Total (Rp)</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-zinc-800">
@@ -360,22 +270,23 @@ if (!isset($mode) || empty($mode)) {
                             <tr>
                                 <td class="px-3 py-2 text-xs text-gray-400">{{ $prod->kode_produk ?? '-' }}</td>
                                 <td class="px-3 py-2 text-xs font-bold text-white">{{ $prod->nama_produk }}</td>
-                                <td class="px-3 py-2 text-xs text-gray-300">
-    <!-- 👈 Ganti pemanggilan variabelnya menjadi seperti ini -->
-    Diselesaikan oleh: <span class="text-white font-semibold">{{ $prod->operator_name ?? 'Tidak diketahui' }}</span>
-</td>
-                                <td class="px-3 py-2 text-xs text-green-400 text-right font-bold">+{{ number_format($prod->jumlah_selesai) }} pcs</td>
+                                <td class="px-3 py-2 text-xs text-gray-300">{{ $prod->operator_name ?? 'Tidak diketahui' }}</td>
+                                <td class="px-3 py-2 text-xs text-gray-300 text-right">Rp {{ number_format($prod->harga_jual, 0, ',', '.') }}</td>
+                                <td class="px-3 py-2 text-xs text-green-400 text-center font-bold">
+                                    +{{ number_format($prod->jumlah_selesai) }} pcs
+                                    <br><span class="text-gray-500 text-[10px] font-normal">({{ $prod->jumlah_spk }} SPK)</span>
+                                </td>
                                 <td class="px-3 py-2 text-xs text-emerald-400 text-right font-bold">Rp {{ number_format($prod->jumlah_selesai * $prod->harga_jual, 0, ',', '.') }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="5" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data produksi</td></tr>
+                            <tr><td colspan="6" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data produksi</td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
             
-            <!-- TABEL PRODUK KELUAR (mode produk atau lengkap) -->
+            <!-- TABEL PRODUK KELUAR -->
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
                 <div class="px-4 py-3 border-b border-zinc-800">
                     <h3 class="text-white text-sm font-bold">Ringkasan Produk Keluar (Penjualan & Pemakaian)</h3>
@@ -388,24 +299,26 @@ if (!isset($mode) || empty($mode)) {
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Kode</th>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Produk</th>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Keterangan</th>
-                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Jumlah</th>
-                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Nilai (Rp)</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Harga Satuan</th>
+                                <th class="px-3 py-2 text-center text-xs font-bold text-gray-500">Jumlah</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Total (Rp)</th>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">User</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-zinc-800">
                             @forelse($produkKeluars as $keluar)
                             <tr>
-                                <td class="px-3 py-2 text-xs text-gray-400 whitespace-nowrap">{{ \Carbon\Carbon::parse($keluar->tanggal_keluar)->format('d M Y, H:i') }}</td>
+                                <td class="px-3 py-2 text-xs text-gray-400 whitespace-nowrap">{{ \Carbon\Carbon::parse($keluar->tanggal_keluar ?? $keluar->tanggal_terbaru)->format('d M Y, H:i') }}</td>
                                 <td class="px-3 py-2 text-xs text-gray-400">{{ $keluar->kode_produk ?? '-' }}</td>
                                 <td class="px-3 py-2 text-xs font-bold text-white">{{ $keluar->nama_produk }}</td>
                                 <td class="px-3 py-2 text-xs text-gray-300">{{ $keluar->alasan }}</td>
-                                <td class="px-3 py-2 text-xs text-red-400 text-right font-bold">-{{ number_format($keluar->jumlah) }} pcs</td>
+                                <td class="px-3 py-2 text-xs text-gray-300 text-right">Rp {{ number_format($keluar->harga_jual, 0, ',', '.') }}</td>
+                                <td class="px-3 py-2 text-xs text-red-400 text-center font-bold">-{{ number_format($keluar->jumlah) }} pcs</td>
                                 <td class="px-3 py-2 text-xs text-amber-400 text-right font-bold">Rp {{ number_format($keluar->jumlah * $keluar->harga_jual, 0, ',', '.') }}</td>
-                                <td class="px-3 py-2 text-xs text-gray-500">{{ $keluar->user_name ?? 'N/A' }}</td>
+                                <td class="px-3 py-2 text-xs text-gray-500">{{ $keluar->operator_name ?? 'N/A' }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="7" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data produk keluar</td></tr>
+                            <tr><td colspan="8" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data produk keluar</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -413,8 +326,8 @@ if (!isset($mode) || empty($mode)) {
             </div>
             @endif
 
-           <!-- TABEL BAHAN MASUK (mode bahan atau lengkap) -->
-           @if($mode == 'bahan' || $mode == 'lengkap')
+            <!-- TABEL BAHAN MASUK -->
+            @if($mode == 'bahan' || $mode == 'lengkap')
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6 print-break-before">
                 <div class="px-4 py-3 border-b border-zinc-800">
                     <h3 class="text-white text-sm font-bold">Ringkasan Bahan Masuk (Pengadaan)</h3>
@@ -425,6 +338,8 @@ if (!isset($mode) || empty($mode)) {
                             <tr>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Kode</th>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Nama Bahan</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Harga Satuan</th>
+                                <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Total Nilai</th>
                                 <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Jumlah Masuk</th>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Operator / User</th>
                             </tr>
@@ -433,20 +348,28 @@ if (!isset($mode) || empty($mode)) {
                             @forelse($pengadaans as $bahan)
                             <tr>
                                 <td class="px-3 py-2 text-xs text-gray-400">{{ $bahan->kode_material ?? '-' }}</td>
-                                <td class="px-3 py-2 text-xs font-bold text-white">{{ $bahan->nama_material }}</td>
+                                <td class="px-3 py-2 text-xs font-bold text-white">
+    {{ $bahan->nama_material }}
+    @if(!empty($bahan->warna) && strtolower($bahan->warna) !== 'tidak ada warna')
+        <span class="text-blue-400 ml-1">[{{ $bahan->warna }}]</span>
+    @else
+        <span class="text-gray-500 ml-1">[Tidak Ada Warna]</span>
+    @endif
+</td>
+                                <td class="px-3 py-2 text-xs text-gray-300 text-right">Rp {{ number_format($bahan->harga_satuan ?? 0, 0, ',', '.') }}</td>
+                                <td class="px-3 py-2 text-xs text-amber-400 text-right font-bold">Rp {{ number_format(($bahan->harga_satuan ?? 0) * $bahan->jumlah, 0, ',', '.') }}</td>
                                 <td class="px-3 py-2 text-xs text-green-400 text-right font-bold">+{{ rtrim(rtrim(number_format($bahan->jumlah, 2, ',', '.'), '0'), ',') }} {{ $bahan->satuan }}</td>
-                                <td class="px-3 py-2 text-xs text-gray-500">{{ $bahan->user_name ?? 'N/A' }}</td>
+                                <td class="px-3 py-2 text-xs text-gray-500">{{ $bahan->operator_name ?? 'N/A' }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="4" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data bahan masuk</td></tr>
+                            <tr><td colspan="6" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data bahan masuk</td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
-            @endif
-           <!-- TABEL BAHAN KELUAR (mode bahan atau lengkap) -->
-           @if($mode == 'bahan' || $mode == 'lengkap')
+            
+            <!-- TABEL BAHAN KELUAR -->
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
                 <div class="px-4 py-3 border-b border-zinc-800">
                     <h3 class="text-white text-sm font-bold">Ringkasan Bahan Keluar (Pemakaian untuk SPK)</h3>
@@ -457,7 +380,6 @@ if (!isset($mode) || empty($mode)) {
                             <tr>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Kode</th>
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Bahan</th>
-                                <!-- KOLOM KETERANGAN BARU -->
                                 <th class="px-3 py-2 text-left text-xs font-bold text-gray-500">Keterangan</th> 
                                 <th class="px-3 py-2 text-center text-xs font-bold text-gray-500">Satuan</th>
                                 <th class="px-3 py-2 text-right text-xs font-bold text-gray-500">Total Dipakai</th>
@@ -465,30 +387,28 @@ if (!isset($mode) || empty($mode)) {
                         </thead>
                         <tbody class="divide-y divide-zinc-800">
                             @forelse($materialUsage as $bahan)
-                                <!-- PENGECEKAN DATA DIHAPUS: Lewati baris ini jika statusnya dihapus atau punya deleted_at -->
                                 @if(empty($bahan->deleted_at) && ($bahan->status ?? '') !== 'dihapus' && ($bahan->status ?? '') !== 'deleted')
                                 <tr>
                                     <td class="px-3 py-2 text-xs text-gray-400">{{ $bahan->kode_material ?? '-' }}</td>
                                     <td class="px-3 py-2 text-xs font-bold text-white">
-                                        {{ $bahan->nama_material }}
-                                        @if(isset($bahan->warna) && $bahan->warna && $bahan->warna !== 'Tidak Ada Warna')
-                                            <span class="text-blue-400 ml-1">[{{ $bahan->warna }}]</span>
-                                        @endif
-                                    </td>
-                                    <!-- ISI KOLOM KETERANGAN BARU -->
-                                    <td class="px-3 py-2 text-xs text-gray-400">
-    Dipakai untuk: 
-    <span class="text-white font-semibold">
-        {{-- Prioritaskan Nama Produk, jika kosong tampilkan Kode SPK --}}
-        {{ $bahan->nama_produk ?? ($bahan->kode_spk ?? 'SPK Tidak Diketahui') }}
-    </span>
+    {{ $bahan->nama_material }}
+    @if(!empty($bahan->warna) && strtolower($bahan->warna) !== 'tidak ada warna')
+        <span class="text-blue-400 ml-1">[{{ $bahan->warna }}]</span>
+    @else
+        <span class="text-gray-500 ml-1">[Tidak Ada Warna]</span>
+    @endif
 </td>
+                                    <td class="px-3 py-2 text-xs text-gray-400">
+                                        Dipakai untuk: 
+                                        <span class="text-white font-semibold">
+                                            {{ $bahan->nama_produk ?? ($bahan->kode_spk ?? 'SPK Tidak Diketahui') }}
+                                        </span>
+                                    </td>
                                     <td class="px-3 py-2 text-xs text-gray-300 text-center">{{ $bahan->satuan ?? '-' }}</td>
                                     <td class="px-3 py-2 text-xs text-red-400 text-right font-bold">-{{ rtrim(rtrim(number_format($bahan->jumlah, 2, ',', '.'), '0'), ',') }}</td>
                                 </tr>
                                 @endif
                             @empty
-                            <!-- UBAH COLSPAN DARI 4 MENJADI 5 KARENA ADA TAMBAHAN KOLOM -->
                             <tr><td colspan="5" class="px-3 py-4 text-center text-gray-500 text-xs">Belum ada data bahan keluar</td></tr>
                             @endforelse
                         </tbody>
@@ -504,16 +424,11 @@ if (!isset($mode) || empty($mode)) {
 <script>
 window.onbeforeprint = function() { 
     var printHeader = document.querySelector('.print-header-container');
-    if (printHeader) {
-        printHeader.parentElement.style.display = 'block';
-    }
+    if (printHeader) { printHeader.parentElement.style.display = 'block'; }
 };
 window.onafterprint = function() { 
     var printHeader = document.querySelector('.print-header-container');
-    if (printHeader) {
-        printHeader.parentElement.style.display = 'none';
-    }
+    if (printHeader) { printHeader.parentElement.style.display = 'none'; }
 };
-
 </script>
 @endsection

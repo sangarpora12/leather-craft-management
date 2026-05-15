@@ -40,6 +40,7 @@ $idsTargetFifo = BahanBaku::where('kode_material', $bahanBaku->kode_material)
 
 // 2. Ambil SEMUA layer FIFO untuk semua ID tersebut
 $semuaLayer = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTargetFifo)
+    ->where('qty_sisa', '>', 0) // ✅ JURUS SAKTI: Sembunyikan layer yang stoknya sudah 0
     ->with('material') // Pastikan relasi material ikut dipanggil biar kolom warna tidak error
     ->orderBy('tanggal_masuk', 'desc')
     ->orderBy('created_at', 'desc')
@@ -631,7 +632,7 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             $q->where('data->target', 'operator')->orWhere('data->target', 'all');
         })->count();
 
-        $kategories = \App\Models\Kategori::all();
+        $kategories = \App\Models\Kategori::where('tipe', 'bahan')->get();
         $satuans = \App\Models\Satuan::all();
 
         return view('operator.bahan-baku.index', compact('bahanBakus', 'totalSKU', 'totalKritis', 'unreadCount', 'kategories', 'satuans', 'batasStokGlobal'));
@@ -863,6 +864,7 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
                 'jumlah' => $qty,
                 'keterangan' => $warna ? "Ditambah via Scan Nota (Warna: {$warna})" : 'Ditambah via Scan Nota (Verifikasi Diperlukan)',
                 'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             // 4. KIRIM NOTIFIKASI VERIFIKASI KHUSUS KE ADMIN
@@ -929,6 +931,16 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
             // 3. Jika tidak cocok, lakukan sinkronisasi: update tabel utama.
             $bahan->stok = $stokSebenarnya;
             $bahan->save();
+            // 👇 TAMBAHKAN BLOK INI AGAR RESTOCK MUNCUL DI LAPORAN 👇
+DB::table('log_stok')->insert([
+    'bahan_baku_id' => $bahan->id,
+    'operator_id' => Auth::id(),
+    'jenis_transaksi' => 'RESTOCK', // Kata kunci ini dijamin terbaca oleh laporan
+    'jumlah' => $qty,
+    'keterangan' => 'Restock via Scan Nota',
+    'created_at' => now(),
+    'updated_at' => now(),
+]);
         }
     
         // --- END PERBAIKAN SINKRONISASI ---
@@ -1162,37 +1174,54 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
         $idsTargetFifo = [$id];
     }
 
-    // 3. Ambil riwayat stok (Log)
-    $riwayatStok = DB::table('log_stok')
-        ->leftJoin('users', 'log_stok.operator_id', '=', 'users.id')
-        ->where('log_stok.bahan_baku_id', $id)
-        ->select('log_stok.*', 'users.name as nama_penginput')
-        ->orderBy('log_stok.created_at', 'desc')
-        ->limit(20)
-        ->get();
+// 3. Ringkasan per harga beli & warna (Biar harga sama tapi beda warna tetap dipisah barisnya)
+$ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTargetFifo)
+    ->leftJoin('bahan_bakus', 'bahan_stok_layers.bahan_baku_id', '=', 'bahan_bakus.id')
+    ->select(
+        'bahan_stok_layers.harga_beli',
+        'bahan_bakus.warna',
+        DB::raw('SUM(qty_masuk) as total_masuk'),
+        DB::raw('SUM(qty_sisa) as total_sisa'),
+        DB::raw('MAX(tanggal_masuk) as terakhir_masuk')
+    )
+    ->groupBy('bahan_stok_layers.harga_beli', 'bahan_bakus.warna')
+    ->orderBy('terakhir_masuk', 'desc')
+    ->get() // Tarik semua datanya dulu
+    ->filter(function($item) {
+        // ✅ JURUS SAKTI ANTI ANGKA GAIB
+        return round((float) $item->total_sisa, 2) > 0;
+    })
+    ->values(); // Susun ulang urutannya
 
     // 4. Ambil SEMUA layer FIFO dari semua varian (Gunakan $idsTargetFifo yang tadi dibuat)
     $semuaLayer = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTargetFifo)
+        ->where('qty_sisa', '>', 0)    
         ->with('material')
         ->orderBy('tanggal_masuk', 'desc')
         ->orderBy('created_at', 'desc')
         ->get();
-
-    // 5. Ringkasan per harga beli (Gunakan $idsTargetFifo di sini juga)
+        // 5. Ringkasan per harga beli (Gunakan $idsTargetFifo di sini juga)
     $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTargetFifo)
-        ->leftJoin('bahan_bakus', 'bahan_stok_layers.bahan_baku_id', '=', 'bahan_bakus.id')
-        ->select(
-            'bahan_stok_layers.harga_beli',
-            'bahan_bakus.warna',
-            DB::raw('SUM(qty_masuk) as total_masuk'),
-            DB::raw('SUM(qty_sisa) as total_sisa'),
-            DB::raw('MAX(tanggal_masuk) as tgl_terakhir')
-        )
-        ->groupBy('bahan_stok_layers.harga_beli', 'bahan_bakus.warna')
-        ->orderBy('tgl_terakhir', 'desc')
-        ->get();
-
+    ->leftJoin('bahan_bakus', 'bahan_stok_layers.bahan_baku_id', '=', 'bahan_bakus.id')
+    
+    ->select(
+        'bahan_stok_layers.harga_beli',
+        'bahan_bakus.warna',
+        DB::raw('SUM(qty_masuk) as total_masuk'),
+        DB::raw('SUM(qty_sisa) as total_sisa'),
+        DB::raw('MAX(tanggal_masuk) as tgl_terakhir')
+    )
+    ->groupBy('bahan_stok_layers.harga_beli', 'bahan_bakus.warna')
+    ->orderBy('tgl_terakhir', 'desc')
+    ->get();
+   
     $warnas = \App\Models\Warna::all();
+    
+    // Ambil riwayat stok untuk bahan ini
+    $riwayatStok = \DB::table('log_stok')
+        ->where('bahan_baku_id', $id)
+        ->orderBy('created_at', 'desc')
+        ->get();
     
     // Ambil batas stok global untuk konsistensi - pakai stok_minimum_bahan seperti admin
     $batasStokGlobal = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 10);

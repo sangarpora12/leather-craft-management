@@ -45,10 +45,37 @@
                     <tbody class="divide-y divide-white/5 text-gray-300">
                         
                         @forelse($bahan as $item)
+                        @php
+                            // Format cerdas stok: 10.00 -> 10, 5.50 -> 5.5
+                            $stokVal = (float) ($item->total_stok ?? $item->stok ?? 0);
+                            $stokTampilData = ($stokVal == (int) $stokVal) ? number_format($stokVal, 0) : rtrim(rtrim(number_format($stokVal, 2, '.', ''), '0'), '.');
+                            
+                            // Logika foto: pakai foto item sendiri, fallback cari bahan lain dengan kode_material sama yang punya foto
+                            $fotoDataBahan = $item->foto;
+                            if (!$fotoDataBahan) {
+                                $fotoFallbackData = $bahan->firstWhere(function($b) use ($item) {
+                                    return $b->kode_material == $item->kode_material && !empty($b->foto);
+                                });
+                                if ($fotoFallbackData) {
+                                    $fotoDataBahan = $fotoFallbackData->foto;
+                                }
+                            }
+                        @endphp
                         <tr class="hover:bg-white/5 transition">
                             <td class="p-4">
-                                <div class="font-bold text-white text-base">{{ $item->nama_material }}</div>
-                                <div class="text-xs text-blue-400 mt-0.5 font-mono">{{ $item->kode_material }}</div>
+                                <div class="flex items-center gap-3">
+                                    @if($fotoDataBahan)
+                                        <img src="{{ asset('storage/' . $fotoDataBahan) }}" alt="Foto {{ $item->nama_material }}" class="w-10 h-10 rounded-lg object-cover border border-white/10">
+                                    @else
+                                        <div class="w-10 h-10 rounded-lg bg-[#222] flex items-center justify-center border border-white/10">
+                                            <i class="fa-solid fa-image text-gray-500 text-sm"></i>
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <div class="font-bold text-white text-base">{{ $item->nama_material }}</div>
+                                        <div class="text-xs text-blue-400 mt-0.5 font-mono">{{ $item->kode_material }}</div>
+                                    </div>
+                                </div>
                             </td>
                             <td class="p-4">
                                 <span class="bg-[#222] px-2.5 py-1 rounded text-xs text-gray-400 border border-white/5">
@@ -57,14 +84,14 @@
                             </td>
                             <td class="p-4">
                                 <div class="font-bold text-white text-base">
-                                    {{ $item->stok }} <span class="text-xs text-gray-500 font-normal">{{ $item->satuan }}</span>
+                                    {{ $stokTampilData }} <span class="text-xs text-gray-500 font-normal">{{ $item->satuan }}</span>
                                 </div>
                             </td>
                             <td class="p-4 font-mono text-gray-400">
                                 Rp {{ number_format($item->harga_satuan, 0, ',', '.') }}
                             </td>
                             <td class="p-4 text-center">
-                                @if($item->stok <= 5)
+                                @if($stokVal <= 5)
                                     <span class="text-[10px] bg-red-500/10 text-red-500 px-2 py-1 rounded border border-red-500/20 font-bold">Menipis</span>
                                 @else
                                     <span class="text-[10px] bg-green-500/10 text-green-500 px-2 py-1 rounded border border-green-500/20 font-bold">Aman</span>

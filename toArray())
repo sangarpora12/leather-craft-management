@@ -1,0 +1,1 @@
+'Sample: ' . json_encode(\$results- . PHP_EOL;

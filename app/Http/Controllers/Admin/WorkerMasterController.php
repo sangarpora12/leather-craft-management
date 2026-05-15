@@ -41,7 +41,6 @@ class WorkerMasterController extends Controller
     {
         try {
             $operators = User::where('role', 'operator')
-                ->where('is_active', true) // ✅ Filter operator yang aktif
                 ->withCount(['bahanBakus as total_input_bahan'])
                 ->withSum(['produksis as total_produk_dibuat' => function($q) {
                     $q->where('status', 'SELESAI');
@@ -52,20 +51,27 @@ class WorkerMasterController extends Controller
             // Load statistik detail per operator
             foreach ($operators as $op) {
                 // ✅ Query bahan_terbanyak dengan filter transaksi masuk
-                // Menampilkan bahan yang paling banyak di-input
-                $bahanTerbanyak = DB::table('log_stok')
-                    ->join('bahan_bakus', 'log_stok.bahan_baku_id', '=', 'bahan_bakus.id')
-                    ->whereIn('log_stok.jenis_transaksi', ['INPUT MANUAL OPERATOR', 'MASUK - BARU'])
-                    ->select('bahan_bakus.nama_material', DB::raw('SUM(log_stok.jumlah) as total'))
-                    ->groupBy('bahan_bakus.nama_material')
-                    ->orderByDesc('total')
-                    ->first();
+// Menampilkan bahan yang paling banyak di-input
+$bahanTerbanyak = DB::table('log_stok')
+->join('bahan_bakus', 'log_stok.bahan_baku_id', '=', 'bahan_bakus.id')
+->where('log_stok.operator_id', $op->id) // <--- TAMBAHKAN BARIS INI
+->where(function($q) {
+    // Biar lebih aman, kita deteksi semua jenis transaksi masuk
+    $q->where('log_stok.jenis_transaksi', 'like', '%MASUK%')
+      ->orWhere('log_stok.jenis_transaksi', 'like', '%TAMBAH%')
+      ->orWhere('log_stok.jenis_transaksi', 'like', '%INPUT%')
+      ->orWhere('log_stok.jenis_transaksi', 'like', '%RESTOCK%');
+})
+->select('bahan_bakus.nama_material', 'bahan_bakus.satuan', DB::raw('SUM(log_stok.jumlah) as total'))
+->groupBy('bahan_bakus.nama_material', 'bahan_bakus.satuan')
+->orderByDesc('total')
+->first();
 
-                $op->bahan_terbanyak = $bahanTerbanyak ? (object)[
-                    'nama' => $bahanTerbanyak->nama_material,
-                    'total' => (int)$bahanTerbanyak->total,
-                    'satuan' => 'Lembar'
-                ] : null;
+$op->bahan_terbanyak = $bahanTerbanyak ? (object)[
+'nama' => $bahanTerbanyak->nama_material,
+'total' => (int)$bahanTerbanyak->total,
+'satuan' => $bahanTerbanyak->satuan ?? 'Lembar' // Mengambil satuan asli dari database jika ada
+] : null;
 
                 // ✅ Query produk_terbanyak - berdasarkan operator_id dan status SELESAI
                 $produkTerbanyak = DB::table('produksis')
@@ -218,7 +224,7 @@ class WorkerMasterController extends Controller
             $validated = $request->validate([
                 'name' => 'required|string|max:255|unique:users,name',
                 'email' => 'required|email|unique:users,email',
-                'password' => 'required|min:6|confirmed',
+                'password' => 'required|min:6',
                 'sub_role' => 'nullable|in:pekerja,kepala_gudang',
                 'jabatan' => 'nullable|string|max:255',
                 'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -237,21 +243,26 @@ class WorkerMasterController extends Controller
                 'foto_profil' => $request->hasFile('foto') ? $request->file('foto')->store('users', 'public') : null,
             ]);
 
-            // Buat link verifikasi yang aman (Signed URL)
-            $link = URL::signedRoute('operator.verify', ['id' => $user->id], null, false);
-            $link = $this->operatorBaseUrl() . $link;
+            // Buat link verifikasi - langsung update database via PHP murni (paling simpel)
+            $link = $this->operatorBaseUrl() . '/verify-operator.php?id=' . $user->id;
 
             // Kirim Email
             try {
                 $details = ['name' => $user->name, 'link' => $link];
                 Mail::send('emails.invite_operator', $details, function($message) use ($validated) {
-                    $message->to($validated['email']) // ✅ Gunakan validated email
+                    $message->to($validated['email'])
                             ->subject('Verifikasi Akun Operator - Berliano Leather');
                 });
-                $msg = 'Akun berhasil dibuat! Silakan cek email untuk verifikasi.';
-                Log::info('Email verifikasi berhasil dikirim ke: ' . $validated['email']);
+                
+                if (count(Mail::failures()) > 0) {
+                    $msg = 'Akun dibuat, tapi email ke ' . $validated['email'] . ' GAGAL dikirim. Email mungkin tidak aktif atau alamat salah.';
+                    Log::error('Gagal mengirim email verifikasi ke: ' . $validated['email'] . ' - Mail failures: ' . json_encode(Mail::failures()));
+                } else {
+                    $msg = 'Akun berhasil dibuat! Silakan cek email ' . $validated['email'] . ' untuk verifikasi.';
+                    Log::info('Email verifikasi berhasil dikirim ke: ' . $validated['email']);
+                }
             } catch (\Exception $e) {
-                $msg = 'Akun dibuat, tapi email GAGAL dikirim. Cek konfigurasi email.';
+                $msg = 'Akun dibuat, tapi verifikasi GAGAL dikirim ke ' . $validated['email'] . '. Error: ' . $e->getMessage();
                 Log::error('Gagal mengirim email verifikasi: ' . $e->getMessage());
             }
 
@@ -421,9 +432,8 @@ class WorkerMasterController extends Controller
                 return redirect()->back()->with('error', 'Akun sudah diverifikasi.');
             }
 
-            // Buat link verifikasi - gunakan Signed URL
-            $link = URL::signedRoute('operator.verify', ['id' => $operator->id], null, false);
-            $link = $this->operatorBaseUrl() . $link;
+            // Buat link verifikasi - langsung update database via PHP murni (paling simpel)
+            $link = $this->operatorBaseUrl() . '/verify-operator.php?id=' . $operator->id;
 
             // Kirim Email
             try {

@@ -166,10 +166,10 @@
                             <tr>
                                 <td class="px-4 py-2 text-sm text-gray-400">{{ \Carbon\Carbon::parse($purchase->tanggal)->format('d M Y') }}</td>
                                 <td class="px-4 py-2 text-sm text-white">{{ $purchase->nama_material }}</td>
-                                <td class="px-4 py-2 text-sm text-gray-300">-</td>
+                                <td class="px-4 py-2 text-sm text-gray-300">{{ $purchase->user_name ?? 'N/A' }}</td>
                                 <td class="px-4 py-2 text-sm text-gray-300 text-right">{{ floatval($purchase->jumlah_masuk) }}</td>
                                 <td class="px-4 py-2 text-sm text-gray-300 text-center">{{ $purchase->satuan }}</td>
-                                <td class="px-4 py-2 text-sm font-bold text-purple-400 text-right">Rp {{ number_format($purchase->total_biaya, 0, ',', '.') }}</td>
+                                <td class="px-4 py-2 text-sm font-bold text-purple-400 text-right">Rp {{ number_format($purchase->total_biaya ?? 0, 0, ',', '.') }}</td>
                             </tr>
                             @empty
                             <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500 italic">Belum ada data pembelian</td></tr>
@@ -264,13 +264,13 @@
                             <tr>
                                 <td class="px-4 py-2 text-sm text-gray-400">{{ \Carbon\Carbon::parse($purchase->tanggal)->format('d M Y') }}</td>
                                 <td class="px-4 py-2 text-sm text-white">{{ $purchase->nama_material }}</td>
-                                <td class="px-4 py-2 text-sm text-gray-300">-</td>
+                                <td class="px-4 py-2 text-sm text-gray-300">{{ $purchase->user_name ?? 'N/A' }}</td>
                                 <td class="px-4 py-2 text-sm">
                                     <span class="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs font-medium">Bahan Baru</span>
                                 </td>
                                 <td class="px-4 py-2 text-sm text-white font-bold text-right">+{{ floatval($purchase->jumlah_masuk) }}</td>
                                 <td class="px-4 py-2 text-sm text-gray-300">-</td>
-                                <td class="px-4 py-2 text-sm text-emerald-400 text-right">Rp {{ number_format($purchase->total_biaya, 0, ',', '.') }}</td>
+                                <td class="px-4 py-2 text-sm text-emerald-400 text-right">Rp {{ number_format($purchase->total_biaya ?? 0, 0, ',', '.') }}</td>
                             </tr>
                             @empty
                             @endforelse

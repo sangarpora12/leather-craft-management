@@ -83,11 +83,13 @@
                             <div class="space-y-2 mt-2">
                                 @if(isset($varianWarna) && $varianWarna->count() > 0)
                                     @foreach($varianWarna as $v)
+                                    @if(round((float) $v->stok, 2) > 0)
                                         <div class="flex items-center gap-3">
                                             <span class="w-3 h-3 rounded-full inline-block" style="background-color: {{ $v->warna && $v->warna !== 'Tidak Ada Warna' ? '#' . substr(md5($v->warna), 0, 6) : '#6b7280' }};"></span>
                                             <span class="text-white font-bold text-base">{{ $v->warna ?? 'Tidak Ada Warna' }}</span>
                                             <span class="text-emerald-400 font-bold text-lg">({{ (int) $v->stok }})</span>
                                         </div>
+                                        @endif
                                     @endforeach
                                 @else
                                     <span class="text-gray-500">Hanya varian ini</span>
@@ -100,89 +102,95 @@
                         </div>
                     </div>
                 </div>
-<!-- Ringkasan Per Harga Beli -->
-@if(isset($ringkasanPerHarga) && $ringkasanPerHarga->count() > 0)
-<div class="bg-[#2D3139] p-6 rounded-xl border border-gray-700/50">
-    <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
-        <i class="fa-solid fa-chart-simple text-emerald-400 mr-3"></i>Ringkasan Per Harga Beli
-    </h3>
-    <div class="space-y-3">
-        @foreach($ringkasanPerHarga as $r)
-        <div class="flex items-center justify-between p-4 rounded-lg {{ $loop->first ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-gray-800/40 border border-white/5' }}">
-            <!-- Sisi Kiri: Harga dan Badge Warna -->
-            <div class="flex flex-col gap-1">
-                <div class="flex items-center gap-2">
-                    <span class="text-white font-bold text-base">Rp {{ number_format($r->harga_beli, 0, ',', '.') }}</span>
-                    @if($loop->first)
-                        <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded border border-emerald-500/30 uppercase">Terakhir</span>
-                    @endif
-                </div>
-                <div>
-                    <span class="px-2 py-1 bg-gray-700/50 text-gray-300 text-[10px] font-medium rounded border border-white/10 uppercase tracking-tight">
-                        {{ $r->warna ?? 'Tidak Ada Warna' }}
-                    </span>
-                </div>
-            </div>
+                @if(isset($ringkasanPerHarga) && $ringkasanPerHarga->count() > 0)
+                <div class="bg-[#2D3139] p-6 rounded-xl border border-gray-700/50 mb-8">
+                    <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                        <i class="fa-solid fa-chart-simple text-emerald-400 mr-3"></i>Ringkasan Per Harga Beli
+                    </h3>
+                    
+                    {{-- ✅ KOTAK SCROLL DITAMBAHKAN DI SINI --}}
+                    <div class="max-h-[350px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                        
+                        @foreach($ringkasanPerHarga as $r)
+                        @if(round((float) $r->total_sisa, 2) > 0)
+                        <div class="flex items-center justify-between p-4 rounded-lg {{ $loop->first ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-gray-800/40 border border-white/5' }}">
+                            <div class="flex flex-col gap-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-white font-bold text-base">Rp {{ number_format($r->harga_beli, 0, ',', '.') }}</span>
+                                    @if($loop->first)
+                                        <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded border border-emerald-500/30 uppercase">Terakhir</span>
+                                    @endif
+                                </div>
+                                <div>
+                                    <span class="px-2 py-1 bg-gray-700/50 text-gray-300 text-[10px] font-medium rounded border border-white/10 uppercase tracking-tight">
+                                        {{ $r->warna ?? 'Tidak Ada Warna' }}
+                                    </span>
+                                </div>
+                            </div>
 
-            <!-- Sisi Kanan: Statistik Stok -->
-            <div class="flex items-center gap-4 text-right">
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-500 uppercase font-bold">Masuk</span>
-                    <span class="text-white font-bold text-sm">{{ (float) $r->total_masuk }}</span>
+                            <div class="flex items-center gap-4 text-right">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] text-gray-500 uppercase font-bold">Masuk</span>
+                                    <span class="text-white font-bold text-sm">{{ (float) $r->total_masuk }}</span>
+                                </div>
+                                <div class="w-px h-8 bg-gray-700"></div>
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] text-gray-500 uppercase font-bold">Sisa</span>
+                                    <span class="text-orange-400 font-bold text-sm">
+                                        {{ (float) $r->total_sisa }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+                        @endforeach
+                        
+                    </div>
                 </div>
-                <div class="w-px h-8 bg-gray-700"></div>
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-500 uppercase font-bold">Sisa</span>
-                    <span class="{{ (float) $r->total_sisa > 0 ? 'text-orange-400' : 'text-gray-500' }} font-bold text-sm">
-                        {{ (float) $r->total_sisa }}
-                    </span>
-                </div>
-            </div>
-        </div>
-        @endforeach
-    </div>
-</div>
-@endif
+                @endif
 
-                <!-- LAYER FIFO STOK -->
 @if(isset($semuaLayer) && $semuaLayer->count() > 0)
-<div class="bg-[#2D3139] p-6 rounded-xl border border-gray-700/50">
-    <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
-        <i class="fa-solid fa-layer-group text-purple-400 mr-3"></i>Layer FIFO Stok
-    </h3>
-    <div class="overflow-x-auto rounded-lg border border-gray-800">
-        <table class="w-full text-sm text-left">
-            <thead class="bg-gray-800/50 text-[10px] text-gray-500 uppercase tracking-widest">
-                <tr>
-                    <th class="px-4 py-3">Tgl Masuk</th>
-                    <th class="px-4 py-3">Warna</th> {{-- Kolom Warna Baru --}}
-                    <th class="px-4 py-3 text-right">Qty Masuk</th>
-                    <th class="px-4 py-3 text-right">Qty Sisa</th>
-                    <th class="px-4 py-3 text-right">Harga Beli</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-800">
-                @foreach($semuaLayer as $layer)
-                <tr class="hover:bg-gray-800/30 transition">
-                    <td class="px-4 py-3 text-white">{{ \Carbon\Carbon::parse($layer->tanggal_masuk)->format('d M Y') }}</td>
-                    <td class="px-4 py-3">
-                        <span class="text-[10px] font-medium text-gray-400 uppercase">
-                            {{ $layer->material->warna ?? 'Tidak Ada Warna' }}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3 text-right text-white font-medium">{{ (float) $layer->qty_masuk }}</td>
-                    <td class="px-4 py-3 text-right {{ (float) $layer->qty_sisa > 0 ? 'text-orange-400 font-bold' : 'text-gray-600' }}">
-                        {{ (float) $layer->qty_sisa }}
-                    </td>
-                    <td class="px-4 py-3 text-right text-emerald-400 font-bold">Rp {{ number_format($layer->harga_beli, 0, ',', '.') }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
-</div>
-@endif
-
+                <div class="bg-[#2D3139] p-6 rounded-xl border border-gray-700/50">
+                    <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                        <i class="fa-solid fa-layer-group text-purple-400 mr-3"></i>Layer FIFO Stok
+                    </h3>
+                    
+                    {{-- ✅ BUNGKUS TABEL DENGAN max-h DAN overflow-y-auto --}}
+                    <div class="max-h-[350px] overflow-y-auto overflow-x-auto rounded-lg border border-gray-800 pr-1 custom-scrollbar">
+                        <table class="w-full text-sm text-left relative">
+                            
+                            {{-- ✅ TAMBAHKAN sticky top-0 dan z-10 DI SINI --}}
+                            <thead class="bg-gray-800 text-[10px] text-gray-500 uppercase tracking-widest sticky top-0 z-10 shadow-sm border-b border-gray-700">
+                                <tr>
+                                    <th class="px-4 py-3">Tgl Masuk</th>
+                                    <th class="px-4 py-3">Warna</th> {{-- Kolom Warna Baru --}}
+                                    <th class="px-4 py-3 text-right">Qty Masuk</th>
+                                    <th class="px-4 py-3 text-right">Qty Sisa</th>
+                                    <th class="px-4 py-3 text-right">Harga Beli</th>
+                                </tr>
+                            </thead>
+                            
+                            <tbody class="divide-y divide-gray-800">
+                                @foreach($semuaLayer as $layer)
+                                <tr class="hover:bg-gray-800/50 transition">
+                                    <td class="px-4 py-3 text-white">{{ \Carbon\Carbon::parse($layer->tanggal_masuk)->format('d M Y') }}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-[10px] font-medium text-gray-400 uppercase">
+                                            {{ $layer->material->warna ?? 'Tidak Ada Warna' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-white font-medium">{{ (float) $layer->qty_masuk }}</td>
+                                    <td class="px-4 py-3 text-right {{ (float) $layer->qty_sisa > 0 ? 'text-orange-400 font-bold' : 'text-gray-600' }}">
+                                        {{ (float) $layer->qty_sisa }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-emerald-400 font-bold">Rp {{ number_format($layer->harga_beli, 0, ',', '.') }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
                 <!-- VARIAN WARNA TABLE -->
                 @if(isset($varianWarna) && $varianWarna->count() > 0)
                 <div class="bg-[#2D3139] p-6 rounded-xl border border-gray-700/50">
@@ -201,6 +209,7 @@
                             </thead>
                             <tbody class="divide-y divide-gray-800">
                                 @foreach($varianWarna as $v)
+                                @if(round((float) $v->stok, 2) > 0)
                                 <tr class="hover:bg-gray-800/30 transition">
                                     <td class="px-4 py-3 text-white font-medium">{{ $v->nama_material }}</td>
                                     <td class="px-4 py-3">
@@ -217,6 +226,7 @@
                                         </a>
                                     </td>
                                 </tr>
+                                @endif
                                 @endforeach
                             </tbody>
                         </table>

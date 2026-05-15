@@ -186,7 +186,19 @@
                                 <img class="h-10 w-10 rounded-lg object-cover flex-shrink-0" src="{{ $item->bahan && $item->bahan->foto ? asset('storage/' . $item->bahan->foto) : asset('images/no-image.png') }}" alt="">
                                 <div>
                                     <div class="font-medium text-white">{{ $item->bahan ? $item->bahan->nama_material : 'Bahan tidak tersedia' }}</div>
-                                    <div class="text-xs text-gray-400">{{ $item->bahan ? ($item->bahan->warna ?: 'N/A') : 'N/A' }}</div>
+                                    {{-- Ganti bagian warna dengan kode aman ini --}}
+                                    <p class="text-xs text-gray-500">
+    @php
+        $warna = $item->warna ?? ($item->bahan->warna ?? null);
+        $isSampah = in_array(strtolower(trim($warna)), ['polos', 'n/a', 'null', '-', '']);
+    @endphp
+
+    @if($warna && !$isSampah && strtolower(trim($warna)) !== 'tidak ada warna')
+        {{ $warna }}
+    @else
+        <span class="opacity-50">Tidak Ada Warna</span>
+    @endif
+</p>
                                 </div>
                             </div>
                         </td>

@@ -44,6 +44,32 @@ class BomController extends Controller
         return view('admin.bom.index', compact('products'));
     }
 
+    public function indexOperator(Request $request)
+    {
+        // Start query on ProdukJadi model - hanya tampilkan yang punya BOM/resep
+        $query = ProdukJadi::query();
+
+        // Filter by search
+        if ($request->filled('search')) {
+            $search = $request->string('search')->trim();
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_produk', 'like', "%{$search}%")
+                  ->orWhere('kode_produk', 'like', "%{$search}%");
+            });
+        }
+
+        // Hanya tampilkan produk yang sudah punya resep/BOM
+        $query->whereHas('boms');
+
+        // Eager load relationships
+        $products = $query->with(['boms.bahanBaku'])
+                          ->latest()
+                          ->paginate(15)
+                          ->withQueryString();
+
+        return view('operator.resep-produk.index', compact('products'));
+    }
+
     public function create($produk_jadi_id)
     {
         $product = ProdukJadi::findOrFail($produk_jadi_id);
@@ -133,20 +159,20 @@ public function update(Request $request, $id)
         'lebar'         => 'required|numeric|min:0.01',
         'tinggi'        => 'required|numeric|min:0.01',
         'detail_pola'   => 'nullable|string', // Hanya ini yang boleh kosong
-        'material_id'   => 'required|array|min:1',
-        'material_id.*' => 'required|exists:bahan_bakus,id',
-        'quantity'      => 'required|array|min:1',
-        'quantity.*'    => 'required|numeric|min:0.01',
-        'unit'          => 'required|array',
-        'unit.*'        => 'required|string',
+        'material_id'   => 'nullable|array',
+        'material_id.*' => 'nullable|exists:bahan_bakus,id',
+        'quantity'      => 'nullable|array',
+        'quantity.*'    => 'nullable|numeric|min:0.01',
+        'unit'          => 'nullable|array',
+        'unit.*'        => 'nullable|string',
         'sketsa.*'      => 'image|mimes:jpeg,png,jpg,gif,svg|max:10240',
     ], [
         // Pesan Error Bahasa Indonesia agar mudah saat Demo Skripsi
         'panjang.required' => 'Dimensi Panjang wajib diisi.',
         'lebar.required'   => 'Dimensi Lebar wajib diisi.',
         'tinggi.required'  => 'Dimensi Tinggi wajib diisi.',
-        'material_id.required' => 'Anda harus memilih minimal satu bahan baku.',
         'quantity.*.min'   => 'Jumlah bahan tidak boleh 0.',
+        'material_id.*.exists' => 'Bahan yang dipilih tidak valid atau sudah dihapus.',
     ]);
 
     DB::beginTransaction();
@@ -183,16 +209,18 @@ public function update(Request $request, $id)
         DB::table('bom')->where('id_produk', $product->id)->delete();
 
         $bomsData = [];
-        foreach ($request->material_id as $index => $materialId) {
-            if (!empty($materialId)) {
-                $bomsData[] = [
-                    'id_produk'        => $product->id,
-                    'id_bahan'         => $materialId,
-                    'jumlah_kebutuhan' => $request->quantity[$index],
-                    'satuan'           => $request->unit[$index],
-                    'created_at'       => now(),
-                    'updated_at'       => now(),
-                ];
+        if ($request->has('material_id') && is_array($request->material_id)) {
+            foreach ($request->material_id as $index => $materialId) {
+                if (!empty($materialId) && isset($request->quantity[$index]) && $request->quantity[$index] > 0) {
+                    $bomsData[] = [
+                        'id_produk'        => $product->id,
+                        'id_bahan'         => $materialId,
+                        'jumlah_kebutuhan' => $request->quantity[$index],
+                        'satuan'           => $request->unit[$index] ?? 'Satuan',
+                        'created_at'       => now(),
+                        'updated_at'       => now(),
+                    ];
+                }
             }
         }
 

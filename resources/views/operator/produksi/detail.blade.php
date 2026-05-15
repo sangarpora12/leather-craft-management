@@ -21,9 +21,9 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
     to   { opacity: 1; transform: translateY(0); }
 }
 .progress-shimmer {
-    background: linear-gradient(90deg, #22c55e 0%, #4ade80 25%, #22c55e 50%, #4ade80 75%, #22c55e 100%);
-    background-size: 200% 100%;
-    animation: shimmer 2s linear infinite;
+    background: linear-gradient(90deg, #22c55e 0%, #16a34a 25%, #22c55e 50%, #16a34a 75%, #22c55e 100%) !important;
+    background-size: 200% 100% !important;
+    animation: shimmer 2s linear infinite !important;
 }
 @keyframes shimmer {
     0%   { background-position: 200% 0; }
@@ -65,58 +65,6 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
     <!-- Header -->
     @include('components.operator-header', ['title' => 'DETAIL TUGAS'])
 
-    <!-- ── Progress Stepper ──────────────────────────────────── -->
-    <div class="px-2 py-4">
-        <div class="flex items-center justify-between relative">
-            <div class="absolute top-1/2 left-0 right-0 h-1 bg-zinc-800 -translate-y-1/2 rounded-full"></div>
-
-            {{-- Step 1: Persiapan --}}
-            <div class="relative z-10 flex flex-col items-center">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500
-                    @if($produksi->status === 'PENDING') bg-emerald-500 shadow-lg shadow-emerald-500/50 scale-110
-                    @elseif($produksi->status === 'PROSES') bg-emerald-600 shadow-md
-                    @else bg-emerald-600 @endif">
-                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                    </svg>
-                </div>
-                <span class="text-[10px] mt-2 font-semibold {{ $produksi->status === 'PENDING' ? 'text-emerald-400' : 'text-gray-500' }}">Persiapan</span>
-            </div>
-
-            {{-- Step 2: Produksi --}}
-            <div class="relative z-10 flex flex-col items-center">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500
-                    @if($produksi->status === 'PROSES') bg-amber-500 shadow-lg shadow-amber-500/50 scale-110 animate-pulse
-                    @elseif($produksi->status === 'SELESAI') bg-emerald-600
-                    @else bg-zinc-700 @endif">
-                    @if($produksi->status === 'PROSES')
-                        <svg class="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    @else
-                        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                        </svg>
-                    @endif
-                </div>
-                <span class="text-[10px] mt-2 font-semibold {{ $produksi->status === 'PROSES' ? 'text-amber-400' : 'text-gray-500' }}">Produksi</span>
-            </div>
-
-            {{-- Step 3: Selesai --}}
-            <div class="relative z-10 flex flex-col items-center">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500
-                    @if($produksi->status === 'SELESAI') bg-emerald-500 shadow-lg shadow-emerald-500/50 scale-110
-                    @else bg-zinc-700 @endif">
-                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                </div>
-                <span class="text-[10px] mt-2 font-semibold {{ $produksi->status === 'SELESAI' ? 'text-emerald-400' : 'text-gray-500' }}">Selesai</span>
-            </div>
-        </div>
-    </div>
-
     <main class="py-3 space-y-3">
         @php
             $selesai         = (float) ($produksi->jumlah_selesai ?? 0);
@@ -130,7 +78,93 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
             } elseif (!empty($produksi->catatan) && trim($produksi->catatan) !== '-') {
                 $keterangan = $produksi->catatan;
             }
+
+            // Hitung semua SPK dari produk yang sama untuk operator ini (untuk progress)
+            $allSpkProgress = \App\Models\Produksi::where('produk_jadi_id', $produksi->produk_jadi_id)
+                ->where('operator_id', auth()->id())
+                ->get();
+            
+            $targetTotalProgress  = (float) $allSpkProgress->sum('jumlah_produksi');
+            $selesaiTotalProgress = (float) $allSpkProgress->sum('jumlah_selesai');
+            $prosesTotalProgress  = 0;
+            foreach ($allSpkProgress as $spk) {
+                if ($spk->status === 'PROSES') {
+                    $prosesTotalProgress += ((float) $spk->jumlah_produksi - (float) $spk->jumlah_selesai);
+                }
+            }
+            $totalDiprosesProgress   = $selesaiTotalProgress + $prosesTotalProgress;
+            $progressPercentProgress = $targetTotalProgress > 0 ? ($totalDiprosesProgress / $targetTotalProgress) * 100 : 0;
         @endphp
+
+        {{-- Progress Card - Paling Atas --}}
+        <div class="slide-up">
+            <div class="flex items-center justify-between mb-1.5" 
+                 style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 14px">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                    <span class="text-xs font-bold text-white uppercase tracking-wider">Progress keseluruhan</span>
+                </div>
+                <span class="text-xs font-bold text-emerald-300">{{ (int) round($progressPercentProgress) }}%</span>
+            </div>
+            <div class="h-3 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.05)">
+                <div class="h-full rounded-full" style="width:{{ $progressPercentProgress }}%;background:linear-gradient(90deg,#22c55e,#16a34a,#22c55e);background-size:200% 100%;animation:shimmer 2s linear infinite;transition:width 0.5s ease"></div>
+            </div>
+            <div class="flex justify-between mt-1.5 text-[9px] text-gray-500">
+                <span>{{ (int) $totalDiprosesProgress }} / {{ (int) $targetTotalProgress }} Pcs</span>
+                <span>{{ $allSpkProgress->count() }} SPK</span>
+            </div>
+        </div>
+
+        {{-- Card Progress - Selesai, Proses, Sisa --}}
+        <div class="grid grid-cols-3 gap-2 text-[11px]">
+            <div class="text-center p-3 rounded-xl" style="background:rgba(34,197,94,0.1)">
+                <span class="block text-emerald-400 font-bold text-lg">{{ rtrim(rtrim(number_format($selesaiTotalProgress,2,',','.'), '0'), ',') }}</span>
+                <span class="text-gray-400 text-xs">Selesai</span>
+            </div>
+            <div class="text-center p-3 rounded-xl" style="background:rgba(245,158,11,0.1)">
+                <span class="block text-amber-400 font-bold text-lg">{{ rtrim(rtrim(number_format($prosesTotalProgress,2,',','.'), '0'), ',') }}</span>
+                <span class="text-gray-400 text-xs">Proses</span>
+            </div>
+            <div class="text-center p-3 rounded-xl" style="background:rgba(239,68,68,0.1)">
+                <span class="block text-red-400 font-bold text-lg">{{ rtrim(rtrim(number_format(max(0, $targetTotalProgress - $totalDiprosesProgress),2,',','.'), '0'), ',') }}</span>
+                <span class="text-gray-400 text-xs">Sisa</span>
+            </div>
+        </div>
+
+        {{-- Deadline List --}}
+        <div>
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-orange-400 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    Deadline (Tanggal Target)
+                </span>
+            </div>
+            <div class="space-y-2">
+                @php
+                    $deadlines = $allSpkProgress->pluck('tanggal_target')->filter()->unique()->sort()->values();
+                @endphp
+                @foreach($deadlines as $deadline)
+                    @php
+                        $spkByDeadline = $allSpkProgress->where('tanggal_target', $deadline);
+                        $totalQtyDl = $spkByDeadline->sum('jumlah_produksi');
+                        $selesaiQtyDl = $spkByDeadline->sum('jumlah_selesai');
+                    @endphp
+                    <div class="p-3 rounded-xl" style="background:rgba(249,115,22,0.1)">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                            <span class="text-orange-300 font-bold text-sm">{{ \Carbon\Carbon::parse($deadline)->format('d M Y') }}</span>
+                            <span class="text-gray-300 text-xs font-medium">{{ $spkByDeadline->count() }} SPK | {{ $selesaiQtyDl }}/{{ $totalQtyDl }} pcs selesai</span>
+                        </div>
+                    </div>
+                @endforeach
+                @if($deadlines->isEmpty())
+                    <p class="text-sm text-gray-400">Tidak ada deadline yang tertera untuk SPK ini</p>
+                @endif
+            </div>
+        </div>
 
         {{-- ── Catatan Admin ───────────────────────────────────── --}}
         @php
@@ -207,19 +241,7 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
                 </div>
             </div>
 
-            <div class="rounded-xl p-3 bg-white/5 border border-white/10">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-[10px] text-gray-400 uppercase font-bold">Progress</div>
-                    <div class="text-[10px] text-gray-300 font-bold" id="progressPercent">{{ (int) round($progressPercent) }}%</div>
-                </div>
-                <div class="h-2 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)">
-                    <div class="h-full rounded-full progress-shimmer" style="width:{{ $progressPercent }}%"></div>
-                </div>
-                <div class="flex items-center justify-between mt-2 text-[10px] text-gray-400">
-                    <span>Selesai: <span class="text-emerald-300 font-bold">{{ rtrim(rtrim(number_format($selesai,2,',','.'), '0'), ',') }}</span></span>
-                    <span>Sisa: <span class="text-amber-300 font-bold">{{ rtrim(rtrim(number_format($sisa,2,',','.'), '0'), ',') }}</span></span>
-                </div>
-            </div>
+
         </div>
 
         @if($errors->any())
@@ -378,37 +400,11 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
                 </div>
             </div>
 
-            {{-- Hapus Section Progress --}}
-            @php $selesai = 0; $target = 0; $sisa = 0; $progressPercent = 0; @endphp
-
-            @if($selesai > 0)
-            <div class="mt-3 pt-3" style="border-top:1px solid rgba(255,255,255,0.1)">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold text-green-400 flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                        </svg>
-                        Sudah Diselesaikan
-                    </span>
-                    <span class="text-sm font-bold text-green-400">
-                        {{ rtrim(rtrim(number_format($selesai,2,',','.'), '0'), ',') }} /
-                        {{ rtrim(rtrim(number_format($target,2,',','.'), '0'), ',') }} pcs
-                    </span>
-                </div>
-                <div class="h-2 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)">
-                    <div class="h-full rounded-full progress-shimmer" style="width:{{ $progressPercent }}%"></div>
-                </div>
-                <p class="text-xs text-gray-400 mt-2 flex items-center justify-between">
-                    <span>{{ round($progressPercent) }}% selesai</span>
-                    <span>{{ rtrim(rtrim(number_format($sisa,2,',','.'), '0'), ',') }} pcs remaining</span>
-                </p>
-            </div>
-            @endif
         </div>
 
         <!-- ── Form Produksi (PENDING / PROSES) ──────────────────── -->
         @if(in_array($produksi->status, ['PENDING', 'PROSES']))
-        <div class="glass-card rounded-2xl p-4 slide-up mb-16">
+        <div class="glass-card rounded-2xl p-4 slide-up mb-16" style="background:rgba(30, 30, 30, 0.6) !important;backdrop-filter: blur(16px);border:1px solid rgba(255,255,255,0.1)">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 rounded-xl flex items-center justify-center"
                      style="background:linear-gradient(135deg,rgba(16,185,129,0.3),rgba(6,95,70,0.3));border:1px solid rgba(16,185,129,0.3)">
@@ -461,11 +457,7 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
                     </div>
 
                     <p class="text-center mt-2 p-2 rounded-xl text-xs" style="background:rgba(255,255,255,0.05);color:#a1a1aa">
-                        📦 Total Target Gabungan:
-                        <span class="text-white font-bold">{{ (int)$produksi->total_gabungan }} Pcs</span>
-                        (dari {{ $produksi->jumlah_spk_gabungan }} SPK)<br>
-                        Sudah Selesai: <span class="text-emerald-400 font-bold">{{ (int)$produksi->total_selesai_gabungan }} Pcs</span>
-                        | Sisa: <span id="sisaDisplay" class="text-amber-400 font-bold">{{ $produksi->total_sisa_gabungan - 1 }} Pcs</span>
+                        <span id="sisaInfo" class="text-red-400">Sisa yang bisa diproses: <span id="sisaDisplay" class="font-bold">{{ (int)$sisa + 1 }} Pcs</span></span>
                     </p>
                 </div>
 
@@ -606,7 +598,7 @@ body { background-color: #080a10 !important; overflow-x: hidden !important; }
 (function () {
     /* ── Konstanta dari Blade ──────────────────────────────────── */
     var STATUS   = '{{ $produksi->status }}';
-    var MAX_QTY  = {{ (int) $produksi->total_sisa_gabungan }};   // sisa gabungan semua SPK
+    var MAX_QTY  = {{ (int) $sisa + 1 }};   // sisa gabungan semua SPK yang sudah dihitung
 
     /* ── Elemen DOM ───────────────────────────────────────────── */
     var inputVisible = document.getElementById('jumlahInput');       // yang operator lihat & ketik
