@@ -35,8 +35,11 @@ Thumbs.db
 /app/Http/Controllers/DashboardController.php to use a tool. Let me edit the DashboardController to use the NotificationService.
 # Laravel specific
 /storage/framework/sessions/*
+!/storage/framework/sessions/.gitkeep
 /storage/framework/views/*
+!/storage/framework/views/.gitkeep
 /storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitkeep
 /storage/app/public/bahan_baku/*
 /storage/app/public/produk-jadi/*
 
