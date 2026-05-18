@@ -9,6 +9,7 @@
         "php": "^8.4",
         "ext-gd": "*",
         "ext-zip": "*",
+        "ext-mysqli": "*",
         "barryvdh/laravel-dompdf": "^3.1",
         "intervention/image": "^3.11",
         "laravel/framework": "^12.0",
