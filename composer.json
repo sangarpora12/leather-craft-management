@@ -39,7 +39,7 @@
             "Tests\\": "tests/"
         }
     },
-    "scripts": {
+"scripts": {
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
@@ -47,6 +47,10 @@
             "@php artisan migrate --force",
             "npm install",
             "npm run build"
+        ],
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
