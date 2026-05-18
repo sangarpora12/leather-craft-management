@@ -159,25 +159,25 @@
 {{-- 7. TOMBOL LOGIN / INFO PEKERJA --}}
 <div style="text-align: center; margin-top: 30px; margin-bottom: 20px;">
 @php
-$operatorId = count($spks) > 0 ? $spks[0]->operator_id : null;
+    $operatorId = count($spks) > 0 ? $spks[0]->operator_id : null;
 @endphp
 
+{{-- Hanya tampilkan tombol login jika dia Kepala Gudang --}}
 @if($isKepalaGudang)
-@if($operatorId)
-<a href="{{ route('autoLogin', ['user' => $operatorId]) }}" style="background: #27ae60; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">LOGIN & KERJAKAN TUGAS</a>
+    @if($operatorId)
+    <a href="{{ route('autoLogin', ['user' => $operatorId]) }}" style="background: #27ae60; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">LOGIN & KERJAKAN TUGAS</a>
+    @else
+    <a href="{{ route('login') }}" style="background: #34495e; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">LOGIN DASHBOARD</a>
+    @endif
 @else
-<a href="{{ route('login') }}" style="background: #34495e; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">LOGIN DASHBOARD</a>
-@endif
-@else
-<div style="background: #f8f9fa; border-left: 4px solid #f39c12; padding: 15px; margin: 0 auto; max-width: 80%; text-align: left; border-radius: 4px;">
-<p style="margin: 0; color: #2c3e50; font-size: 14px;">
-<strong>📌 INFO PEKERJA:</strong><br>
-Harap segera berkoordinasi dengan Kepala Gudang untuk mulai mengerjakan instruksi produksi di atas sesuai dengan target yang ditentukan.
-</p>
-</div>
+    {{-- Jika dia cuma Pekerja, tampilkan pesan instruksi saja tanpa tombol login --}}
+    <div style="background: #f8f9fa; border-left: 4px solid #f39c12; padding: 15px; margin: 0 auto; max-width: 80%; text-align: left; border-radius: 4px;">
+        <p style="margin: 0; color: #2c3e50; font-size: 14px;">
+            <strong>📌 INFO PEKERJA:</strong><br>
+            Harap segera berkoordinasi dengan Kepala Gudang untuk mulai mengerjakan instruksi produksi di atas sesuai dengan target yang ditentukan.
+        </p>
+    </div>
 @endif
 
 <p style="color: #7f8c8d; font-size: 12px; margin-top: 15px;">Segera kerjakan tugas ini sebelum tanggal target. Silakan hubungi admin jika ada kendala.</p>
 </div>
-
-@endcomponent

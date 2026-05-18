@@ -267,45 +267,52 @@ foreach ($bahanDibutuhkan as $kodeMaterial => $bahan) {
             }
 
             DB::commit();
+            DB::commit();
 
-// ── Kirim notifikasi ──────────────────────────────────────────
-$adminName = auth()->user()->name ?? 'Admin';
+            // ── PERBAIKAN LOGIKA NOTIFIKASI DISINI (ANTI-BOCOR & ANTI-NONAKTIF) ──
+            $adminName = auth()->user()->name ?? 'Admin';
 
-// 1. Kirim notifikasi ke Kepala Gudang yang ditugaskan di sistem
-if ($operatorId) {
-    $kepalaGudang = User::find($operatorId);
-    if ($kepalaGudang && $kepalaGudang->email) {
-        Notification::send($kepalaGudang, new PerintahProduksiNotification($createdSpks, $adminName, true));
-    }
-} else {
-    // Jika tidak ada Kepala Gudang spesifik yang dipilih (pilih "All")
-    $semuaKepalaGudang = User::where('role', 'operator')
-        ->where('sub_role', 'kepala_gudang')
-        ->where('is_active', true)
-        ->whereNotNull('email')
-        ->get();
-    Notification::send($semuaKepalaGudang, new PerintahProduksiNotification($createdSpks, $adminName, true));
-}
+            // 1. Kirim notifikasi ke Kepala Gudang yang ditugaskan (HANYA JIKA AKUN AKTIF)
+            if ($operatorId) {
+                $kepalaGudang = User::where('id', $operatorId)
+                    ->where('is_active', true) // Pastikan akun aktif
+                    ->first();
+                
+                if ($kepalaGudang && $kepalaGudang->email) {
+                    // Parameter ke-3 bernilai true karena dia Kepala Gudang (Dapat Link)
+                    Notification::send($kepalaGudang, new PerintahProduksiNotification($createdSpks, $adminName, true));
+                }
+            } else {
+                // Jika Admin memilih opsi "All" (Kirim ke semua Kepala Gudang yang AKTIF)
+                $semuaKepalaGudang = User::where('role', 'operator')
+                    ->where('sub_role', 'kepala_gudang')
+                    ->where('is_active', true) // Pastikan akun aktif
+                    ->whereNotNull('email')
+                    ->get();
+                
+                if ($semuaKepalaGudang->isNotEmpty()) {
+                    Notification::send($semuaKepalaGudang, new PerintahProduksiNotification($createdSpks, $adminName, true));
+                }
+            }
 
-// 2. WAJIB: Selalu kirim email instruksi ke SEMUA Pekerja yang statusnya AKTIF
-$pekerjaAktif = User::where('role', 'operator')
-    ->where('sub_role', 'pekerja')
-    ->where('is_active', true) // Memastikan email cuma dikirim kalau akun belum dinonaktifkan
-    ->whereNotNull('email')
-    ->get();
+            // 2. Kirim instruksi ke Pekerja biasa (HANYA YANG AKTIF & TANPA LINK LOGIN)
+            $pekerjaAktif = User::where('role', 'operator')
+                ->where('sub_role', 'pekerja')
+                ->where('is_active', true) // Proteksi: Akun nonaktif fiks tidak akan dapat email
+                ->whereNotNull('email')
+                ->get();
 
-if ($pekerjaAktif->isNotEmpty()) {
-    Notification::send($pekerjaAktif, new PerintahProduksiNotification($createdSpks, $adminName, false));
-}
+            if ($pekerjaAktif->isNotEmpty()) {
+                // Parameter ke-3 diganti 'false' agar di dalam Gmail TIDAK ADA LINK LOGIN
+                Notification::send($pekerjaAktif, new PerintahProduksiNotification($createdSpks, $adminName, false));
+            }
+            // ───────────────────────────────────────────────────────────────────
 
             $total = count($createdSpks);
             return redirect()->route('admin.produksi.index')
                 ->with('success', "✅ BERHASIL! {$total} Surat Perintah Kerja baru telah diterbitkan. Bahan baku otomatis dipotong dari gudang.");
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Gagal membuat SPK baru: ' . $e->getMessage());
-            
             // Ubah tanda \ menjadi / agar tidak bikin crash JavaScript XAMPP
             $pesanAman = str_replace('\\', '/', $e->getMessage());
             return back()->withInput()->with('error', 'Gagal kirim tugas: ' . $pesanAman);

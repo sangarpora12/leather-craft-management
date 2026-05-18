@@ -1,70 +1,42 @@
 <?php
-// Fungsi untuk membaca file .env
-function loadEnv($path) {
-    if (!file_exists($path)) {
-        return [];
-    }
-    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    $env = [];
-    foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
-        list($key, $value) = explode('=', $line, 2);
-        $env[trim($key)] = trim($value);
-    }
-    return $env;
-}
-
-// Load konfigurasi dari .env
-$rootPath = dirname(__DIR__) . '/.env';
-$env = loadEnv($rootPath);
-$operatorUrl = $env['OPERATOR_URL'] ?? 'http://127.0.0.1:8000';
-
-// Koneksi database
-$host = 'localhost';
-$dbname = $env['DB_DATABASE'] ?? 'berliano_leather';
-$username = $env['DB_USERNAME'] ?? 'root';
-$password = $env['DB_PASSWORD'] ?? '';
+// Masukkan koneksi database Laravel kamu manual di sini karena ini file PHP murni
+$host = '127.0.0.1';
+$db   = 'nama_database_kamu'; // Ganti dengan nama database skripsi kamu
+$user = 'root';
+$pass = ''; // Ganti jika ada passwordnya
 
 try {
-    $conn = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo = new PDO("mysql:host=$host;dbname=$db", $user, $pass);
+    
+    // Ambil ID dari URL (?id=8)
+    $id = isset($_GET['id']) ? $_GET['id'] : null;
 
-    if (isset($_GET['token']) && !empty(trim($_GET['token']))) {
-        $token = trim($_GET['token']);
+    if ($id) {
+        // Cek apakah user id tersebut ada
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+        $stmt->execute([$id]);
+        $user = $stmt->fetch();
 
-        $stmt = $conn->prepare("SELECT id, is_verified FROM operators WHERE verification_token = :token");
-        $stmt->bindParam(':token', $token);
-        $stmt->execute();
-        $operator = $stmt->fetch();
+        if ($user) {
+            // Update status: Aktifkan dan verifikasi email
+            $update = $pdo->prepare("UPDATE users SET email_verified_at = NOW(), is_active = 1 WHERE id = ?");
+            $update->execute([$id]);
 
-        if ($operator) {
-            if ($operator['is_verified'] == 1) {
-                $status = 'sudah_terverifikasi';
-                $message = 'Akun Anda sudah terverifikasi sebelumnya.';
-            } else {
-                $updateStmt = $conn->prepare("UPDATE operators SET is_verified = 1, verification_token = NULL, verified_at = NOW() WHERE id = :id");
-                $updateStmt->bindParam(':id', $operator['id']);
-                
-                if ($updateStmt->execute()) {
-                    $status = 'berhasil';
-                    $message = 'Selamat! Akun Anda telah berhasil diaktifkan.';
-                } else {
-                    $status = 'gagal';
-                    $message = 'Gagal mengaktifkan akun, silakan coba lagi.';
-                }
-            }
+            $status = "success";
+            $message = "Verifikasi Berhasil!";
+            $subtext = "Akun " . $user['name'] . " sudah aktif. Silakan login.";
         } else {
-            $status = 'gagal';
-            $message = 'Token verifikasi tidak valid atau sudah kadaluarsa.';
+            $status = "error";
+            $message = "Verifikasi Gagal";
+            $subtext = "User tidak ditemukan di sistem.";
         }
     } else {
-        $status = 'gagal';
-        $message = 'Token verifikasi tidak ditemukan.';
+        $status = "error";
+        $message = "Verifikasi Gagal";
+        $subtext = "ID verifikasi tidak valid.";
     }
-
 } catch (PDOException $e) {
-    $status = 'gagal';
-    $message = 'Terjadi kesalahan sistem: ' . $e->getMessage();
+    die("Koneksi gagal: " . $e->getMessage());
 }
 ?>
 
@@ -74,105 +46,29 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verifikasi Akun - Berliano Leather</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        body {
-            background-color: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .verification-card {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            text-align: center;
-            max-width: 500px;
-            width: 100%;
-        }
-        .success-icon {
-            width: 80px;
-            height: 80px;
-            background-color: #28a745;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0 auto 20px;
-        }
-        .success-icon svg {
-            width: 40px;
-            height: 40px;
-            fill: white;
-        }
-        .error-icon {
-            width: 80px;
-            height: 80px;
-            background-color: #dc3545;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0 auto 20px;
-        }
-        .error-icon svg {
-            width: 40px;
-            height: 40px;
-            fill: white;
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 24px;
-        }
-        p {
-            color: #666;
-            margin-bottom: 30px;
-            line-height: 1.6;
-        }
-        .btn-login {
-            display: inline-block;
-            background-color: #007bff;
-            color: white;
-            padding: 12px 30px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: background-color 0.3s;
-        }
-        .btn-login:hover {
-            background-color: #0056b3;
-        }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/dist/css/all.min.css">
 </head>
-<body>
-    <div class="verification-card">
-        <?php if ($status == 'berhasil' || $status == 'sudah_terverifikasi'): ?>
-            <div class="success-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                </svg>
-            </div>
-            <h1>Akun Berhasil Diaktifkan!</h1>
-            <p><?= $message ?> Silakan login untuk mulai mengakses sistem Berliano Leather.</p>
-        <?php else: ?>
-            <div class="error-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                </svg>
-            </div>
-            <h1>Verifikasi Gagal</h1>
-            <p><?= $message ?></p>
-        <?php endif; ?>
-        <a href="<?= $operatorUrl ?>/login" class="btn-login">Ke Halaman Login</a>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-10 rounded-3xl shadow-xl max-w-sm w-full text-center">
+        <div class="mb-6">
+            @if($status == 'success')
+                <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-4xl">
+                    <i class="fas fa-check"></i>
+                </div>
+            @else
+                <div class="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-4xl">
+                    <i class="fas fa-times"></i>
+                </div>
+            @endif
+        </div>
+
+        <h1 class="text-2xl font-bold mb-2"><?php echo $message; ?></h1>
+        <p class="text-gray-500 mb-8"><?php echo $subtext; ?></p>
+
+        <a href="/login" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition inline-block w-full">
+            Ke Halaman Login
+        </a>
     </div>
 </body>
 </html>

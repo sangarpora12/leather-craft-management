@@ -230,7 +230,7 @@ $op->bahan_terbanyak = $bahanTerbanyak ? (object)[
                 'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
 
-            // Simpan operator (status awal: belum diverifikasi)
+            // Simpan operator
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -239,14 +239,13 @@ $op->bahan_terbanyak = $bahanTerbanyak ? (object)[
                 'sub_role' => $validated['sub_role'] ?? 'pekerja',
                 'jabatan' => $validated['jabatan'] ?? 'Staff Produksi',
                 'email_verified_at' => null,
-                'is_active' => false, // ✅ Aktifkan setelah verifikasi email
+                'is_active' => false, 
                 'foto_profil' => $request->hasFile('foto') ? $request->file('foto')->store('users', 'public') : null,
             ]);
 
-            // Buat link verifikasi - langsung update database via PHP murni (paling simpel)
             $link = $this->operatorBaseUrl() . '/verify-operator.php?id=' . $user->id;
 
-            // Kirim Email
+            // --- PERBAIKAN LOGIKA EMAIL DI SINI ---
             try {
                 $details = ['name' => $user->name, 'link' => $link];
                 Mail::send('emails.invite_operator', $details, function($message) use ($validated) {
@@ -254,19 +253,17 @@ $op->bahan_terbanyak = $bahanTerbanyak ? (object)[
                             ->subject('Verifikasi Akun Operator - Berliano Leather');
                 });
                 
-                if (count(Mail::failures()) > 0) {
-                    $msg = 'Akun dibuat, tapi email ke ' . $validated['email'] . ' GAGAL dikirim. Email mungkin tidak aktif atau alamat salah.';
-                    Log::error('Gagal mengirim email verifikasi ke: ' . $validated['email'] . ' - Mail failures: ' . json_encode(Mail::failures()));
-                } else {
-                    $msg = 'Akun berhasil dibuat! Silakan cek email ' . $validated['email'] . ' untuk verifikasi.';
-                    Log::info('Email verifikasi berhasil dikirim ke: ' . $validated['email']);
-                }
+                $msg = 'Akun berhasil dibuat! Silakan cek email ' . $validated['email'] . ' untuk verifikasi.';
+                Log::info('Email verifikasi berhasil dikirim ke: ' . $validated['email']);
+
             } catch (\Exception $e) {
-                $msg = 'Akun dibuat, tapi verifikasi GAGAL dikirim ke ' . $validated['email'] . '. Error: ' . $e->getMessage();
+                // Email gagal tapi akun tetap aman
+                $msg = 'Akun dibuat, tapi email verifikasi GAGAL dikirim. Cek koneksi atau SMTP. Error: ' . $e->getMessage();
                 Log::error('Gagal mengirim email verifikasi: ' . $e->getMessage());
             }
 
             return redirect()->back()->with('success', $msg);
+
         } catch (\Exception $e) {
             Log::error('Error di WorkerMasterController@store: ' . $e->getMessage());
             return redirect()->back()
@@ -274,7 +271,6 @@ $op->bahan_terbanyak = $bahanTerbanyak ? (object)[
                 ->with('error', 'Gagal membuat akun. ' . $e->getMessage());
         }
     }
-
     /**
      * Menampilkan form edit operator.
      */
@@ -432,20 +428,21 @@ $op->bahan_terbanyak = $bahanTerbanyak ? (object)[
                 return redirect()->back()->with('error', 'Akun sudah diverifikasi.');
             }
 
-            // Buat link verifikasi - langsung update database via PHP murni (paling simpel)
             $link = $this->operatorBaseUrl() . '/verify-operator.php?id=' . $operator->id;
 
-            // Kirim Email
+            // --- PERBAIKAN LOGIKA EMAIL DI SINI ---
             try {
                 $details = ['name' => $operator->name, 'link' => $link];
                 Mail::send('emails.invite_operator', $details, function($message) use ($operator) {
                     $message->to($operator->email)
                             ->subject('Verifikasi Akun Operator - Berliano Leather');
                 });
+                
                 $msg = 'Email verifikasi berhasil dikirim ulang.';
                 Log::info('Email verifikasi dikirim ulang ke: ' . $operator->email);
+
             } catch (\Exception $e) {
-                $msg = 'Gagal mengirim email. Cek konfigurasi email.';
+                $msg = 'Gagal mengirim email. Pastikan settingan SMTP di .env sudah benar.';
                 Log::error('Gagal mengirim ulang email verifikasi: ' . $e->getMessage());
             }
 
