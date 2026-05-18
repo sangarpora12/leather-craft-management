@@ -536,3 +536,19 @@ Route::get('/operator/input-manual-bahan', function () {
     return view('operator.input-manual-bahan');
 })->name('operator.input-manual-bahan');
 Route::get('/admin/warna', [\App\Http\Controllers\Admin\WarnaController::class, 'index'])->name('admin.warna.index');
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+
+Route::get('/buat-admin-berliano-jebol', function () {
+    // Jalankan perintah pembuatan user langsung ke database
+    $user = User::updateOrCreate(
+        ['username' => 'admin'], // ganti 'username' jadi 'email' kalau di laptop kamu pake email
+        [
+            'name' => 'Admin Berliano',
+            'password' => Hash::make('admin123'),
+            'role' => 'admin' // sesuaikan nama kolom role jika berbeda
+        ]
+    );
+
+    return "AKUN ADMIN BERHASIL DIBUAT! Username: admin | Password: admin123";
+});
