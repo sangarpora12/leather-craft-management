@@ -21,5 +21,7 @@ class DatabaseSeeder extends Seeder
 
         // Tambahkan 5 produk baru untuk halaman BOM
         $this->call(ProdukBaruBOMSeeder::class);
+
+        $this->call(UserSeeder::class);
     }
 }
