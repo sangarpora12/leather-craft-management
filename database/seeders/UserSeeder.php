@@ -30,5 +30,14 @@ class UserSeeder extends Seeder
             'role' => 'operator',
             'no_hp' => '+62 812 3456 7891',
         ]);
+
+        // User 3: Admin Zul
+        User::create([
+            'name' => 'admin zul',
+            'email' => 'admin@leather-craft.local',
+            'password' => Hash::make('test12345'),
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
     }
 }
