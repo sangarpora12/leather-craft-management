@@ -128,7 +128,6 @@ Route::middleware(['auth'])->group(function () {
 
         // --- DATA MASTER (BAHAN BAKU) ---
         Route::resource('bahan', BahanBakuController::class)->names('bahan');
-        Route::get('bahan/{id}/show', [BahanBakuController::class, 'show'])->name('bahan.show');
         Route::get('bahan/{id}/edit-varian', [BahanBakuController::class, 'editVarian'])->name('bahan.edit-varian');
         Route::match(['post', 'put'], 'bahan/{id}/update-varian', [BahanBakuController::class, 'updateVarian'])->name('bahan.update-varian');
         Route::get('/bahan/{id}/stock-layers', [BahanBakuController::class, 'getStockLayers'])->name('bahan.stock-layers');
