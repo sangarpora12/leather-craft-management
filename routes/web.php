@@ -541,15 +541,13 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 Route::get('/buat-admin-berliano-jebol', function () {
-    // Jalankan perintah pembuatan user langsung ke database
     $user = User::updateOrCreate(
-        ['username' => 'admin'], // ganti 'username' jadi 'email' kalau di laptop kamu pake email
+        ['username' => 'admin'], 
         [
             'name' => 'Admin Berliano',
             'password' => Hash::make('admin123'),
-            'role' => 'admin' // sesuaikan nama kolom role jika berbeda
+            'role' => 'admin'
         ]
     );
-
     return "AKUN ADMIN BERHASIL DIBUAT! Username: admin | Password: admin123";
 });
