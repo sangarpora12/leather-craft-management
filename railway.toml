@@ -1,6 +1,6 @@
 [build]
 builder = "railpack"
-buildCommand = "composer install --no-dev --optimize-autoloader && npm ci && npm run build && mkdir -p storage/framework/views storage/framework/sessions storage/framework/cache/data && php artisan config:cache && php artisan route:cache && php artisan view:cache"
+buildCommand = "composer install --no-dev --optimize-autoloader && npm install && npm run build && mkdir -p storage/framework/views storage/framework/sessions storage/framework/cache/data && php artisan config:cache && php artisan route:cache && php artisan view:cache"
 
 [deploy]
 startCommand = "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
