@@ -17,6 +17,7 @@ use App\Models\ProdukKeluar;
 use App\Models\Pengadaan;
 use App\Models\BahanStokLayer;
 use App\Models\ActivityLog;
+use App\Helpers\WarnaHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -219,11 +220,34 @@ private function crudKategori(Request $request)
 private function crudWarna(Request $request)
 {
     if ($request->has('hapus_warna_id')) {
+        // Hapus gambar terkait jika ada
+        $warna = Warna::find($request->hapus_warna_id);
+        if ($warna && $warna->gambar) {
+            Storage::delete('public/' . $warna->gambar);
+        }
         Warna::destroy($request->hapus_warna_id);
         return back()->with('success', 'Warna dihapus');
     }
     if ($request->filled('nama_warna')) {
-        Warna::create(['nama_warna' => $request->nama_warna]);
+        // Cegah duplikat nama_warna (case-insensitive)
+        $existing = Warna::whereRaw('LOWER(nama_warna) = ?', [mb_strtolower(trim($request->nama_warna))])->first();
+        if ($existing) {
+            return back()->with('error', 'Warna "' . $request->nama_warna . '" sudah ada!');
+        }
+
+        $data = [
+            'nama_warna' => $request->nama_warna,
+            // Auto-detect + set kode_warna dari kamus / fallback hash
+            'kode_warna' => WarnaHelper::detectColor($request->nama_warna),
+        ];
+
+        // Upload gambar WAJIB
+        $request->validate([
+            'gambar_warna' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+        ]);
+        $data['gambar'] = $request->file('gambar_warna')->store('warna', 'public');
+
+        Warna::create($data);
         return back()->with('success', 'Warna ditambah');
     }
     return back()->with('error', 'Data tidak lengkap');

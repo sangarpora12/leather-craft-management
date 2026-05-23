@@ -35,11 +35,29 @@ Admin **{{ $adminName }}** telah mengirimkan permintaan pengadaan bahan baru.
             </td>
             <td valign="middle" style="padding: 8px 10px; text-align: left; vertical-align: middle;">
                 <div style="font-weight: bold; font-size: 13px; color: #1e293b;">{{ $item->bahan->nama_material }}</div>
-                <div style="font-size: 11px; color: #f97316; margin-top: 3px; font-weight: bold;">Warna: {{ $item->warna ?? 'Polos' }}</div>
+                @php
+    $warna = $item->warna ?? 'COKELAT MUDA';
+    if (in_array(strtoupper($warna), ['POLOS', 'N/A', 'NULL', '-', ''])) {
+        $warna = 'COKELAT MUDA';
+    }
+@endphp
+<div style="display: flex; align-items: center; gap: 5px; margin-top: 3px;">
+    <div style="width: 14px; height: 14px; border-radius: 50%; background-color: {{ \App\Helpers\WarnaHelper::detectColor($warna) }};"></div>
+    <div style="font-size: 11px; color: #f97316; font-weight: bold;">{{ $warna }}</div>
+</div>
                 <div style="font-size: 11px; color: #64748b; margin-top: 3px;">{{ $item->bahan->kode_material }}</div>
             </td>
             <td width="65" valign="middle" style="padding: 8px 10px; text-align: center; vertical-align: middle; font-weight: bold; font-size: 13px; color: #059669;">
-    {{ $item->jumlah }}
+    @php
+        $jumlah = $item->jumlah;
+        // Cek jika angka adalah bilangan bulat atau memiliki desimal .00
+        if (floor($jumlah) == $jumlah) {
+            echo (int)$jumlah;
+        } else {
+            // Jika punya desimal selain .00, tampilkan apa adanya
+            echo rtrim(rtrim(number_format($jumlah, 2, ',', '.'), '0'), ',');
+        }
+    @endphp
 </td>
             <td width="60" valign="middle" style="padding: 8px 10px; text-align: center; vertical-align: middle; font-size: 12px; color: #64748b;">{{ $item->bahan->satuan }}</td>
             <td valign="middle" style="padding: 8px 10px; text-align: left; vertical-align: middle; font-size: 11px; color: #64748b;">{{ $item->catatan ?: '-' }}</td>

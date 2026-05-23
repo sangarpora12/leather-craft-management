@@ -51,7 +51,7 @@
             <div class="grid grid-cols-2 gap-4 pt-4 border-t border-white/5 mt-2">
                 <div class="text-center">
                     <p class="text-[9px] text-gray-500 uppercase font-black tracking-tighter mb-1">Total Stok</p>
-                    <p class="text-xl font-black text-emerald-400">{{ (float)$varianWarna->sum('stok') }} <span class="text-[10px] text-gray-600 font-bold uppercase">{{ $bahan->satuan }}</span></p>
+                    <p class="text-xl font-black text-emerald-400">{{ (float)$varianWarna->sum('total_stok_warna') }} <span class="text-[10px] text-gray-600 font-bold uppercase">{{ $bahan->satuan }}</span></p>
                 </div>
                 <div class="text-center border-l border-white/5">
                     <p class="text-[9px] text-gray-500 uppercase font-black tracking-tighter mb-1">Batas Aman</p>
@@ -60,104 +60,95 @@
             </div>
         </div>
 
-        <!-- Varian Warna (Hanya Teks & Indikator Merah) -->
+        <!-- Varian Warna (Logika dari Admin) -->
+        @if(isset($varianWarna) && $varianWarna->count() > 0)
         <div>
             <div class="flex items-center justify-between px-1 mb-4">
                 <h3 class="text-[11px] font-black text-gray-500 uppercase tracking-[0.2em]">Varian Material</h3>
                 <span class="text-[10px] font-bold text-blue-500">{{ $varianWarna->count() }} Pilihan</span>
             </div>
-            <div class="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
-                @foreach($varianWarna as $v)
-                @php $isLow = $v->stok <= ($batasStokGlobal ?? $bahan->stok_minimum ?? 5); @endphp
-                <div class="min-w-[140px] bg-[#1C222D] p-5 rounded-[1.5rem] border {{ $isLow ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'border-white/5' }} flex flex-col items-center text-center transition-all">
-                    <p class="text-xs font-black {{ $isLow ? 'text-red-400' : 'text-white' }} truncate w-full mb-1">{{ $v->warna ?? 'Polos' }}</p>
-                    <p class="text-[10px] font-bold {{ $isLow ? 'text-red-500/70' : 'text-gray-500' }} uppercase mb-4">{{ (float)$v->stok }} {{ $bahan->satuan }}</p>
-                    <a href="{{ route('operator.bahan.edit-varian', $v->id) }}" class="w-full py-2 {{ $isLow ? 'bg-red-500 text-white' : 'bg-white/5 text-gray-300' }} rounded-xl text-[9px] font-black uppercase transition-all shadow-sm">
-                        Edit Warna
-                    </a>
+            <div class="bg-[#1C222D] p-4 rounded-[1.5rem] border border-white/5 shadow-xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-[10px] text-gray-500 uppercase tracking-widest">
+                            <tr>
+                                <th class="px-4 py-3">Warna</th>
+                                <th class="px-4 py-3 text-right">Stok</th>
+                                <th class="px-4 py-3 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+                            @foreach($varianWarna as $v)
+                            @php
+                                // Logika isLow disesuaikan dari admin
+                                $isLow = $v->total_stok_warna <= ($bahan->stok_minimum ?? 5);
+                            @endphp
+                            <tr class="hover:bg-white/5 transition">
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-5 h-5 rounded-full inline-block flex-shrink-0 border border-white/10" style="background-color: {{ $v->color->kode_hex ?? (App\Helpers\WarnaHelper::detectColor($v->warna ?? '')) }};"></span>
+                                        <span class="text-white font-medium text-sm">{{ $v->warna ?? 'Tidak Ada Warna' }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-right font-bold {{ $isLow ? 'text-red-400' : 'text-orange-400' }}">
+                                    {{ (float) $v->total_stok_warna }}
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <a href="{{ route('operator.bahan.edit-varian', $v->id) }}" class="inline-block bg-gray-700/50 hover:bg-blue-600 text-white p-2 rounded-lg transition duration-200" title="Edit Varian">
+                                        <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
+            </div>
+        </div>
+        @endif
+
+        <!-- Ringkasan Per Harga (Logika dari Admin) -->
+        @if(isset($ringkasanPerHarga) && $ringkasanPerHarga->count() > 0)
+        <div class="bg-[#1C222D] rounded-[1.5rem] p-5 border border-white/5 shadow-xl">
+            <h3 class="text-[11px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-2 mb-6">
+                <i class="fa-solid fa-chart-simple text-emerald-400"></i> Ringkasan Per Harga
+            </h3>
+            <div class="space-y-3">
+                @foreach($ringkasanPerHarga as $r)
+                @if(round((float) $r->total_sisa, 2) > 0)
+                <div class="flex items-center justify-between p-3 rounded-2xl {{ $loop->first ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-[#0B0E14]/50 border border-white/5' }}">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-white font-bold">Rp {{ number_format($r->harga_beli, 0, ',', '.') }}</span>
+                            @if($loop->first)
+                                <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded border border-emerald-500/30 uppercase">Terakhir</span>
+                            @endif
+                        </div>
+                        <div>
+                            <span class="px-2 py-1 bg-white/10 text-gray-300 text-[10px] font-medium rounded border border-white/10 uppercase tracking-tight">
+                                {{ $r->warna ?? 'Tidak Ada Warna' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-4 text-right">
+                        <div>
+                            <p class="text-[8px] text-gray-500 uppercase font-black tracking-tighter">Masuk</p>
+                            <p class="text-sm font-bold text-gray-400">{{ (float) $r->total_masuk }}</p>
+                        </div>
+                        <div class="w-px h-6 bg-white/10"></div>
+                        <div>
+                            <p class="text-[8px] text-gray-500 uppercase font-black tracking-tighter">Sisa</p>
+                            <p class="text-sm font-black text-orange-400">{{ (float) $r->total_sisa }}</p>
+                        </div>
+                    </div>
+                </div>
+                @endif
                 @endforeach
             </div>
         </div>
+        @endif
 
-        <!-- Alur FIFO dengan Filter Tanggal -->
-        <div class="bg-[#1C222D] rounded-[1.5rem] p-5 border border-white/5 shadow-xl">
-            <div class="flex flex-col gap-4 mb-6">
-                <h3 class="text-[11px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <i class="fa-solid fa-clock-rotate-left text-purple-500"></i> Alur Masuk (FIFO)
-                </h3>
-                <!-- Simple Date Filter -->
-                <div class="flex gap-2">
-                    <div class="flex-1 bg-[#0B0E14] rounded-xl border border-white/5 p-2">
-                        <label class="block text-[8px] font-black text-gray-500 uppercase ml-1 mb-1">Mulai</label>
-                        <input type="date" id="filterStart" class="bg-transparent text-white text-xs w-full outline-none px-1">
-                    </div>
-                    <div class="flex-1 bg-[#0B0E14] rounded-xl border border-white/5 p-2">
-                        <label class="block text-[8px] font-black text-gray-500 uppercase ml-1 mb-1">Selesai</label>
-                        <input type="date" id="filterEnd" class="bg-transparent text-white text-xs w-full outline-none px-1">
-                    </div>
-                </div>
-            </div>
-
-            <div class="space-y-4" id="fifoContainer">
-    @foreach($semuaLayer as $layer)
-    <div class="fifo-item flex items-start gap-4 relative" data-date="{{ $layer->tanggal_masuk }}">
-        <!-- Garis Indikator -->
-        <div class="flex flex-col items-center">
-            <div class="w-1 h-12 bg-white/5 rounded-full relative">
-                <div class="absolute top-0 left-0 w-full h-3/4 bg-purple-500 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
-            </div>
-        </div>
-
-        <div class="flex-1 bg-[#0B0E14]/50 p-3 rounded-2xl border border-white/5">
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <p class="text-[10px] font-black text-white">{{ \Carbon\Carbon::parse($layer->tanggal_masuk)->format('d M Y') }}</p>
-                    <p class="text-[9px] text-gray-500 font-bold uppercase mt-0.5">{{ $layer->material->warna ?? '-' }}</p>
-                </div>
-                <p class="text-xs font-black text-emerald-400">Rp{{ number_format($layer->harga_beli, 0, ',', '.') }}</p>
-            </div>
-            
-            <!-- Grid Angka Stok: MASUK & SISA -->
-            <div class="grid grid-cols-2 gap-2 border-t border-white/5 pt-2">
-                <div>
-                    <p class="text-[8px] text-gray-600 uppercase font-black tracking-tighter">Stok Masuk</p>
-                    <p class="text-xs font-bold text-gray-400">{{ (float)$layer->qty_masuk }} <span class="text-[9px] font-normal lowercase">{{ $bahan->satuan }}</span></p>
-                </div>
-                <div class="text-right">
-                    <p class="text-[8px] text-gray-600 uppercase font-black tracking-tighter">Sisa Sekarang</p>
-                    <p class="text-xs font-black {{ $layer->qty_sisa < 1 ? 'text-red-500' : 'text-orange-400' }}">
-                        {{ (float)$layer->qty_sisa }} <span class="text-[9px] font-normal lowercase">{{ $bahan->satuan }}</span>
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endforeach
-</div>
-
-<script>
-    // Logika Filter Tanggal Sederhana (JS Client Side)
-    const startInput = document.getElementById('filterStart');
-    const endInput = document.getElementById('filterEnd');
-    const items = document.querySelectorAll('.fifo-item');
-
-    function filterFIFO() {
-        const start = startInput.value ? new Date(startInput.value) : null;
-        const end = endInput.value ? new Date(endInput.value) : null;
-
-        items.forEach(item => {
-            const itemDate = new Date(item.getAttribute('data-date'));
-            let visible = true;
-            if (start && itemDate < start) visible = false;
-            if (end && itemDate > end) visible = false;
-            item.style.display = visible ? 'flex' : 'none';
-        });
-    }
-
-    startInput.addEventListener('change', filterFIFO);
-    endInput.addEventListener('change', filterFIFO);
-</script>
 
 <style>
     .scrollbar-hide::-webkit-scrollbar { display: none; }

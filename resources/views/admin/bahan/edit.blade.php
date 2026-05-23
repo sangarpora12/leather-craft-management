@@ -272,6 +272,47 @@
                                 class="w-full bg-[#0a0a0a]/80 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30 transition outline-none resize-vertical">{{ old('detail', $bahan->detail) }}</textarea>
                         </div>
 
+                        {{-- Warna --}}
+                        @php
+                            $warnaEditList = \App\Models\Warna::all();
+                            $selectedWarna = old('warna', $bahan->warna ?? '');
+                        @endphp
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-300 mb-2">Warna</label>
+                            <div class="flex items-center gap-3">
+                                <select name="warna" id="select-warna-edit" class="w-full bg-[#0a0a0a]/80 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30 transition outline-none" onchange="previewWarnaEdit(this)">
+                                    <option value="">-- Pilih Warna (Opsional) --</option>
+                                    @foreach($warnaEditList as $w)
+                                    <option value="{{ $w->nama_warna }}" data-gambar="{{ $w->gambar }}" data-kode="{{ $w->kode_warna }}" {{ $selectedWarna == $w->nama_warna ? 'selected' : '' }}>{{ $w->nama_warna }}</option>
+                                    @endforeach
+                                </select>
+                                <div id="preview-warna-edit" class="w-10 h-10 rounded-full border-2 border-white/10 flex-shrink-0" style="background-color: #8B4513;"></div>
+                            </div>
+                            <script>
+                            function previewWarnaEdit(select) {
+                                const preview = document.getElementById('preview-warna-edit');
+                                const opt = select.options[select.selectedIndex];
+                                if (opt && opt.value) {
+                                    const gambar = opt.getAttribute('data-gambar');
+                                    if (gambar) {
+                                        preview.innerHTML = '<img src="{{ asset('storage') }}/' + gambar + '" class="w-full h-full rounded-full object-cover">';
+                                        preview.style.backgroundColor = '';
+                                    } else {
+                                        preview.innerHTML = '';
+                                        preview.style.backgroundColor = opt.getAttribute('data-kode') || '#8B4513';
+                                    }
+                                } else {
+                                    preview.innerHTML = '';
+                                    preview.style.backgroundColor = '#8B4513';
+                                }
+                            }
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const sel = document.getElementById('select-warna-edit');
+                                if (sel.value) previewWarnaEdit(sel);
+                            });
+                            </script>
+                        </div>
+
                         {{-- Foto --}}
                         <div>
                             <label class="block text-sm font-semibold text-gray-300 mb-2">Foto Material</label>

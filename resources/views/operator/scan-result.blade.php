@@ -112,10 +112,11 @@
                                              </td>
                                              <td class="px-4 py-2 text-center">
                                                  <select name="items[{{ $index }}][warna]" class="w-full px-2 py-1 text-sm text-white bg-[#0B0E14] border border-white/10 rounded-lg text-center focus:outline-none focus:border-orange-500">
-                                                     <option value="Tidak Ada Warna" {{ ($item['warna'] ?? 'Tidak Ada Warna') == 'Tidak Ada Warna' ? 'selected' : '' }}>🚫 Tidak Ada Warna</option>
-                                                     @php $warnas = \App\Models\Warna::orderBy('nama_warna')->get(); @endphp
+                                                     @php 
+                                                         $selectedWarna = $item['warna'] ?? 'cokelat'; // Default ke cokelat
+                                                     @endphp
                                                      @foreach($warnas as $w)
-                                                         <option value="{{ $w->nama_warna }}" {{ ($item['warna'] ?? '') == $w->nama_warna ? 'selected' : '' }}>{{ $w->nama_warna }}</option>
+                                                         <option value="{{ $w->nama_warna }}" {{ $selectedWarna == $w->nama_warna ? 'selected' : '' }}>{{ $w->nama_warna }}</option>
                                                      @endforeach
                                                  </select>
                                              </td>
@@ -147,6 +148,13 @@
                                         <td class="px-4 py-2">
                                             <textarea disabled name="items[{{ count(session('ocr_result.items')) }}][nama]" rows="2" style="resize: none;" class="w-full px-2 py-1 text-sm bg-[#0B0E14] border border-white/10 rounded-lg text-gray-500" placeholder="Klik 'Tambah Baris' di atas"></textarea>
                                             <input disabled type="hidden" name="items[{{ count(session('ocr_result.items')) }}][id]" value="{{ count(session('ocr_result.items')) }}">
+                                        </td>
+                                        <td class="px-4 py-2 text-center">
+                                            <select disabled name="items[{{ count(session('ocr_result.items')) }}][warna]" class="w-full px-2 py-1 text-sm bg-[#0B0E14] border border-white/10 rounded-lg text-center text-gray-500">
+                                                @foreach($warnas as $w)
+                                                    <option value="{{ $w->nama_warna }}" {{ 'cokelat' == $w->nama_warna ? 'selected' : '' }}>{{ $w->nama_warna }}</option>
+                                                @endforeach
+                                            </select>
                                         </td>
                                         <td class="px-4 py-2 text-center">
                                             <input disabled type="text" name="items[{{ count(session('ocr_result.items')) }}][satuan]" class="w-full px-2 py-1 text-sm bg-[#0B0E14] border border-white/10 rounded-lg text-center text-gray-500" placeholder="pcs">
@@ -285,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const newRow = emptyRow.cloneNode(true);
 
         // Update names and ids
-        newRow.querySelectorAll('textarea, input').forEach(function(el) {
+        newRow.querySelectorAll('textarea, input, select').forEach(function(el) {
             el.disabled = false;
             el.classList.remove('text-gray-500');
             el.classList.add('text-white');
@@ -300,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 el.placeholder = el.placeholder.replace('Klik \'Tambah Baris\' di atas', 'Bahan baru');
             }
             // Clear values
-            if (el.type !== 'hidden') {
+            if (el.type !== 'hidden' && el.tagName.toLowerCase() !== 'select') {
                 el.value = '';
             }
         });

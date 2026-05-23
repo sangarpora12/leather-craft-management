@@ -21,3 +21,8 @@ Route::prefix('bahan')->group(function () {
     Route::post('generate-kode-bahan', [BahanController::class, 'generateKodeBahan']);
     Route::post('manual', [BahanController::class, 'manualInput']);
 });
+
+Route::get('/warna', function () {
+    $warnas = \App\Models\Warna::orderBy('nama_warna', 'asc')->get();
+    return response()->json($warnas);
+})->name('api.warna.index');

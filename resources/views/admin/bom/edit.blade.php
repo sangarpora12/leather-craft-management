@@ -161,13 +161,24 @@
                                             </div>
                                             <div class="py-1">
                                                 <template x-for="mat in filteredMaterials(search, row.material_id)" :key="mat.id">
-                                                    <div @click="row.material_id = mat.id; updateUnit(index); open = false" class="px-3 py-2 cursor-pointer hover:bg-orange-600/20 hover:text-orange-400 transition border-b border-white/5 last:border-0">
-                                                        <div class="font-bold text-sm text-gray-200">
-                                                            <span x-text="mat.nama_material"></span>
-                                                            <span x-show="mat.warna" class="text-blue-400 text-[10px] ml-1" x-text="'(' + mat.warna + ')'"></span>
-                                                        </div>
-                                                        <div class="flex justify-between mt-0.5"><span class="text-[10px] text-gray-500" x-text="'Stok: ' + mat.stok + ' ' + mat.satuan"></span><span class="text-[10px] text-gray-500" x-text="formatRupiah(mat.harga_satuan)"></span></div>
-                                                    </div>
+                                                     <div @click="row.material_id = mat.id; updateUnit(index); open = false" class="px-3 py-2 cursor-pointer hover:bg-orange-600/20 hover:text-orange-400 transition border-b border-white/5 last:border-0">
+                                                         <div class="flex items-center gap-2">
+                                                             <template x-if="mat.gambar_warna">
+                                                                 <img :src="'{{ asset('storage') }}/' + mat.gambar_warna" class="w-5 h-5 rounded-full object-cover border border-white/10 flex-shrink-0">
+                                                             </template>
+                                                             <template x-if="!mat.gambar_warna && mat.kode_warna_warna">
+                                                                 <span class="w-5 h-5 rounded-full inline-block flex-shrink-0 border border-white/10" :style="'background-color: ' + mat.kode_warna_warna"></span>
+                                                             </template>
+                                                             <template x-if="!mat.gambar_warna && !mat.kode_warna_warna && mat.warna">
+                                                                 <span class="w-5 h-5 rounded-full inline-block flex-shrink-0 border border-white/10" style="background-color: #8B4513;"></span>
+                                                             </template>
+                                                             <div class="font-bold text-sm text-gray-200">
+                                                                 <span x-text="mat.nama_material"></span>
+                                                                 <span x-show="mat.warna" class="text-blue-400 text-[10px] ml-1" x-text="'(' + mat.warna + ')'"></span>
+                                                             </div>
+                                                         </div>
+                                                         <div class="flex justify-between mt-0.5"><span class="text-[10px] text-gray-500" x-text="'Stok: ' + mat.stok + ' ' + mat.satuan"></span><span class="text-[10px] text-gray-500" x-text="formatRupiah(mat.harga_satuan)"></span></div>
+                                                     </div>
                                                 </template>
                                                 <div x-show="filteredMaterials(search, row.material_id).length === 0" class="px-3 py-3 text-xs text-gray-500 text-center italic">
                                                     Tidak ditemukan. 

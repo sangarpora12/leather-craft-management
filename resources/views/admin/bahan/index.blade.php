@@ -130,8 +130,8 @@
             <span class="text-[11px] text-gray-500 font-medium">Total: {{ $bahans->total() }} Item</span>
         </div>
 
-        <div class="overflow-x-auto custom-scrollbar">
-            <table class="w-full text-left whitespace-nowrap">
+        <div class="custom-scrollbar">
+            <table class="w-full text-left">
                 <thead>
                     <tr class="text-[10px] text-gray-500 uppercase tracking-widest border-b border-[#2D3139] bg-[#0D1117]">
                         <th class="px-6 py-4 font-bold">Foto</th>
@@ -171,7 +171,9 @@
                         </td>
                         
                         <td class="px-6 py-4">
-                            <div class="text-sm font-bold text-white">{{ $b->nama_material }}</div>
+                            <div class="flex items-center gap-2">
+                                <div class="text-sm font-bold text-white">{{ $b->nama_material }}</div>
+                            </div>
                             <div class="text-[10px] text-gray-500 mt-1 font-medium">Kategori: {{ $b->kategori }}</div>
                         </td>
                         
@@ -192,27 +194,32 @@
                         </td>
                         
                         <td class="px-6 py-4 text-center">
-                            @php
-                                // Hitung jumlah warna untuk kode_material ini
-                                $jumlahWarna = DB::table('bahan_bakus')
-                                    ->where('kode_material', $b->kode_material)
-                                    ->where('is_inventory', 1)
-                                    ->whereNotNull('warna')
-                                    ->where('warna', '!=', '')
-                                    ->where('warna', '!=', 'Tidak Ada Warna')
-                                    ->distinct('warna')
-                                    ->count('warna');
-                            @endphp
-                            @if($jumlahWarna > 0)
-                                <span class="inline-block bg-purple-500/20 text-purple-300 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-purple-500/30">
-                                    {{ $jumlahWarna }} Warna
-                                </span>
-                            @else
-                                <span class="inline-block bg-gray-500/20 text-gray-400 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-gray-500/30">
-                                    Tidak Ada
-                                </span>
-                            @endif
-                        </td>
+                                    @if(isset($b->temp_warna))
+                                        <span class="inline-block bg-yellow-500/20 text-yellow-300 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-yellow-500/30">
+                                            cokelat
+                                        </span>
+                                    @else
+                                        @php
+                                            $jumlahWarna = DB::table('bahan_bakus')
+                                                ->where('kode_material', $b->kode_material)
+                                                ->where('is_inventory', 1)
+                                                ->whereNotNull('warna')
+                                                ->where('warna', '!=', '')
+                                                ->where('warna', '!=', 'Tidak Ada Warna')
+                                                ->distinct('warna')
+                                                ->count('warna');
+                                        @endphp
+                                        @if($jumlahWarna > 0)
+                                            <span class="inline-block bg-purple-500/20 text-purple-300 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-purple-500/30">
+                                                {{ $jumlahWarna }} Warna
+                                            </span>
+                                        @else
+                                            <span class="inline-block bg-gray-500/20 text-gray-400 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-gray-500/30">
+                                                Tidak Ada
+                                            </span>
+                                        @endif
+                                    @endif
+                                </td>
                         
                         <td class="px-6 py-4 text-right text-gray-300 text-xs font-semibold">
                             Rp {{ number_format($b->harga_satuan, 0, ',', '.') }}

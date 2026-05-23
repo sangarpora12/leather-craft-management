@@ -14,7 +14,7 @@
                 <a href="{{ route('admin.bahan.index') }}" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
                     <i class="fa-solid fa-arrow-left mr-2"></i>Kembali
                 </a>
-                <a href="{{ route('admin.bahan.edit', $bahan->id) }}" class="bg-orange-500 hover:bg-orange-400 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
+                <a href="{{ route('admin.bahan.edit', ['bahan' => $bahan]) }}" class="bg-orange-500 hover:bg-orange-400 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
                     <i class="fa-solid fa-pen-to-square mr-2"></i>Edit
                 </a>
                 <button type="button" onclick="if(confirm('Yakin ingin menghapus bahan ini?')){document.getElementById('delete-form-{{ $bahan->id }}').submit();}" class="bg-red-500/20 hover:bg-red-500/40 text-red-400 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
@@ -55,6 +55,10 @@
             <div class="lg:col-span-2 space-y-8">
                 
                 <!-- Details Card -->
+                @php
+                    // Load master Warna untuk lookup gambar
+                    $warnaMasterLookup = \App\Models\Warna::all()->keyBy('nama_warna');
+                @endphp
                 <div class="bg-[#2D3139] p-6 rounded-xl border border-gray-700/50">
                     <h3 class="text-lg font-semibold text-white mb-4 border-b border-gray-600 pb-2">Informasi Detail</h3>
                     <div class="grid grid-cols-2 gap-6 text-sm">
@@ -82,14 +86,35 @@
                             <p class="text-gray-400 text-xs mb-1 uppercase tracking-tighter">Varian Warna</p>
                             <div class="space-y-2 mt-2">
                                 @if(isset($varianWarna) && $varianWarna->count() > 0)
-                                    @foreach($varianWarna as $v)
-                                    @if(round((float) $v->stok, 2) > 0)
+                                    @php
+                                        // Group varian by warna (gabung nama warna sama)
+                                        $groupedVarian = $varianWarna->filter(function($v) { return round((float) $v->stok, 2) > 0; })->groupBy(function($v) {
+                                            return $v->warna ?? '__TIDAK_ADA_WARNA__';
+                                        });
+                                    @endphp
+                                    @foreach($groupedVarian as $warnaKey => $group)
+                                        @php
+                                            $totalStok = $group->sum('stok');
+                                            $firstV = $group->first();
+                                            $namaWarna = $firstV->warna ?? 'Tidak Ada Warna';
+                                            $namaMaterial = $firstV->nama_material;
+                                            $isNullWarna = empty($firstV->warna) || $firstV->warna === 'Tidak Ada Warna';
+                                            $warnaMaster = $warnaMasterLookup[$firstV->warna] ?? null;
+                                        @endphp
                                         <div class="flex items-center gap-3">
-                                            <span class="w-3 h-3 rounded-full inline-block" style="background-color: {{ $v->warna && $v->warna !== 'Tidak Ada Warna' ? '#' . substr(md5($v->warna), 0, 6) : '#6b7280' }};"></span>
-                                            <span class="text-white font-bold text-base">{{ $v->warna ?? 'Tidak Ada Warna' }}</span>
-                                            <span class="text-emerald-400 font-bold text-lg">({{ (int) $v->stok }})</span>
+                                            @if($warnaMaster && $warnaMaster->gambar)
+                                            <img src="{{ asset('storage/' . $warnaMaster->gambar) }}" alt="{{ $namaWarna }}" class="w-5 h-5 rounded-full object-cover border border-white/10 flex-shrink-0">
+                                            @elseif($isNullWarna)
+                                            <span class="w-5 h-5 rounded-full inline-block flex-shrink-0" style="background-color: {{ \App\Helpers\WarnaHelper::getColorForNull($namaMaterial) }};"></span>
+                                            @else
+                                            <span class="w-5 h-5 rounded-full inline-block flex-shrink-0" style="background-color: {{ $warnaMaster && $warnaMaster->kode_warna ? $warnaMaster->kode_warna : \App\Helpers\WarnaHelper::detectColor($namaWarna) }};"></span>
+                                            @endif
+                                            <span class="text-white font-bold text-base">{{ $namaWarna }}</span>
+                                            <span class="text-emerald-400 font-bold text-lg">({{ (int) $totalStok }})</span>
+                                            @if($group->count() > 1)
+                                            <span class="text-[9px] text-gray-500 font-medium">({{ $group->count() }} varian)</span>
+                                            @endif
                                         </div>
-                                        @endif
                                     @endforeach
                                 @else
                                     <span class="text-gray-500">Hanya varian ini</span>
@@ -191,8 +216,13 @@
                     </div>
                 </div>
                 @endif
-                <!-- VARIAN WARNA TABLE -->
+                <!-- VARIAN WARNA TABLE (Grouped by Warna) -->
                 @if(isset($varianWarna) && $varianWarna->count() > 0)
+                @php
+                    $groupedVarianTable = $varianWarna->filter(function($v) { return round((float) $v->stok, 2) > 0; })->groupBy(function($v) {
+                        return $v->warna ?? '__TIDAK_ADA_WARNA__';
+                    });
+                @endphp
                 <div class="bg-[#2D3139] p-6 rounded-xl border border-gray-700/50">
                     <h3 class="text-lg font-semibold text-white mb-5 flex items-center">
                         <i class="fa-solid fa-palette text-blue-400 mr-3"></i>Varian Warna Lainnya
@@ -201,32 +231,42 @@
                         <table class="w-full text-sm text-left">
                             <thead class="bg-gray-800/50 text-[10px] text-gray-500 uppercase tracking-widest">
                                 <tr>
-                                    <th class="px-4 py-3">Nama Material</th>
                                     <th class="px-4 py-3">Warna</th>
-                                    <th class="px-4 py-3 text-right">Sisa Stok</th>
+                                    <th class="px-4 py-3 text-right">Stok</th>
                                     <th class="px-4 py-3 text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-800">
-                                @foreach($varianWarna as $v)
-                                @if(round((float) $v->stok, 2) > 0)
+                                @foreach($groupedVarianTable as $warnaKey => $group)
+                                @php
+                                    $totalStokGroup = $group->sum('stok');
+                                    $firstV = $group->first();
+                                    $namaWarna = $firstV->warna ?? 'Tidak Ada Warna';
+                                    $warnaMaster = $warnaMasterLookup[$firstV->warna] ?? null;
+                                    $isNullWarna = empty($firstV->warna) || $firstV->warna === 'Tidak Ada Warna';
+                                @endphp
                                 <tr class="hover:bg-gray-800/30 transition">
-                                    <td class="px-4 py-3 text-white font-medium">{{ $v->nama_material }}</td>
                                     <td class="px-4 py-3">
-                                        <span class="px-2 py-1 bg-blue-600/20 text-blue-400 text-[10px] rounded border border-blue-600/30">
-                                            {{ $v->warna ?? 'Tidak Ada Warna' }}
-                                        </span>
+                                        <div class="flex items-center gap-2">
+                                            @if($warnaMaster && $warnaMaster->gambar)
+                                            <img src="{{ asset('storage/' . $warnaMaster->gambar) }}" alt="{{ $namaWarna }}" class="w-6 h-6 rounded-full object-cover border border-white/10 flex-shrink-0">
+                                            @elseif($isNullWarna)
+                                            <span class="w-6 h-6 rounded-full inline-block flex-shrink-0 border border-white/10" style="background-color: {{ \App\Helpers\WarnaHelper::getColorForNull($firstV->nama_material) }};"></span>
+                                            @else
+                                            <span class="w-6 h-6 rounded-full inline-block flex-shrink-0 border border-white/10" style="background-color: {{ $warnaMaster && $warnaMaster->kode_warna ? $warnaMaster->kode_warna : \App\Helpers\WarnaHelper::detectColor($namaWarna) }};"></span>
+                                            @endif
+                                            <span class="text-white font-medium text-sm">{{ $namaWarna }}</span>
+                                        </div>
                                     </td>
-                                    <td class="px-4 py-3 text-right font-bold {{ (int) $v->stok > 0 ? 'text-orange-400' : 'text-gray-600' }}">
-                                        {{ (int) $v->stok }} <span class="text-gray-500 font-normal text-xs">{{ $v->satuan }}</span>
+                                    <td class="px-4 py-3 text-right font-bold text-orange-400">
+                                        {{ (int) $firstV->total_stok_warna }}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <a href="{{ route('admin.bahan.edit-varian', $v->id) }}" class="inline-block bg-gray-700/50 hover:bg-orange-500 text-white p-2 rounded-lg transition duration-200" title="Edit Warna">
+                                        <a href="{{ route('admin.bahan.edit-varian', $firstV->id) }}" class="inline-block bg-gray-700/50 hover:bg-orange-500 text-white p-2 rounded-lg transition duration-200" title="Edit">
                                             <i class="fa-solid fa-pen-to-square text-xs"></i>
                                         </a>
                                     </td>
                                 </tr>
-                                @endif
                                 @endforeach
                             </tbody>
                         </table>

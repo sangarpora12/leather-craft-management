@@ -48,6 +48,7 @@ if (!isset($mode) || empty($mode)) {
     .text-green-300\/60 { color: #166534 !important; }
     .text-blue-300\/60 { color: #1e40af !important; }
     .text-yellow-400 { color: #ca8a04 !important; }
+    .print-grid-cols-4 { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 10px !important; }
     .print-grid-cols-3 { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 10px !important; }
     .mb-6, .summary-card { page-break-inside: avoid !important; }
     .print-break-before { page-break-before: always; }
@@ -57,13 +58,11 @@ if (!isset($mode) || empty($mode)) {
 
 <div class="container mx-auto px-4 py-6 max-w-7xl">
     <div class="bg-zinc-900 rounded-xl shadow-lg overflow-hidden">
-        <!-- Header -->
         <div class="bg-zinc-900/50 border-b border-zinc-800 p-4">
             <h1 class="text-xl font-bold text-white">Laporan Operasional</h1>
             <p class="text-gray-400 text-xs mt-1">Ringkasan aktivitas produksi dan gudang.</p>
         </div>
 
-        <!-- Filter Form -->
         <div class="bg-zinc-900 p-3 border-b border-zinc-800 no-print">
             <form method="GET" action="{{ route('admin.laporan.index') }}" class="flex flex-wrap gap-2 items-end">
                 <div>
@@ -91,22 +90,26 @@ if (!isset($mode) || empty($mode)) {
                 </div>
             </form>
         </div>
-
-        <!-- Print Header (Kop Surat) -->
         <div class="hidden print:block" style="display: none;">
-            <div class="print-header-container" style="text-align: center; margin-bottom: 20px;">
+            <div class="print-header-container" style="text-align: center; margin-bottom: 20px; flex-direction: column;">
                 <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">{{ $namaPerusahaan }}</div>
-                <div style="font-size: 12px;">
+                <div style="font-size: 12px; margin-bottom: 10px;">
                     @if($alamat){{ $alamat }}@endif
                     @if($noTelepon) | Telp: {{ $noTelepon }}@endif
+                </div>
+                
+                <div style="font-size: 14px; font-weight: bold; border-top: 1px solid #333; border-bottom: 1px solid #333; padding: 5px 0; margin-bottom: 5px;">
+                    LAPORAN OPERASIONAL GUDANG & PRODUKSI<br>
+                    <span style="font-size: 11px; font-weight: normal;">Periode: {{ \Carbon\Carbon::parse($fromDate ?? now())->translatedFormat('d F Y') }} - {{ \Carbon\Carbon::parse($toDate ?? now())->translatedFormat('d F Y') }}</span>
+                </div>
+                <div style="font-size: 10px; text-align: right; font-style: italic;">
+                    Dicetak pada: {{ \Carbon\Carbon::now()->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i') }} WIB
                 </div>
             </div>
         </div>
 
-        <!-- Content -->
         <div class="p-4">
             
-            <!-- RINGKASAN KEUANGAN (Financial Summary) -->
             <div class="mb-6">
                 <h3 class="text-white text-sm font-bold mb-3 flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -133,37 +136,36 @@ if (!isset($mode) || empty($mode)) {
                 </div>
             </div>
 
-            <!-- Summary Cards (Lengkap mode only) -->
-            @if($mode == 'lengkap')
+            @if($mode == 'produk' || $mode == 'lengkap')
             <div class="mb-2">
                 <h3 class="text-white text-sm font-bold uppercase tracking-wider">📦 PRODUK</h3>
             </div>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
                     <p class="text-gray-400 text-xs">Total produk jadi</p>
-                    <p class="text-white text-xl font-bold">{{ number_format($totalOutput) }}</p>
+                    <p class="text-white text-xl font-bold">{{ number_format($totalOutput ?? 0) }}</p>
                 </div>
                 <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
                     <p class="text-gray-400 text-xs">Produksi belum selesai</p>
-                    <p class="text-white text-xl font-bold">{{ number_format($produksiPending) }}</p>
+                    <p class="text-white text-xl font-bold">{{ number_format($produksiPending ?? 0) }}</p>
                 </div>
                 <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
-                    <p class="text-gray-400 text-xs">produk Keluar</p>
-                    <p class="text-white text-xl font-bold">{{ number_format($barangKeluar) }}</p>
+                    <p class="text-gray-400 text-xs">Produk Keluar</p>
+                    <p class="text-white text-xl font-bold">{{ number_format($barangKeluar ?? 0) }}</p>
                 </div>
-                <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
-                    <p class="text-gray-400 text-xs">produk Kritis</p>
-                    <p class="text-white text-xl font-bold">{{ $stokKritisCount }}</p>
+                <div class="bg-red-900/20 rounded-lg p-4 border border-red-800">
+                    <p class="text-red-400 text-xs font-bold uppercase">Produk Kritis</p>
+                    <p class="text-red-400 text-xl font-bold">{{ $produkKritisCount ?? 0 }}</p>
+                    <p class="text-red-300/60 text-[10px]">Stok hampir habis</p>
                 </div>
             </div>
             @endif
 
-            <!-- RINGKASAN STATISTIK BAHAN -->
             @if($mode == 'bahan' || $mode == 'lengkap')
             <div class="mb-2">
                 <h3 class="text-white text-sm font-bold uppercase tracking-wider">📦 BAHAN</h3>
             </div>
-            <div class="grid grid-cols-3 gap-4 mb-6 print-grid-cols-3">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print-grid-cols-4">
                 <div class="summary-card bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
                     <p class="text-gray-400 text-xs">Total Bahan Masuk</p>
                     <p class="text-green-400 text-xl font-bold">+{{ number_format($totalBahanMasuk ?? 0) }}</p>
@@ -176,10 +178,14 @@ if (!isset($mode) || empty($mode)) {
                     <p class="text-gray-400 text-xs">Total bahan di gudang</p>
                     <p class="text-white text-xl font-bold">{{ number_format($stokTersedia ?? 0) }}</p>
                 </div>
+                <div class="summary-card bg-amber-900/20 rounded-lg p-4 border border-amber-800">
+                    <p class="text-amber-400 text-xs font-bold uppercase">Bahan Kritis</p>
+                    <p class="text-amber-400 text-xl font-bold">{{ $bahanKritisCount ?? 0 }}</p>
+                    <p class="text-amber-300/60 text-[10px]">Segera Restock</p>
+                </div>
             </div>
             @endif
 
-            <!-- METRIK ERP TAMBAHAN -->
             @if($mode == 'lengkap')
             <div class="mb-2">
                 <h3 class="text-white text-sm font-bold uppercase tracking-wider">💰 METRIK KEUANGAN (ERP)</h3>
@@ -197,9 +203,7 @@ if (!isset($mode) || empty($mode)) {
                 </div>
             </div>
 
-            <!-- TOP PRODUK & BAHAN CEPAT HABIS -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <!-- Top 3 Produk Terlaris -->
                 <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800">
                     <div class="px-4 py-3 border-b border-zinc-800">
                         <h3 class="text-white text-sm font-bold">🏆 Top 3 Produk Terlaris</h3>
@@ -219,7 +223,6 @@ if (!isset($mode) || empty($mode)) {
                     </div>
                 </div>
 
-                <!-- Bahan Paling Cepat Habis -->
                 <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800">
                     <div class="px-4 py-3 border-b border-zinc-800">
                         <h3 class="text-white text-sm font-bold">🔥 Bahan Paling Cepat Habis</h3>
@@ -246,9 +249,7 @@ if (!isset($mode) || empty($mode)) {
             @endif
 
             
-            <!-- TABEL OUTPUT PRODUKSI -->
-<!-- TABEL OUTPUT PRODUKSI -->
-@if($mode == 'produk' || $mode == 'lengkap')
+            @if($mode == 'produk' || $mode == 'lengkap')
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
                 <div class="px-4 py-3 border-b border-zinc-800">
                     <h3 class="text-white text-sm font-bold">Ringkasan Output Produksi (Produk Selesai)</h3>
@@ -286,7 +287,6 @@ if (!isset($mode) || empty($mode)) {
                 </div>
             </div>
             
-            <!-- TABEL PRODUK KELUAR -->
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
                 <div class="px-4 py-3 border-b border-zinc-800">
                     <h3 class="text-white text-sm font-bold">Ringkasan Produk Keluar (Penjualan & Pemakaian)</h3>
@@ -308,7 +308,9 @@ if (!isset($mode) || empty($mode)) {
                         <tbody class="divide-y divide-zinc-800">
                             @forelse($produkKeluars as $keluar)
                             <tr>
-                                <td class="px-3 py-2 text-xs text-gray-400 whitespace-nowrap">{{ \Carbon\Carbon::parse($keluar->tanggal_keluar ?? $keluar->tanggal_terbaru)->format('d M Y, H:i') }}</td>
+                                <td class="px-3 py-2 text-xs text-gray-400 whitespace-nowrap">
+                                    {{ isset($keluar->tanggal_terbaru) ? \Carbon\Carbon::parse($keluar->tanggal_terbaru)->format('d M Y, H:i') : '-' }}
+                                </td>
                                 <td class="px-3 py-2 text-xs text-gray-400">{{ $keluar->kode_produk ?? '-' }}</td>
                                 <td class="px-3 py-2 text-xs font-bold text-white">{{ $keluar->nama_produk }}</td>
                                 <td class="px-3 py-2 text-xs text-gray-300">{{ $keluar->alasan }}</td>
@@ -326,7 +328,6 @@ if (!isset($mode) || empty($mode)) {
             </div>
             @endif
 
-            <!-- TABEL BAHAN MASUK -->
             @if($mode == 'bahan' || $mode == 'lengkap')
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6 print-break-before">
                 <div class="px-4 py-3 border-b border-zinc-800">
@@ -349,13 +350,13 @@ if (!isset($mode) || empty($mode)) {
                             <tr>
                                 <td class="px-3 py-2 text-xs text-gray-400">{{ $bahan->kode_material ?? '-' }}</td>
                                 <td class="px-3 py-2 text-xs font-bold text-white">
-    {{ $bahan->nama_material }}
-    @if(!empty($bahan->warna) && strtolower($bahan->warna) !== 'tidak ada warna')
-        <span class="text-blue-400 ml-1">[{{ $bahan->warna }}]</span>
-    @else
-        <span class="text-gray-500 ml-1">[Tidak Ada Warna]</span>
-    @endif
-</td>
+                                    {{ $bahan->nama_material }}
+                                    @if(!empty($bahan->warna) && strtolower($bahan->warna) !== 'tidak ada warna')
+                                        <span class="text-blue-400 ml-1">[{{ $bahan->warna }}]</span>
+                                    @else
+                                        <span class="text-gray-500 ml-1">[Tidak Ada Warna]</span>
+                                    @endif
+                                </td>
                                 <td class="px-3 py-2 text-xs text-gray-300 text-right">Rp {{ number_format($bahan->harga_satuan ?? 0, 0, ',', '.') }}</td>
                                 <td class="px-3 py-2 text-xs text-amber-400 text-right font-bold">Rp {{ number_format(($bahan->harga_satuan ?? 0) * $bahan->jumlah, 0, ',', '.') }}</td>
                                 <td class="px-3 py-2 text-xs text-green-400 text-right font-bold">+{{ rtrim(rtrim(number_format($bahan->jumlah, 2, ',', '.'), '0'), ',') }} {{ $bahan->satuan }}</td>
@@ -369,7 +370,6 @@ if (!isset($mode) || empty($mode)) {
                 </div>
             </div>
             
-            <!-- TABEL BAHAN KELUAR -->
             <div class="bg-zinc-900/50 rounded-lg overflow-hidden border border-zinc-800 mb-6">
                 <div class="px-4 py-3 border-b border-zinc-800">
                     <h3 class="text-white text-sm font-bold">Ringkasan Bahan Keluar (Pemakaian untuk SPK)</h3>
@@ -391,13 +391,13 @@ if (!isset($mode) || empty($mode)) {
                                 <tr>
                                     <td class="px-3 py-2 text-xs text-gray-400">{{ $bahan->kode_material ?? '-' }}</td>
                                     <td class="px-3 py-2 text-xs font-bold text-white">
-    {{ $bahan->nama_material }}
-    @if(!empty($bahan->warna) && strtolower($bahan->warna) !== 'tidak ada warna')
-        <span class="text-blue-400 ml-1">[{{ $bahan->warna }}]</span>
-    @else
-        <span class="text-gray-500 ml-1">[Tidak Ada Warna]</span>
-    @endif
-</td>
+                                        {{ $bahan->nama_material }}
+                                        @if(!empty($bahan->warna) && strtolower($bahan->warna) !== 'tidak ada warna')
+                                            <span class="text-blue-400 ml-1">[{{ $bahan->warna }}]</span>
+                                        @else
+                                            <span class="text-gray-500 ml-1">[Tidak Ada Warna]</span>
+                                        @endif
+                                    </td>
                                     <td class="px-3 py-2 text-xs text-gray-400">
                                         Dipakai untuk: 
                                         <span class="text-white font-semibold">

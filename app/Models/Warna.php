@@ -16,5 +16,7 @@ class Warna extends Model
      */
     protected $fillable = [
         'nama_warna',
+        'kode_warna',
+        'gambar',
     ];
 }

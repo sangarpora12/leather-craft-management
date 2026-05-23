@@ -5,49 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laporan Produksi</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            margin: 20px;
-        }
-        h1 {
-            text-align: center;
-            font-size: 18px;
-            margin-bottom: 5px;
-        }
-        .header-info {
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 11px;
-            color: #666;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f5f5f5;
-            font-weight: bold;
-        }
-        .text-right {
-            text-align: right;
-        }
-        .text-center {
-            text-align: center;
-        }
-        .footer {
-            margin-top: 30px;
-            font-size: 10px;
-            color: #999;
-            text-align: center;
-        }
-    </style>
+    @page {
+        margin: 20px; /* Mengecilkan margin kertas PDF agar konten tidak melayang */
+    }
+    body {
+        font-family: Arial, sans-serif;
+        font-size: 11px; /* Sedikit lebih kecil agar muat banyak */
+        margin: 0;
+        padding: 0;
+    }
+    h1 {
+        text-align: center;
+        font-size: 16px;
+        margin: 0 0 10px 0; /* Margin bawah diperkecil */
+        padding: 0;
+    }
+    .header-info {
+        text-align: center;
+        margin-bottom: 10px; /* Margin bawah diperkecil */
+        font-size: 10px;
+        color: #333;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0 !important; /* Paksa margin tabel jadi nol */
+        page-break-inside: avoid;
+    }
+    th, td {
+        border: 1px solid #ccc;
+        padding: 5px 8px; /* Padding dikurangi biar rapat */
+        text-align: left;
+    }
+    th {
+        background-color: #eee !important;
+        font-weight: bold;
+        font-size: 10px;
+    }
+    /* Mencegah tabel terpotong paksa */
+    tr {
+        page-break-inside: avoid;
+    }
+    .footer {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        text-align: center;
+        font-size: 9px;
+        color: #777;
+    }
+</style>
 </head>
 <body>
     <h1>LAPORAN PRODUKSI</h1>
@@ -59,34 +66,29 @@
         <p>Dicetak: {{ $tanggal_cetak }}</p>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th class="text-center">No</th>
-                <th>Tanggal</th>
-                <th>Produk</th>
-                <th class="text-right">Target</th>
-                <th class="text-right">Selesai</th>
-                <th class="text-right">Nilai (Rp)</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($productions as $index => $prod)
-            <tr>
-                <td class="text-center">{{ $index + 1 }}</td>
-                <td>{{ \Carbon\Carbon::parse($prod->tanggal)->format('d M Y') }}</td>
-                <td>{{ $prod->nama_produk ?? 'N/A' }}</td>
-                <td class="text-right">{{ number_format($prod->total_target ?? 0) }}</td>
-                <td class="text-right">{{ number_format($prod->total_capaian ?? 0) }}</td>
-                <td class="text-right">Rp {{ number_format(($prod->total_capaian ?? 0) * ($prod->harga_jual ?? 0), 0, ',', '.') }}</td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="6" class="text-center">Tidak ada data produksi</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
+    <h3>Ringkasan Bahan Keluar</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Kode</th>
+            <th>Bahan</th>
+            <th>Digunakan Untuk</th>
+            <th>Total Dipakai</th>
+        </tr>
+    </thead>
+    <tbody>
+        @forelse($materialUsage as $item)
+        <tr>
+            <td>{{ $item->kode_material }}</td>
+            <td>{{ $item->nama_material }}</td>
+            <td>{{ $item->nama_produk }}</td>
+            <td class="text-right">{{ number_format($item->jumlah, 2) }}</td>
+        </tr>
+        @empty
+        <tr><td colspan="4">Tidak ada data bahan keluar</td></tr>
+        @endforelse
+    </tbody>
+</table>
 
     <div class="footer">
         <p>Sistem Informasi Manajemen Produksi - Berliano Leather</p>

@@ -79,8 +79,12 @@
                     // Hitung ringkasan per warna
                     $ringkasanPerWarna = [];
                     foreach ($product->boms as $bom) {
-                        if ($bom->bahanBaku && $bom->bahanBaku->warna) {
-                            $warna = $bom->bahanBaku->warna;
+                        if ($bom->bahanBaku) {
+                            $warna = $bom->bahanBaku->warna ?? 'COKELAT MUDA';
+                            if (in_array(strtoupper($warna), ['POLOS', 'N/A', 'NULL', '-', ''])) {
+                                $warna = 'COKELAT MUDA';
+                            }
+                            
                             if (!isset($ringkasanPerWarna[$warna])) {
                                 $ringkasanPerWarna[$warna] = [
                                     'jumlah_item' => 0,
@@ -121,7 +125,7 @@
                                     <div class="flex justify-between items-center text-xs">
                                         <div class="flex items-center gap-2">
                                             <div class="w-3 h-3 rounded-full border border-white/20" 
-                                                 style="background-color: {{ $warna }}; {{ $warna == 'PUTIH' || $warna == 'WHITE' ? 'border-gray-400' : '' }}">
+                                                 style="background-color: {{ \App\Helpers\WarnaHelper::detectColor($warna) }};">
                                             </div>
                                             <span class="text-gray-300">{{ $warna }}</span>
                                             <span class="text-gray-500 text-[10px]">({{ $data['jumlah_item'] }} item)</span>

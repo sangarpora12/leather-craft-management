@@ -47,9 +47,9 @@
                     $warnaRaw = $pecah[0];
                     $statusPrioritas = $pecah[1];
 
-                    // ✅ Logika Filter Warna: Ubah Polos/NA/- jadi "TIDAK ADA WARNA"
+                    // ✅ Logika Filter Warna: Ubah Polos/NA/- jadi "COKELAT MUDA"
                     $sampahWarna = ['POLOS', 'N/A', 'NULL', '-', '', 'TIDAK ADA WARNA'];
-                    $namaWarnaFix = in_array(strtoupper($warnaRaw), $sampahWarna) ? 'TIDAK ADA WARNA' : $warnaRaw;
+                    $namaWarnaFix = in_array(strtoupper($warnaRaw), $sampahWarna) ? 'COKELAT MUDA' : $warnaRaw;
 
                     $grupJumlah = (float) $grupRincian->sum('jumlah');
                     $grupReceived = (float) $grupRincian->sum('received');
@@ -57,31 +57,34 @@
                 @endphp
 
                 <div class="bg-[#1C222D] border border-white/5 rounded-xl overflow-hidden shadow-lg mb-4">
-                    
                     <div class="bg-white/5 px-4 py-3 border-b border-white/5 flex flex-wrap justify-between items-center gap-2">
-                        <div class="flex items-center gap-2">
-                            <h4 class="text-sm font-bold text-white">
-                                🎨 {{ $namaWarnaFix }}
-                            </h4>
-                            @if($statusPrioritas == 'URGENT')
-                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-500/20 text-red-400 flex-shrink-0">
-                                    URGENT
-                                </span>
-                            @endif
+                            <div class="flex items-center gap-3">
+                                <div class="w-3 h-3 rounded-full" style="background-color: {{ \App\Helpers\WarnaHelper::detectColor($namaWarnaFix) }};"></div>
+                                <h4 class="text-sm font-bold text-white">
+                                    {{ $namaWarnaFix }}
+                                </h4>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                @if($statusPrioritas == 'URGENT')
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-500/20 text-red-400 flex-shrink-0">
+                                        URGENT
+                                    </span>
+                                @endif
+
+                            </div>
                         </div>
-                        
-                        <div class="text-right flex flex-col items-end">
-                            @if($grupReceived > 0)
-                                <span class="text-[10px] text-gray-400 line-through">Awal: {{ (float)$grupJumlah }}</span>
-                                <span class="text-xs font-bold text-orange-400 bg-orange-500/10 px-2 py-1 rounded mt-0.5">
-                                    Sisa: {{ (float)$grupSisa }} {{ $grupRincian->first()->bahan->satuan ?? 'pcs' }}
-                                </span>
-                            @else
-                                <span class="text-xs font-medium text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
-                                    Total: {{ (float)$grupJumlah }} {{ $grupRincian->first()->bahan->satuan ?? 'pcs' }}
-                                </span>
-                            @endif
-                        </div>
+                    
+                    <div class="p-2 text-right bg-white/5">
+                        @if($grupReceived > 0)
+                            <span class="text-[10px] text-gray-400 line-through">Awal: {{ (float)$grupJumlah }}</span>
+                            <span class="text-xs font-bold text-orange-400 bg-orange-500/10 px-2 py-1 rounded mt-0.5">
+                                Sisa: {{ (float)$grupSisa }} {{ $grupRincian->first()->bahan->satuan ?? 'pcs' }}
+                            </span>
+                        @else
+                            <span class="text-xs font-medium text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
+                                Total: {{ (float)$grupJumlah }} {{ $grupRincian->first()->bahan->satuan ?? 'pcs' }}
+                            </span>
+                        @endif
                     </div>
 
                     <div class="divide-y divide-white/5">
@@ -126,3 +129,83 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.terima-bahan-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const pengadaanId = this.dataset.idPengadaan;
+            const namaMaterial = this.dataset.namaMaterial;
+            const warnaGrup = this.dataset.warnaGrup;
+
+            console.log('Mencoba menerima bahan untuk Pengadaan ID:', pengadaanId);
+
+            // 1. Ambil data form awal & daftar warna
+            Promise.all([
+                fetch(`/operator/pengadaan/show-receive-form/${pengadaanId}`).then(res => res.json()),
+                fetch(`/api/warna`).then(res => res.json())
+            ]).then(([formResponse, warnaResponse]) => {
+                if (!formResponse.success) {
+                    Swal.fire('Error', 'Gagal memuat data form.', 'error');
+                    return;
+                }
+
+                const formData = formResponse.data;
+                const warnas = warnaResponse;
+
+                // 2. Buat opsi dropdown warna
+                const warnaOptions = warnas.map(warna => 
+                    `<option value="${warna.nama_warna}" ${warna.nama_warna.toUpperCase() === warnaGrup.toUpperCase() ? 'selected' : ''}>
+                        ${warna.nama_warna}
+                    </option>`
+                ).join('');
+
+                // 3. Tampilkan SweetAlert dengan form dinamis
+                Swal.fire({
+                    title: `Terima Bahan: ${namaMaterial}`,
+                    html: `
+                        <form id="receive-material-form" action="/operator/pengadaan/receive/${pengadaanId}" method="POST" class="text-left">
+                            @csrf
+                            <div class="swal2-validation-message" id="swal-validation-message" style="display: none;"></div>
+                            
+                            <p class="text-sm text-gray-400 mb-4">Sisa yang belum datang: <strong class="text-orange-400">${formData.sisa_belum_datang} ${formData.satuan}</strong></p>
+
+                            <label for="jumlah_diterima" class="swal2-label">Jumlah Diterima</label>
+                            <input type="number" id="jumlah_diterima" name="jumlah_diterima" class="swal2-input" placeholder="Contoh: 10.5" required step="0.01">
+
+                            <label for="warna" class="swal2-label">Warna</label>
+                            <select id="warna" name="warna" class="swal2-select" required>
+                                ${warnaOptions}
+                            </select>
+
+                            <label for="harga_satuan" class="swal2-label">Harga Satuan (Opsional)</label>
+                            <input type="number" id="harga_satuan" name="harga_satuan" class="swal2-input" placeholder="Contoh: 50000">
+                        </form>
+                    `,
+                    confirmButtonText: 'Simpan',
+                    showCancelButton: true,
+                    cancelButtonText: 'Batal',
+                    focusConfirm: false,
+                    background: '#1e293b',
+                    color: '#e2e8f0',
+                    preConfirm: () => {
+                        const form = document.getElementById('receive-material-form');
+                        const jumlahDiterima = document.getElementById('jumlah_diterima').value;
+                        if (!jumlahDiterima || parseFloat(jumlahDiterima) <= 0) {
+                            Swal.showValidationMessage('Jumlah diterima harus lebih dari 0');
+                            return false;
+                        }
+                        form.submit();
+                    }
+                });
+
+            }).catch(error => {
+                console.error('Error:', error);
+                Swal.fire('Error', 'Terjadi kesalahan saat mengambil data.', 'error');
+            });
+        });
+    });
+});
+</script>
+@endpush

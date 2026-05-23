@@ -88,7 +88,7 @@
 
 <script>
 // ==========================================
-// TAB NAVIGATION — FIX: logic benar + previewArea ikut hidden saat ganti tab
+// TAB NAVIGATION
 // ==========================================
 const tabScan      = document.getElementById('tabScan');
 const tabManual    = document.getElementById('tabManual');
@@ -219,8 +219,6 @@ async function processOCR(base64) {
         const result = await response.json();
         if (result.success) {
             loadingText.textContent = 'OCR Berhasil!';
-            // Set warna default "Tidak Ada Warna" jika ada dropdown warna
-            // dan alihkan ke halaman result
             setTimeout(() => { window.location.href = result.redirect_url || '/operator/scan/result'; }, 500);
         } else {
             loadingOverlay.classList.add('hidden');
@@ -319,7 +317,6 @@ function resetPelengkapForm() {
     if (pelengkapForm) pelengkapForm.reset();
 }
 
-// FIX: Satu DOMContentLoaded saja
 document.addEventListener('DOMContentLoaded', function() {
     const input       = document.getElementById('nama_material');
     const suggestions = document.getElementById('suggestions');

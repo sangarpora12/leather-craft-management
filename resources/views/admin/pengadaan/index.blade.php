@@ -53,10 +53,16 @@
                             </div>
                             {{-- <input type="file" id="photo-upload-kritis-{{$item->id}}" class="hidden" onchange="uploadPhotoVarian({{$item->id}}, '{{$item->kode_material}}', 'foto-kritis-')"> --}}
                             <p class="text-white text-[11px] font-bold truncate mt-2">{{ $item->nama_material ?? 'N/A' }}</p>
-                            <p class="text-[10px] text-orange-400 font-semibold">{{ $item->warna ?? 'Polos' }}</p>
+                            @php
+                                $warnaKritis = $item->warna ?? 'COKELAT MUDA';
+                                if (in_array(strtoupper($warnaKritis), ['POLOS', 'N/A', 'NULL', '-', ''])) {
+                                    $warnaKritis = 'COKELAT MUDA';
+                                }
+                            @endphp
+                            <p class="text-[10px] text-orange-400 font-semibold">{{ $warnaKritis }}</p>
                             <p class="text-[9px] text-red-500 font-black">Sisa: {{ rtrim(rtrim(number_format($item->stok, 2, '.', ''), '0'), '.') }} {{ $item->satuan ?? '' }}</p>
                         </div>
-                        <button @click="addToCart({{ $item->id }}, '{{ $item->warna ?? 'Polos' }}')" 
+                        <button @click="addToCart({{ $item->id }}, '{{ $warnaKritis }}')" 
                                 class="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white text-[9px] font-bold py-1 rounded transition uppercase">
                             + Tambah
                         </button>
@@ -130,11 +136,16 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="px-6 py-3 text-xs font-bold text-gray-300" x-text="v.warna || 'Polos'"></td>
+                                        <td class="px-6 py-3">
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-3 h-3 rounded-full border border-white/10" :style="`background-color: ${detectColor(v.warna || 'COKELAT MUDA')}`"></div>
+                                                <span class="text-xs font-bold text-gray-300" x-text="v.warna || 'COKELAT MUDA'"></span>
+                                            </div>
+                                        </td>
                                         <td class="px-6 py-3 text-center font-black text-[11px]" :class="v.stok <= 5 ? 'text-red-500' : 'text-emerald-500'" x-text="parseFloat(v.stok).toFixed(1).replace(/\.?0+$/, '') + ' ' + (v.satuan || '')"></td>
                                         <td class="px-6 py-3 text-right text-[11px] font-mono" x-text="'Rp' + new Intl.NumberFormat('id-ID').format(v.harga_satuan || 0)"></td>
                                         <td class="px-6 py-3 text-right">
-                                            <button @click.stop="addToCart(v.id, v.warna || 'Polos')" class="bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white px-4 py-1.5 rounded-lg border border-orange-600/20 text-[10px] font-black transition-all">
+                                            <button @click.stop="addToCart(v.id, v.warna || 'COKELAT MUDA')" class="bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white px-4 py-1.5 rounded-lg border border-orange-600/20 text-[10px] font-black transition-all">
                                                 + KERANJANG
                                             </button>
                                         </td>
@@ -173,7 +184,10 @@
                                         <p class="text-white text-[11px] font-bold" x-text="item.nama_material"></p>
                                         <button @click="removeFromCart(index)" class="text-gray-700 hover:text-red-500"><i class="fas fa-times"></i></button>
                                     </div>
-                                    <p class="text-[9px] text-orange-400 font-black uppercase" x-text="'Warna: ' + item.warna"></p>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2.5 h-2.5 rounded-full border border-white/10" :style="`background-color: ${detectColor(item.warna)}`"></div>
+                                        <p class="text-[9px] text-orange-400 font-black uppercase" x-text="'Warna: ' + item.warna"></p>
+                                    </div>
                                     <p class="text-[10px] text-gray-400 font-mono" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(item.qty * item.harga_satuan)"></p>
                                 </div>
                             </div>
@@ -328,6 +342,18 @@ function procurementApp() {
         showSubmitModal: false,
         showImagePreview: false,
         previewImageUrl: '',
+
+        detectColor(colorName) {
+            if (!colorName || ['POLOS', 'N/A', 'NULL', '-'].includes(colorName.toUpperCase())) {
+                return '#D2B48C'; // tan for Cokelat Muda
+            }
+            const colors = {
+                'merah': '#FF0000', 'biru': '#0000FF', 'hijau': '#008000', 'kuning': '#FFFF00', 'hitam': '#000000',
+                'putih': '#FFFFFF', 'cokelat': '#8B4513', 'cokelat muda': '#D2B48C', 'abu-abu': '#808080', 'oranye': '#FFA500', 'ungu': '#800080',
+                'pink': '#FFC0CB', 'maroon': '#800000', 'navy': '#000080', 'cream': '#FFFDD0', 'tan': '#D2B48C'
+            };
+            return colors[colorName.toLowerCase()] || '#D2B48C';
+        },
         
         // COMPUTED: Filter materials berdasarkan input search
         get filteredGroups() {

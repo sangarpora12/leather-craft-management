@@ -16,94 +16,152 @@ class BahanBakuController extends Controller
 {
     public function show($id)
     {
-        $bahanBaku = BahanBaku::findOrFail($id);
+        $bahan = BahanBaku::findOrFail($id);
 
-        // Ambil semua varian warna berdasarkan KODE MATERIAL agar akurat
-        $varianWarna = BahanBaku::where('kode_material', $bahanBaku->kode_material)
-            ->orderBy('warna')
+        // 1. Ambil SEMUA varian ASLI yang memiliki kode_material yang sama
+        $semuaVarianAsli = BahanBaku::where('kode_material', $bahan->kode_material)->get();
+
+        // 💡 JURUS AUTO-SYNC: SINKRONISASI STOK MASTER & FIFO
+        foreach ($semuaVarianAsli as $varian) {
+            if ($varian->is_inventory) {
+                // Hitung sisa stok sebenarnya dari tabel FIFO
+                $stokFifoSebenarnya = \App\Models\BahanStokLayer::where('bahan_baku_id', $varian->id)->sum('qty_sisa');
+                
+                // Jika stok di master beda dengan di FIFO, perbaiki otomatis!
+                if ($varian->stok != $stokFifoSebenarnya) {
+                    $varian->stok = $stokFifoSebenarnya;
+                    $varian->save(); // Update database langsung
+                }
+            }
+        }
+
+        // Refresh data varian setelah di-sync agar angkanya terupdate di layar
+        $semuaVarianAsli = BahanBaku::where('kode_material', $bahan->kode_material)->get();
+
+        // 2. Hitung total stok gabungan (Sekarang dijamin akurat 100%)
+        $bahan->stok = $semuaVarianAsli->sum('stok');
+
+        // 3. Kumpulkan semua ID varian dalam satu grup kode_material
+        $idsTargetFifo = $semuaVarianAsli->pluck('id')->toArray();
+        if (empty($idsTargetFifo)) {
+            $idsTargetFifo = [$bahan->id];
+        }
+
+        // 4. Ambil layer stok FIFO utama
+        $semuaLayer = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTargetFifo)
+            ->where('qty_sisa', '>', 0)
+            ->with('material')
+            ->orderBy('tanggal_masuk', 'desc')
+            ->orderBy('created_at', 'desc')
             ->get();
 
-        // Ambil riwayat stok lengkap dengan nama penginput
+        // 💡 JURUS SELF-HEALING (Jika Layer Kosong padahal ada stok)
+        if ($semuaLayer->isEmpty() && $bahan->stok > 0) {
+            \App\Models\BahanStokLayer::create([
+                'bahan_baku_id' => $bahan->id,
+                'tanggal_masuk' => $bahan->created_at ?? now()->toDateString(),
+                'qty_masuk'     => $bahan->stok,
+                'qty_sisa'      => $bahan->stok,
+                'harga_beli'    => $bahan->harga_satuan ?? 0,
+                'sumber_harga'  => 'Sistem Otomatis (Self-Healing)',
+            ]);
+
+            // Tarik ulang datanya
+            $semuaLayer = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTargetFifo)
+                ->where('qty_sisa', '>', 0)
+                ->with('material')
+                ->orderBy('tanggal_masuk', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get();
+        }
+
+        // 5. Logika pengambilan varian warna untuk tabel
+        $idsUntukTampilkan = BahanBaku::where('kode_material', $bahan->kode_material)
+            ->select(DB::raw('MAX(id) as id'))
+            ->groupBy(DB::raw('TRIM(COALESCE(warna, ""))'))
+            ->pluck('id');
+
+        $varianWarna = BahanBaku::whereIn('id', $idsUntukTampilkan)
+            ->get()
+            ->map(function ($item) use ($bahan) {
+                $item->total_stok_warna = BahanBaku::where('kode_material', $bahan->kode_material)
+                    ->whereRaw('TRIM(COALESCE(warna, "")) = ?', [trim($item->warna ?? '')])
+                    ->sum('stok'); // Ini akan otomatis membaca stok yang sudah di-sync
+                
+                $item->warna_display = $item->warna ?: 'Polos / Tidak Ada Warna';
+                return $item;
+            });
+
+        // 6. Riwayat transaksi stok
         $riwayatStok = DB::table('log_stok')
             ->leftJoin('users', 'log_stok.operator_id', '=', 'users.id')
-            ->where('log_stok.bahan_baku_id', $id)
+            ->whereIn('log_stok.bahan_baku_id', $idsTargetFifo)
             ->select('log_stok.*', 'users.name as nama_penginput')
             ->orderBy('log_stok.created_at', 'desc')
             ->limit(20)
             ->get();
 
-// ════════════════ START PERBAIKAN FIFO ════════════════
-// 1. Ambil SEMUA ID varian yang memiliki KODE MATERIAL yang sama (Tanpa kecuali warna)
-$idsTargetFifo = BahanBaku::where('kode_material', $bahanBaku->kode_material)
-    ->pluck('id')
-    ->toArray();
+        // 7. Ringkasan per harga beli & warna
+        $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTargetFifo)
+            ->leftJoin('bahan_bakus', 'bahan_stok_layers.bahan_baku_id', '=', 'bahan_bakus.id')
+            ->select(
+                'bahan_stok_layers.harga_beli',
+                'bahan_bakus.warna',
+                DB::raw('SUM(qty_masuk) as total_masuk'),
+                DB::raw('SUM(qty_sisa) as total_sisa'),
+                DB::raw('MAX(tanggal_masuk) as terakhir_masuk')
+            )
+            ->groupBy('bahan_stok_layers.harga_beli', 'bahan_bakus.warna')
+            ->orderBy('terakhir_masuk', 'desc')
+            ->get()
+            ->filter(function($item) {
+                return round((float) $item->total_sisa, 2) > 0;
+            })
+            ->values();
 
-// 2. Ambil SEMUA layer FIFO untuk semua ID tersebut
-$semuaLayer = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTargetFifo)
-    ->where('qty_sisa', '>', 0) // ✅ JURUS SAKTI: Sembunyikan layer yang stoknya sudah 0
-    ->with('material') // Pastikan relasi material ikut dipanggil biar kolom warna tidak error
-    ->orderBy('tanggal_masuk', 'desc')
-    ->orderBy('created_at', 'desc')
-    ->get();
+        $warnas = \App\Models\Warna::all();
+        $batasStokGlobal = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 10);
 
-// 3. Ringkasan per harga beli & warna (Biar harga sama tapi beda warna tetap dipisah barisnya)
-$ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTargetFifo)
-    ->leftJoin('bahan_bakus', 'bahan_stok_layers.bahan_baku_id', '=', 'bahan_bakus.id')
-    ->select(
-        'bahan_stok_layers.harga_beli',
-        'bahan_bakus.warna',
-        DB::raw('SUM(qty_masuk) as total_masuk'),
-        DB::raw('SUM(qty_sisa) as total_sisa'),
-        DB::raw('MAX(tanggal_masuk) as terakhir_masuk')
-    )
-    ->groupBy('bahan_stok_layers.harga_beli', 'bahan_bakus.warna')
-    ->orderBy('terakhir_masuk', 'desc')
-    ->get();
-// ════════════════ END PERBAIKAN FIFO ════════════════
+        $viewName = request()->is('admin/*') ? 'admin.bahan.show' : 'operator.bahan-baku.show';
 
-        // Cek apakah request datang dari route admin
-        if (request()->is('admin/*')) {
-            $bahan = $bahanBaku; // Admin view expects $bahan variable
-            return view('admin.bahan.show', compact('bahan', 'bahanBaku', 'riwayatStok', 'varianWarna', 'semuaLayer', 'ringkasanPerHarga'));
-        }
-
-        // Default ke view operator
-        return view('operator.bahan-baku.show', compact('bahanBaku', 'varianWarna', 'ringkasanPerHarga', 'semuaLayer', 'riwayatStok'));
+        return view($viewName, compact('bahan', 'riwayatStok', 'varianWarna', 'semuaLayer', 'ringkasanPerHarga', 'warnas', 'batasStokGlobal'));
     }
     // 1. TAMPILKAN HALAMAN UTAMA (INDEX) + PENCARIAN + FILTER (MASTER-VARIANT)
     public function index(Request $request)
     {
-        // Query utama: GROUP BY master material, SUM stok dari semua varian warna
-        $query = BahanBaku::select([
-            'kode_material',
-            DB::raw('MAX(nama_material) as nama_material'),
-            DB::raw('MAX(kategori) as kategori'),
-            DB::raw('MAX(satuan) as satuan'),
-            DB::raw('MAX(stok_minimum) as stok_minimum'),
-            DB::raw('SUM(stok) as total_stok'),
-            DB::raw('MAX(harga_satuan) as harga_satuan'),
-            DB::raw('MAX(id) as id'),
-            DB::raw('MAX(foto) as foto')
-        ]); // Hanya tampilkan bahan inventory
+        // Query utama: GROUP BY master material, SUM stok dari FIFO layers
+        $query = BahanBaku::query()
+            ->select([
+                'bahan_bakus.kode_material',
+                DB::raw('MAX(bahan_bakus.nama_material) as nama_material'),
+                DB::raw('MAX(bahan_bakus.kategori) as kategori'),
+                DB::raw('MAX(bahan_bakus.satuan) as satuan'),
+                DB::raw('MAX(bahan_bakus.stok_minimum) as stok_minimum'),
+                DB::raw('SUM(bahan_bakus.stok) as total_stok'), // Fallback ke stok utama
+                DB::raw('MAX(bahan_bakus.harga_satuan) as harga_satuan'),
+                DB::raw('MAX(bahan_bakus.id) as id'),
+                DB::raw('MAX(bahan_bakus.foto) as foto'),
+                DB::raw('(SELECT COUNT(DISTINCT warna) FROM bahan_bakus as b2 WHERE b2.kode_material = bahan_bakus.kode_material AND b2.warna IS NOT NULL AND b2.warna != "" AND b2.warna != "Tidak Ada Warna") as jumlah_warna')
+            ]);
     
         // Filter Pencarian (Kode/Nama Material)
         $query->when($request->filled('search'), function ($q) use ($request) {
             $search = $request->search;
             $q->where(function($sub) use ($search) {
-                $sub->where('nama_material', 'LIKE', "%{$search}%")
-                  ->orWhere('kode_material', 'LIKE', "%{$search}%");
+                $sub->where('bahan_bakus.nama_material', 'LIKE', "%{$search}%")
+                  ->orWhere('bahan_bakus.kode_material', 'LIKE', "%{$search}%");
             });
         });
     
         // Filter Kategori
         $query->when($request->filled('kategori'), function ($q) use ($request) {
-            $q->where('kategori', $request->kategori);
+            $q->where('bahan_bakus.kategori', $request->kategori);
         });
     
         // Filter Warna (cari varian dengan warna tertentu dalam satu grup kode_material)
         $query->when($request->filled('warna'), function ($q) use ($request) {
             $warna = $request->warna;
-            $q->whereIn('kode_material', function ($sub) use ($warna) {
+            $q->whereIn('bahan_bakus.kode_material', function ($sub) use ($warna) {
                 $sub->select('kode_material')
                      ->from('bahan_bakus')
                      ->where('warna', $warna)
@@ -112,7 +170,7 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
         });
     
         // GROUP BY untuk master material (bukan per varian) - HARUS SEBELUM having()
-        $query->groupBy('kode_material');
+        $query->groupBy('bahan_bakus.kode_material');
     
         // Filter Status Stok (berdasarkan total_stok hasil SUM) - HARUS SETELAH groupBy
         $query->when($request->filled('status_stok'), function ($q) use ($request) {
@@ -148,15 +206,31 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
                     break;
                 case 'terbaru':
                 default:
-                    $q->orderByDesc('id');
+                    $q->orderByDesc('bahan_bakus.id');
                     break;
             }
         }, function ($q) {
             // Default sorting: terbaru
-            $q->orderByDesc('id');
+            $q->orderByDesc('bahan_bakus.id');
         });
     
         $bahans = $query->paginate(15)->withQueryString();
+
+        // LOGIKA BARU: Set warna default jika perlu
+        $bahans->each(function ($bahan) {
+            // Ambil semua varian untuk kode_material ini
+            $variants = BahanBaku::where('kode_material', $bahan->kode_material)->get();
+            if ($variants->count() > 0) {
+                $allNullOrPolos = $variants->every(function ($varian) {
+                    return empty($varian->warna) || strtolower($varian->warna) === 'polos' || $varian->warna === 'Tidak Ada Warna';
+                });
+
+                if ($allNullOrPolos) {
+                    $bahan->temp_warna = 'cokelat';
+                }
+            }
+        });
+
         $satuans = Satuan::all();
         $kategories = Kategori::where('tipe', 'bahan')->get();
         $warnas = Warna::all();
@@ -1163,16 +1237,34 @@ DB::table('log_stok')->insert([
 {
     $bahan = BahanBaku::findOrFail($id);
     
-    // 1. Ambil semua varian warna dari material yang SAMA (berdasarkan kode_material)
-    $varianWarna = BahanBaku::where('kode_material', $bahan->kode_material)
-        ->orderBy('warna')
-        ->get();
+    // 1. Ambil SEMUA varian ASLI dulu (untuk FIFO dan logika lain)
+    $semuaVarianAsli = BahanBaku::where('kode_material', $bahan->kode_material)->get();
     
     // 2. Definisi ID untuk FIFO (Semua ID dari varian warna yang sama)
-    $idsTargetFifo = $varianWarna->pluck('id')->toArray();
+    $idsTargetFifo = $semuaVarianAsli->pluck('id')->toArray();
     if (empty($idsTargetFifo)) {
         $idsTargetFifo = [$id];
     }
+
+    // 3. Buat varian yang sudah DIGABUNG (untuk ditampilkan di tabel warna)
+    // Ambil semua id MAX dari setiap warna yang unik (setelah di-trim)
+    $idsUntukTampilkan = BahanBaku::where('kode_material', $bahan->kode_material)
+        ->select(DB::raw('MAX(id) as id'))
+        ->groupBy(DB::raw('TRIM(warna)'))
+        ->pluck('id');
+
+    // Ambil data lengkap dari id-id tersebut, sehingga semua relasi (warna, foto) ter-load
+    $varianWarna = BahanBaku::whereIn('id', $idsUntukTampilkan)
+        ->with('color') // Load relasi warna
+        ->get()
+        ->map(function($item) use ($bahan) {
+                // Hitung total stok untuk warna ini dan tambahkan ke item
+                $totalStok = BahanBaku::where('kode_material', $bahan->kode_material)
+                    ->whereRaw('TRIM(warna) = ?', [trim($item->warna)])
+                    ->sum('stok');
+                $item->total_stok_warna = $totalStok;
+                return $item;
+            });
 
 // 3. Ringkasan per harga beli & warna (Biar harga sama tapi beda warna tetap dipisah barisnya)
 $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTargetFifo)

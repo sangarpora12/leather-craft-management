@@ -186,15 +186,22 @@
             <!-- Kolom Kiri: Form Tambah Warna -->
             <div class="bg-neutral-900 border border-zinc-800 rounded-lg p-4">
                 <h4 class="text-xs font-medium mb-3 text-white">Tambah Warna Baru</h4>
-                <form id="form-warna" action="{{ route('admin.pengaturan.store') }}" method="POST">
+                <form id="form-warna" action="{{ route('admin.pengaturan.store') }}" method="POST" enctype="multipart/form-data">
     <input type="hidden" name="tipe_master" value="warna">
                     @csrf
                     <div class="space-y-3">
                         <div class="flex items-center space-x-2">
                             <input type="text" name="nama_warna" required placeholder="Contoh: Merah, Biru" class="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-green-500">
                         </div>
+                        <div>
+                            <label class="block text-[10px] text-zinc-500 mb-1">Gambar/Tekstur <span class="text-red-400">*wajib</span></label>
+                            <input type="file" name="gambar_warna" accept="image/*" required class="w-full text-[10px] text-zinc-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-[10px] file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-500 cursor-pointer">
+                        </div>
                     </div>
                     @error('nama_warna')
+                        <div class="text-red-400 text-xs mt-1">{{ $message }}</div>
+                    @enderror
+                    @error('gambar_warna')
                         <div class="text-red-400 text-xs mt-1">{{ $message }}</div>
                     @enderror
 
@@ -216,6 +223,8 @@
                             <tr>
                                 <th class="px-3 py-2 rounded-tl-lg w-12">No</th>
                                 <th class="px-3 py-2">Nama Warna</th>
+                                <th class="px-3 py-2">Gambar</th>
+                                <th class="px-3 py-2">Warna</th>
                                 <th class="px-3 py-2 rounded-tr-lg w-16">Aksi</th>
                             </tr>
                         </thead>
@@ -224,6 +233,22 @@
                             <tr class="hover:bg-zinc-800/50">
                                 <td class="px-3 py-2">{{ $index + 1 }}</td>
                                 <td class="px-3 py-2 font-medium">{{ $warna->nama_warna }}</td>
+                                <td class="px-3 py-2">
+                                    @if($warna->gambar)
+                                    <div class="w-8 h-8 rounded-full overflow-hidden border border-white/10">
+                                        <img src="{{ asset('storage/' . $warna->gambar) }}" alt="{{ $warna->nama_warna }}" class="w-full h-full object-cover">
+                                    </div>
+                                    @else
+                                    <span class="text-[10px] text-zinc-600">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2">
+                                    <div class="flex items-center gap-2">
+                                        @php $hexColor = $warna->kode_warna ?: \App\Helpers\WarnaHelper::detectColor($warna->nama_warna); @endphp
+                                        <span class="w-5 h-5 rounded-full inline-block border border-white/10" style="background-color: {{ $hexColor }};"></span>
+                                        <span class="text-[10px] text-zinc-500 font-mono">{{ $warna->kode_warna ?? '-' }}</span>
+                                    </div>
+                                </td>
                                 <td class="px-3 py-2">
                                      <form action="{{ route('admin.pengaturan.store') }}" method="POST" class="inline">
                                         @csrf
@@ -238,7 +263,7 @@
                             </tr>
                             @empty
                             <tr class="empty-row">
-                                <td colspan="3" class="px-3 py-6 text-center text-zinc-500 text-xs">
+                                <td colspan="5" class="px-3 py-6 text-center text-zinc-500 text-xs">
                                     <i class="fa-solid fa-inbox text-xl mb-1 block"></i>
                                     Belum ada data.
                                 </td>

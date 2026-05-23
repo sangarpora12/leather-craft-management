@@ -100,6 +100,47 @@
                         </div>
                     </div>
 
+                    <!-- Warna -->
+                    @php
+                        $warnaOpList = \App\Models\Warna::all();
+                        $selectedWarnaOp = old('warna', $bahan->warna ?? '');
+                    @endphp
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 mb-1.5">Warna</label>
+                        <div class="flex items-center gap-3">
+                            <select name="warna" id="select-warna-op" class="w-full bg-[#0a0a0a]/80 border border-white/20 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30 transition outline-none" onchange="previewWarnaOp(this)">
+                                <option value="">-- Pilih Warna (Opsional) --</option>
+                                @foreach($warnaOpList as $w)
+                                <option value="{{ $w->nama_warna }}" data-gambar="{{ $w->gambar }}" data-kode="{{ $w->kode_warna }}" {{ $selectedWarnaOp == $w->nama_warna ? 'selected' : '' }}>{{ $w->nama_warna }}</option>
+                                @endforeach
+                            </select>
+                            <div id="preview-warna-op" class="w-10 h-10 rounded-full border-2 border-white/10 flex-shrink-0" style="background-color: #8B4513;"></div>
+                        </div>
+                        <script>
+                        function previewWarnaOp(select) {
+                            const preview = document.getElementById('preview-warna-op');
+                            const opt = select.options[select.selectedIndex];
+                            if (opt && opt.value) {
+                                const gambar = opt.getAttribute('data-gambar');
+                                if (gambar) {
+                                    preview.innerHTML = '<img src="{{ asset('storage') }}/' + gambar + '" class="w-full h-full rounded-full object-cover">';
+                                    preview.style.backgroundColor = '';
+                                } else {
+                                    preview.innerHTML = '';
+                                    preview.style.backgroundColor = opt.getAttribute('data-kode') || '#8B4513';
+                                }
+                            } else {
+                                preview.innerHTML = '';
+                                preview.style.backgroundColor = '#8B4513';
+                            }
+                        }
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const sel = document.getElementById('select-warna-op');
+                            if (sel.value) previewWarnaOp(sel);
+                        });
+                        </script>
+                    </div>
+
                     <!-- Deskripsi / Detail -->
                     <div>
                         <label class="block text-xs font-semibold text-gray-400 mb-1.5">Deskripsi / Detail</label>

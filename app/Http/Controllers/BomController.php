@@ -73,8 +73,21 @@ class BomController extends Controller
     public function create($produk_jadi_id)
     {
         $product = ProdukJadi::findOrFail($produk_jadi_id);
-        $materials = BahanBaku::select('id', 'nama_material', 'warna', 'satuan', 'harga_satuan', 'stok', 'is_inventory')
-                        ->orderBy('nama_material', 'asc')->get();
+    $materials = BahanBaku::select('id', 'nama_material', 'warna', 'satuan', 'harga_satuan', 'stok', 'is_inventory')
+                    ->orderBy('nama_material', 'asc')->get();
+
+    // Load master Warna untuk gambar & kode_warna
+    $warnaMasterList = \App\Models\Warna::all()->keyBy('nama_warna');
+    foreach ($materials as $mat) {
+        if ($mat->warna && isset($warnaMasterList[$mat->warna])) {
+            $w = $warnaMasterList[$mat->warna];
+            $mat->gambar_warna = $w->gambar;
+            $mat->kode_warna_warna = $w->kode_warna;
+        } else {
+            $mat->gambar_warna = null;
+            $mat->kode_warna_warna = null;
+        }
+    }
         
         return view('admin.bom.create', compact('product', 'materials'));
     }
@@ -147,6 +160,19 @@ public function edit($id)
     
     $materials = BahanBaku::select('id', 'nama_material', 'warna', 'satuan', 'harga_satuan', 'stok', 'is_inventory')
                     ->orderBy('nama_material', 'asc')->get();
+
+    // Load master Warna untuk gambar & kode_warna
+    $warnaMasterList = \App\Models\Warna::all()->keyBy('nama_warna');
+    foreach ($materials as $mat) {
+        if ($mat->warna && isset($warnaMasterList[$mat->warna])) {
+            $w = $warnaMasterList[$mat->warna];
+            $mat->gambar_warna = $w->gambar;
+            $mat->kode_warna_warna = $w->kode_warna;
+        } else {
+            $mat->gambar_warna = null;
+            $mat->kode_warna_warna = null;
+        }
+    }
     
     return view('admin.bom.edit', compact('product', 'existingBoms', 'materials'));
 }
@@ -180,7 +206,14 @@ public function update(Request $request, $id)
         $product = ProdukJadi::findOrFail($id);
         
         // --- PROSES SKETSA (FOTO) ---
-        $existingSketsas = $product->sketsa ? json_decode($product->sketsa, true) : [];
+        $decodedSketsas = json_decode($product->sketsa, true);
+        $existingSketsas = [];
+        if (is_array($decodedSketsas)) {
+            $existingSketsas = $decodedSketsas;
+        } elseif (is_string($decodedSketsas)) {
+            $existingSketsas = [$decodedSketsas];
+        }
+
         if ($request->has('delete_sketsa')) {
             foreach ($request->delete_sketsa as $path) {
                 Storage::disk('public')->delete($path);

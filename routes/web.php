@@ -411,9 +411,11 @@ Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
         Route::post('/pengadaan/request/{materialId}', [PengadaanController::class, 'requestMaterial'])->name('pengadaan.request');
         Route::patch('/daftar-belanja/{id}/selesai', [PengadaanController::class, 'markAsDone'])->name('belanja.selesai');
         
-        // Rute baru untuk penerimaan bahan baku
-        Route::get('/pengadaan/{id}/receive-form', [PengadaanController::class, 'showReceiveForm'])->name('pengadaan.receive_form');
-        Route::post('/pengadaan/{id}/receive', [PengadaanController::class, 'receiveMaterial'])->name('pengadaan.receive');
+        // Rute untuk menampilkan form penerimaan (AJAX)
+        Route::get('/pengadaan/show-receive-form/{id}', [PengadaanController::class, 'showReceiveForm'])->name('pengadaan.show-receive-form');
+
+        // Rute untuk memproses penerimaan bahan
+        Route::post('/pengadaan/receive/{id}', [PengadaanController::class, 'receiveMaterial'])->name('pengadaan.receive');
         
         // Search Global
         Route::get('/search', [DashboardController::class, 'operatorSearch'])->name('search');
@@ -535,7 +537,6 @@ Route::get('/reset-bahan', function () {
 Route::get('/operator/input-manual-bahan', function () {
     return view('operator.input-manual-bahan');
 })->name('operator.input-manual-bahan');
-Route::get('/admin/warna', [\App\Http\Controllers\Admin\WarnaController::class, 'index'])->name('admin.warna.index');
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 

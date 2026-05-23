@@ -233,43 +233,54 @@ $allBahanBakus = BahanBaku::whereRaw('LOWER(kategori) != ?', ['bahan pelengkap']
 
     public function showReceiveForm($id)
     {
-        $pengadaan = Pengadaan::with('bahan')->findOrFail($id);
-        $sisa = $pengadaan->jumlah - ($pengadaan->received ?? 0);
+        try {
+            $pengadaan = Pengadaan::with('bahan')->findOrFail($id);
+            $sisa = $pengadaan->jumlah - ($pengadaan->received ?? 0);
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'id' => $pengadaan->id,
-                'no_referensi' => $pengadaan->no_referensi,
-                'nama_bahan' => $pengadaan->bahan->nama_material ?? 'Bahan Tidak Ditemukan',
-                'jumlah_diperintahkan' => $pengadaan->jumlah,
-                'sudah_diterima' => $pengadaan->received ?? 0,
-                'sisa_belum_datang' => $sisa,
-                'satuan' => $pengadaan->bahan->satuan ?? 'pcs',
-            ]
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $pengadaan->id,
+                    'no_referensi' => $pengadaan->no_referensi,
+                    'nama_bahan' => $pengadaan->bahan->nama_material ?? 'Bahan Tidak Ditemukan',
+                    'jumlah_diperintahkan' => $pengadaan->jumlah,
+                    'sudah_diterima' => $pengadaan->received ?? 0,
+                    'sisa_belum_datang' => $sisa,
+                    'satuan' => $pengadaan->bahan->satuan ?? 'pcs',
+                ]
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data pengadaan tidak ditemukan atau sudah tidak valid.'
+            ], 404);
+        }
     }
 
     public function receiveMaterial(Request $request, $id)
     {
+        // 1. HAPUS validasi warna agar sistem mengambil langsung dari database (Mencegah Silent Validation Error)
         $request->validate([
             'jumlah_diterima' => 'required|numeric|min:0.01',
-            'warna' => 'required|string',
-            'harga_satuan' => 'nullable|numeric|min:0',
+            'harga_satuan'    => 'nullable|numeric|min:0',
         ]);
 
         $jumlahDiterima = (float) str_replace(',', '.', $request->jumlah_diterima);
-        $warnaInput = $request->warna;
         $hargaManual = $request->filled('harga_satuan') ? (float) $request->harga_satuan : null;
 
         try {
-            DB::transaction(function () use ($id, $jumlahDiterima, $warnaInput, $hargaManual, $request) {
+            DB::transaction(function () use ($id, $jumlahDiterima, $hargaManual, $request) {
+                // Cari data pengadaan yang sedang diproses saat ini
                 $pengadaanSample = Pengadaan::with('bahan')->findOrFail($id);
-                $namaMaterial = $pengadaanSample->bahan->nama_material;
+                $namaMaterial = trim($pengadaanSample->bahan->nama_material);
 
-                // 1. LOGIKA MASTER-VARIANT: Cari bahan yang Nama & Warnanya cocok (case-insensitive)
-                $bahan = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$namaMaterial])
-                    ->whereRaw('LOWER(warna) = LOWER(?)', [$warnaInput])
+                // 2. KUNCI UTAMA: Ambil warna langsung dari database pengadaan/bahan baku
+                // Prioritas: Warna di Pengadaan -> Warna Master Bahan -> 'Tidak Ada Warna'
+                $warnaInput = trim($pengadaanSample->warna ?? $pengadaanSample->bahan->warna ?? 'Tidak Ada Warna');
+
+                // 3. LOGIKA MASTER-VARIANT (Kebal Spasi & Huruf Besar/Kecil)
+                $bahan = BahanBaku::whereRaw('TRIM(LOWER(nama_material)) = TRIM(LOWER(?))', [$namaMaterial])
+                    ->whereRaw('TRIM(LOWER(warna)) = TRIM(LOWER(?))', [$warnaInput])
                     ->first();
 
                 if (!$bahan) {
@@ -279,7 +290,7 @@ $allBahanBakus = BahanBaku::whereRaw('LOWER(kategori) != ?', ['bahan pelengkap']
                     $bahan = BahanBaku::create([
                         'kode_material' => $kodeMaterial,
                         'nama_material' => $namaMaterial,
-                        'warna'         => $warnaInput,
+                        'warna'         => $warnaInput, // Otomatis pakai warna asli dari pesanan admin
                         'stok'          => 0,
                         'satuan'        => $pengadaanSample->bahan->satuan,
                         'kategori'      => $pengadaanSample->bahan->kategori,
@@ -288,61 +299,63 @@ $allBahanBakus = BahanBaku::whereRaw('LOWER(kategori) != ?', ['bahan pelengkap']
                     ]);
                 }
 
-                // 2. UPDATE STOK
+                // 4. UPDATE STOK BAHAN BAKU
                 $bahan->increment('stok', $jumlahDiterima);
                 if ($hargaManual) { $bahan->update(['harga_satuan' => $hargaManual]); }
 
-                // 3. UPDATE PENGADAAN INI DAHULU (prioritas utama)
+                // 5. UPDATE PENGADAAN INI DAHULU (Prioritas utama)
                 $sisaDistribusi = $jumlahDiterima;
                 $pengadaan = Pengadaan::findOrFail($id);
                 $sisaPesanan = $pengadaan->jumlah - ($pengadaan->received ?? 0);
                 $yangDiambil = min($sisaDistribusi, $sisaPesanan);
+                
                 $pengadaan->received = ($pengadaan->received ?? 0) + $yangDiambil;
                 if ($pengadaan->received >= $pengadaan->jumlah) { $pengadaan->status = 'DONE'; }
                 $pengadaan->save();
+                
                 $sisaDistribusi -= $yangDiambil;
 
-                // 4. FIFO: Jika masih ada sisa, distribusikan ke pengadaan PENDING lain dengan JOIN langsung
+                // 6. FIFO: UPDATE PENGADAAN LAINNYA JIKA MASIH ADA SISA DISTRIBUSI
                 if ($sisaDistribusi > 0) {
-                    $warnaBersih = trim($warnaInput);
-                    $isWarnaKosong = empty($warnaBersih) || strtolower($warnaBersih) === 'tidak ada warna';
+                    $isWarnaKosong = empty($warnaInput) || strtolower($warnaInput) === 'tidak ada warna';
 
                     $query = \Illuminate\Support\Facades\DB::table('pengadaans')
                         ->join('bahan_bakus', 'bahan_bakus.id', '=', 'pengadaans.bahan_baku_id')
-                        ->whereRaw('LOWER(bahan_bakus.nama_material) = LOWER(?)', [$namaMaterial])
+                        ->whereRaw('TRIM(LOWER(bahan_bakus.nama_material)) = TRIM(LOWER(?))', [$namaMaterial])
                         ->where('pengadaans.status', 'PENDING')
                         ->where('pengadaans.id', '!=', $id)
-                        ->select('pengadaans.*')
+                        ->select('pengadaans.id') // Hanya ambil ID pengadaan agar tidak tertukar dengan ID bahan baku
                         ->orderBy('pengadaans.created_at', 'asc');
 
                     if (!$isWarnaKosong) {
-                        $query->where(function($q) use ($warnaBersih) {
-                            $q->whereRaw('LOWER(pengadaans.warna) = LOWER(?)', [$warnaBersih])
+                        $query->where(function($q) use ($warnaInput) {
+                            $q->whereRaw('TRIM(LOWER(pengadaans.warna)) = TRIM(LOWER(?))', [$warnaInput])
                               ->orWhereNull('pengadaans.warna')
                               ->orWhere('pengadaans.warna', '')
-                              ->orWhereRaw('LOWER(pengadaans.warna) = ?', ['tidak ada warna']);
+                              ->orWhereRaw('TRIM(LOWER(pengadaans.warna)) = ?', ['tidak ada warna']);
                         });
                     }
 
-                    $antrianRaw = $query->get();
-                    $ids = $antrianRaw->pluck('id')->toArray();
+                    $ids = $query->pluck('id')->toArray();
                     
                     if (!empty($ids)) {
                         $antrianPengadaan = Pengadaan::whereIn('id', $ids)->orderBy('created_at', 'asc')->get();
                         foreach ($antrianPengadaan as $p) {
                             if ($sisaDistribusi <= 0) break;
-                            $sisaPesanan = $p->jumlah - ($p->received ?? 0);
-                            $yangDiambil = min($sisaDistribusi, $sisaPesanan);
+                            
+                            $sisaPesananLoop = $p->jumlah - ($p->received ?? 0);
+                            $yangDiambilLoop = min($sisaDistribusi, $sisaPesananLoop);
 
-                            $p->received = ($p->received ?? 0) + $yangDiambil;
+                            $p->received = ($p->received ?? 0) + $yangDiambilLoop;
                             if ($p->received >= $p->jumlah) { $p->status = 'DONE'; }
                             $p->save();
-                            $sisaDistribusi -= $yangDiambil;
+                            
+                            $sisaDistribusi -= $yangDiambilLoop;
                         }
                     }
                 }
 
-                // 5. CREATE STOK LAYER
+                // 7. CREATE STOK LAYER (Untuk pencatatan harga beli)
                 BahanStokLayer::create([
                     'bahan_baku_id' => $bahan->id,
                     'tanggal_masuk' => now()->toDateString(),
@@ -351,24 +364,20 @@ $allBahanBakus = BahanBaku::whereRaw('LOWER(kategori) != ?', ['bahan pelengkap']
                     'harga_beli'    => $hargaManual ?? $bahan->harga_satuan,
                     'sumber_harga'  => 'Penerimaan Pengadaan',
                 ]);
-                // 6. CATAT RIWAYAT KE LOG STOK (Untuk Laporan)
+                
+                // 8. CATAT RIWAYAT KE LOG STOK (Untuk Laporan Admin)
                 DB::table('log_stok')->insert([
                     'bahan_baku_id'   => $bahan->id,
                     'jumlah'          => $jumlahDiterima,
                     'jenis_transaksi' => 'PENGADAAN MASUK',
                     'keterangan'      => 'Penerimaan bahan dari pengadaan',
-                    
-                    // Ini kunci utamanya agar nama user muncul di laporan!
                     'operator_id'     => auth()->id(), 
-                    // Catatan: Jika di LaporanController sebelumnya Anda mengubahnya 
-                    // menjadi user_id, maka ubah tulisan 'operator_id' di atas menjadi 'user_id'
-                    
                     'created_at'      => now(),
                     'updated_at'      => now(),
                 ]);
             });
 
-            return redirect()->back()->with('success', 'Bahan berhasil diterima dan varian warna diperbarui!');
+            return redirect()->back()->with('success', 'Bahan berhasil diterima dan antrian pengadaan otomatis diperbarui!');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal menerima bahan: ' . $e->getMessage());
         }

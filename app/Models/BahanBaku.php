@@ -85,4 +85,12 @@ class BahanBaku extends Model
     {
         return (float) $value;
     }
+
+    /**
+     * Relasi ke tabel 'warnas' untuk mendapatkan kode hex.
+     */
+    public function color()
+    {
+        return $this->belongsTo(Warna::class, 'warna', 'nama_warna');
+    }
 }

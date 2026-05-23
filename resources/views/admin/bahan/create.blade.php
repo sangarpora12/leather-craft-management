@@ -80,12 +80,38 @@
 
             <div>
                 <label class="block text-sm font-bold text-gray-400 uppercase mb-2">Warna</label>
-                <select name="warna" class="searchable-select w-full">
-                    <option value="">-- Pilih Warna (Opsional) --</option>
-                    @foreach($warnas as $warna)
-                    <option value="{{ $warna->nama_warna }}" {{ old('warna') == $warna->nama_warna ? 'selected' : '' }}>{{ $warna->nama_warna }}</option>
-                    @endforeach
-                </select>
+                <div class="flex items-center gap-3">
+                    <select name="warna" id="select-warna-create" class="searchable-select flex-1" onchange="previewWarna(this)">
+                        <option value="">-- Pilih Warna (Opsional) --</option>
+                        @foreach($warnas as $warna)
+                        <option value="{{ $warna->nama_warna }}" data-gambar="{{ $warna->gambar }}" data-kode="{{ $warna->kode_warna }}" {{ old('warna') == $warna->nama_warna ? 'selected' : '' }}>{{ $warna->nama_warna }}</option>
+                        @endforeach
+                    </select>
+                    <div id="preview-warna-create" class="w-10 h-10 rounded-full border-2 border-white/10 flex-shrink-0" style="background-color: #8B4513;"></div>
+                </div>
+                <script>
+                function previewWarna(select) {
+                    const preview = document.getElementById('preview-warna-create');
+                    const opt = select.options[select.selectedIndex];
+                    if (opt && opt.value) {
+                        const gambar = opt.getAttribute('data-gambar');
+                        if (gambar) {
+                            preview.innerHTML = '<img src="{{ asset('storage') }}/' + gambar + '" class="w-full h-full rounded-full object-cover">';
+                            preview.style.backgroundColor = '';
+                        } else {
+                            preview.innerHTML = '';
+                            preview.style.backgroundColor = opt.getAttribute('data-kode') || '#8B4513';
+                        }
+                    } else {
+                        preview.innerHTML = '';
+                        preview.style.backgroundColor = '#8B4513';
+                    }
+                }
+                document.addEventListener('DOMContentLoaded', function() {
+                    const sel = document.getElementById('select-warna-create');
+                    if (sel.value) previewWarna(sel);
+                });
+                </script>
             </div>
 
             <div>

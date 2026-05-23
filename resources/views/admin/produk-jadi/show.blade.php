@@ -254,6 +254,16 @@
         </div>
 
         <div class="overflow-hidden rounded-xl border border-white/5">
+            @php
+                $bomsGroupedByColor = $product->boms->groupBy(function($bom) {
+                    $warna = $bom->material->warna ?? 'COKELAT MUDA';
+                    if (in_array(strtoupper($warna), ['POLOS', 'N/A', 'NULL', '-', '', 'TIDAK ADA WARNA'])) {
+                        return 'COKELAT MUDA';
+                    }
+                    return strtoupper($warna);
+                });
+            @endphp
+
             <table class="w-full text-left text-xs">
                 <thead class="bg-[#111] text-gray-500 uppercase font-bold text-[9px]">
                     <tr>
@@ -264,31 +274,37 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-white/5">
-                    @forelse($product->boms as $bom)
-                    <tr class="hover:bg-white/[0.02]">
-                        <td class="p-3 pl-4 font-medium text-white">
-                            {{ $bom->material->nama_material ?? 'Material Terhapus' }}
-                            <div class="flex items-center gap-1 mt-0.5">
-                                <span class="text-[9px] text-gray-500">{{ $bom->material->kode_material ?? '-' }}</span>
-                                @if(($bom->material->warna ?? false) && $bom->material->warna !== 'Tidak Ada Warna')
-                                    <span class="text-[8px] px-1 py-0.5 bg-blue-600/20 text-blue-400 rounded border border-blue-600/30">{{ $bom->material->warna }}</span>
-                                @endif
-                            </div>
-                        </td>
-                        <td class="p-3 text-center text-gray-400">{{ $bom->jumlah_kebutuhan + 0 }} {{ $bom->satuan }}</td>
-                        <td class="p-3 text-center text-white">{{ ($bom->material->stok ?? 0) + 0 }} {{ $bom->material->satuan ?? '' }}</td>
-                        <td class="p-3 text-right pr-4">
-                            @if(($bom->material->stok ?? 0) < $bom->jumlah_kebutuhan)
-                                <span class="text-red-500 font-bold">Kurang</span>
-                            @else
-                                <span class="text-green-500 font-bold">Ready</span>
-                            @endif
-                        </td>
-                    </tr>
+                    @forelse($bomsGroupedByColor as $warna => $boms)
+                        <tr class="bg-black/20">
+                            <td colspan="4" class="p-2 pl-4">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full" style="background-color: {{ \App\Helpers\WarnaHelper::detectColor($warna) }};"></div>
+                                    <span class="font-bold text-white">{{ $warna }}</span>
+                                    <span class="text-gray-500 text-[10px]">({{ count($boms) }} item)</span>
+                                </div>
+                            </td>
+                        </tr>
+                        @foreach($boms as $bom)
+                            <tr class="hover:bg-white/[0.02]">
+                                <td class="p-3 pl-8 text-white">
+                                    {{ $bom->material->nama_material ?? 'Material Terhapus' }}
+                                    <div class="text-[9px] text-gray-500 mt-0.5">{{ $bom->material->kode_material ?? '-' }}</div>
+                                </td>
+                                <td class="p-3 text-center text-gray-400">{{ $bom->jumlah_kebutuhan + 0 }} {{ $bom->satuan }}</td>
+                                <td class="p-3 text-center text-white">{{ ($bom->material->stok ?? 0) + 0 }} {{ $bom->material->satuan ?? '' }}</td>
+                                <td class="p-3 text-right pr-4">
+                                    @if(($bom->material->stok ?? 0) < $bom->jumlah_kebutuhan)
+                                        <span class="text-red-500 font-bold">Kurang</span>
+                                    @else
+                                        <span class="text-green-500 font-bold">Ready</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
                     @empty
-                    <tr>
-                        <td colspan="4" class="p-6 text-center text-gray-500 italic">Belum ada resep BOM. Silakan tambahkan.</td>
-                    </tr>
+                        <tr>
+                            <td colspan="4" class="p-6 text-center text-gray-500 italic">Belum ada resep BOM. Silakan tambahkan.</td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

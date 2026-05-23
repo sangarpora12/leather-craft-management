@@ -58,11 +58,11 @@
                     </div>
                 </div>
 
+                <!-- Warna Selection -->
                 <div class="mt-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Warna <span class="text-orange-400">*</span></label>
                     <select name="warna" id="warna" class="w-full bg-[#1C222D]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-orange-500 outline-none" required>
                         <option value="">-- Pilih Warna --</option>
-                        <option value="Tidak Ada Warna">🚫 Tidak Ada Warna (Default OCR)</option>
                         @forelse ($warnas as $warna)
                             <option value="{{ $warna->nama_warna }}">{{ $warna->nama_warna }}</option>
                         @empty
@@ -155,6 +155,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+
+
 // Auto-fill deskripsi & preview foto berdasarkan nama_material + warna
 document.addEventListener('DOMContentLoaded', function() {
     const namaInput = document.getElementById('nama_material');
@@ -230,11 +232,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const manualForm = document.getElementById('manualForm');
     if (manualForm) {
         manualForm.addEventListener('submit', async function(e) {
-            e.preventDefault(); // Mencegah form submit cara lama
+            e.preventDefault();
 
             const formData = new FormData(manualForm);
 
-            // Tampilkan loading overlay (pastikan ID ini ada di view utama)
             const loadingOverlay = document.getElementById('loadingOverlay');
             const loadingText = document.getElementById('loadingText');
             if (loadingOverlay) {
@@ -248,24 +249,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: formData,
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                        'Accept': 'application/json' // Meminta respons JSON
+                        'Accept': 'application/json'
                     }
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    // Sembunyikan loading overlay
                     if (loadingOverlay) loadingOverlay.classList.add('hidden');
 
-                    // Panggil fungsi showSuccess (didefinisikan di view utama)
                     if (typeof showSuccess === 'function') {
                         showSuccess(result.message || 'Data berhasil disimpan!');
                     } else {
                         alert(result.message || 'Data berhasil disimpan!');
                     }
 
-                    // Reset form untuk input berikutnya, tapi JANGAN reset pengadaan_id
                     const pengadaanIdInput = manualForm.querySelector('input[name="pengadaan_id"]');
                     const pengadaanIdValue = pengadaanIdInput ? pengadaanIdInput.value : null;
 
@@ -275,7 +273,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         pengadaanIdInput.value = pengadaanIdValue;
                     }
 
-                    // Reset juga tampilan preview foto dan teks tombol
                     const previewFoto = document.getElementById('manualFotoPreview');
                     const textFoto = document.getElementById('manualTextFoto');
                     const btnFoto = document.getElementById('manualBtnFoto');
@@ -285,10 +282,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         btnFoto.classList.remove('bg-emerald-500/20', 'border-emerald-500/50');
                     }
 
+                    // Reset color preview
+                    const colorPreview = document.getElementById('colorPreview');
+                    const colorImagePreview = document.getElementById('colorImagePreview');
+                    if (colorPreview) colorPreview.classList.add('hidden');
+                    if (colorImagePreview) colorImagePreview.classList.add('hidden');
+
                 } else {
-                    // Jika gagal, sembunyikan loading dan tampilkan error
                     if (loadingOverlay) loadingOverlay.classList.add('hidden');
-                    // Panggil fungsi showError jika ada (didefinisikan di view utama)
                     if (typeof showError === 'function') {
                         showError(result.message || 'Terjadi kesalahan saat menyimpan.');
                     } else {
@@ -296,7 +297,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             } catch (error) {
-                // Handle jika ada error koneksi/jaringan
                 if (loadingOverlay) loadingOverlay.classList.add('hidden');
                 if (typeof showError === 'function') {
                     showError('Gagal terhubung ke server. Periksa koneksi Anda.');

@@ -57,18 +57,19 @@
                     <div class="flex items-center gap-3 bg-[#0a0a0a]/60 border border-white/10 rounded-xl px-4 py-3 w-full">
                         @php
                             $warnaValue = old('warna', $bahan->warna);
+                            $selectedWarna = $warnas->firstWhere('nama_warna', $warnaValue);
+                            $kodeWarnaAwal = $selectedWarna && $selectedWarna->kode_warna ? $selectedWarna->kode_warna : ($warnaValue ? '#666' : 'transparent');
                         @endphp
-                        @if($warnaValue)
-                            <span class="inline-block w-9 h-9 rounded-full border-2 border-white/30 flex-shrink-0 checker-bg" style="background-color: {{ $warnaValue }}; background-blend-mode: normal;"></span>
-                        @else
-                            <span class="inline-block w-9 h-9 rounded-full border-2 border-dashed border-gray-600 flex-shrink-0 checker-bg"></span>
-                        @endif
+                        <span id="warnaSwatch" class="inline-block w-9 h-9 rounded-full border-2 border-white/30 flex-shrink-0 checker-bg" 
+                            style="background-color: {{ $kodeWarnaAwal }}; background-blend-mode: normal;">
+                        </span>
                         <select name="warna" id="warna_select"
                                 class="w-full bg-transparent border-0 text-white text-sm focus:outline-none focus:ring-0">
-                            <!-- Tambahkan class bg-dark pada option -->
                             <option value="" class="bg-[#1A1A1A] text-white">Pilih Warna</option>
                             @foreach($warnas as $w)
-                                <option value="{{ $w->nama_warna }}" data-warna="{{ $w->nama_warna }}"
+                                <option value="{{ $w->nama_warna }}" 
+                                    data-kode-warna="{{ $w->kode_warna }}"
+                                    data-gambar="{{ $w->gambar }}"
                                     class="bg-[#1A1A1A] text-white"
                                     {{ old('warna', $bahan->warna) == $w->nama_warna ? 'selected' : '' }}>
                                     {{ $w->nama_warna }}
@@ -76,6 +77,11 @@
                             @endforeach
                         </select>
                     </div>
+                </div>
+                <!-- Gambar Warna Preview -->
+                <div id="warnaImagePreview" class="mt-2 {{ $selectedWarna && $selectedWarna->gambar ? '' : 'hidden' }}">
+                    <img id="warnaImage" class="w-16 h-16 rounded-lg border border-white/10 object-cover" 
+                        src="{{ $selectedWarna && $selectedWarna->gambar ? '/storage/' . str_replace('storage/', '', $selectedWarna->gambar) : '' }}">
                 </div>
             </div>
 
@@ -98,21 +104,49 @@
 
 @push('scripts')
 <script>
-// Live update swatch warna saat dropdown berubah
-const warnaSelect = document.getElementById('warna_select');
-const swatch = document.querySelector('.checker-bg');
+document.addEventListener('DOMContentLoaded', function() {
+    const warnaSelect = document.getElementById('warna_select');
+    const swatch = document.getElementById('warnaSwatch');
+    const warnaImagePreview = document.getElementById('warnaImagePreview');
+    const warnaImage = document.getElementById('warnaImage');
 
-if (warnaSelect && swatch) {
-    warnaSelect.addEventListener('change', function() {
-        const selected = this.value;
-        if (selected) {
-            swatch.style.backgroundColor = selected;
-            swatch.classList.remove('border-dashed');
-        } else {
-            swatch.style.backgroundColor = 'transparent';
-            swatch.classList.add('border-dashed');
-        }
-    });
-}
+    if (warnaSelect && swatch) {
+        warnaSelect.addEventListener('change', function() {
+            const selected = this.options[this.selectedIndex];
+            const kodeWarna = selected.dataset.kodeWarna;
+            const gambarWarna = selected.dataset.gambar;
+
+            if (selected.value) {
+                // Update lingkaran warna
+                if (kodeWarna && kodeWarna.startsWith('#')) {
+                    swatch.style.backgroundColor = kodeWarna;
+                } else {
+                    // Fallback berdasarkan nama
+                    let hash = 0;
+                    for (let i = 0; i < selected.text.length; i++) {
+                        hash = selected.text.charCodeAt(i) + ((hash << 5) - hash);
+                    }
+                    const hue = Math.abs(hash) % 360;
+                    swatch.style.backgroundColor = `hsl(${hue}, 70%, 50%)`;
+                }
+                swatch.classList.remove('border-dashed');
+
+                // Update gambar warna jika ada
+                if (gambarWarna && gambarWarna.trim() !== '') {
+                    warnaImage.src = '/storage/' + gambarWarna.replace('storage/', '');
+                    warnaImagePreview.classList.remove('hidden');
+                } else {
+                    warnaImagePreview.classList.add('hidden');
+                    warnaImage.src = '';
+                }
+            } else {
+                swatch.style.backgroundColor = 'transparent';
+                swatch.classList.add('border-dashed');
+                warnaImagePreview.classList.add('hidden');
+                warnaImage.src = '';
+            }
+        });
+    }
+});
 </script>
 @endpush
