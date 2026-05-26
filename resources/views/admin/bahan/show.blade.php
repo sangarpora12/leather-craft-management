@@ -146,10 +146,15 @@
                                         <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded border border-emerald-500/30 uppercase">Terakhir</span>
                                     @endif
                                 </div>
-                                <div>
+                                <div class="flex items-center gap-2 flex-wrap">
                                     <span class="px-2 py-1 bg-gray-700/50 text-gray-300 text-[10px] font-medium rounded border border-white/10 uppercase tracking-tight">
                                         {{ $r->warna ?? 'Tidak Ada Warna' }}
                                     </span>
+                                    @if(!empty($r->supplier))
+                                    <span class="px-2 py-1 bg-blue-900/30 text-blue-400 text-[10px] font-medium rounded border border-blue-500/20">
+                                        <i class="fa-solid fa-store mr-1"></i>{{ $r->supplier }}
+                                    </span>
+                                    @endif
                                 </div>
                             </div>
 

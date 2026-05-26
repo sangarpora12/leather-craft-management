@@ -56,7 +56,10 @@ class ProdukController extends Controller
      */
     public function show(Produk $produk)
     {
-        return view('admin.produk-jadi.show', compact('produk'));
+        // Load master warna untuk lookup gambar
+        $warnaMasterLookup = \App\Models\Warna::all()->keyBy('nama_warna');
+        $margin = (float) (\App\Models\Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->value('nilai') ?? 30);
+        return view('admin.produk-jadi.show', compact('produk', 'warnaMasterLookup', 'margin'));
     }
 
     /**

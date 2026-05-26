@@ -60,8 +60,10 @@
             <table class="w-full text-sm">
                 <thead class="bg-white/5 text-gray-400 text-xs uppercase">
                     <tr>
+                        <th class="px-4 py-3 text-left">Gambar</th>
                         <th class="px-4 py-3 text-left">Kode</th>
                         <th class="px-4 py-3 text-left">Nama Material</th>
+                        <th class="px-4 py-3 text-left">Warna</th>
                         <th class="px-4 py-3 text-left">Kategori</th>
                         <th class="px-4 py-3 text-right">Harga</th>
                         <th class="px-4 py-3 text-center">Satuan</th>
@@ -70,9 +72,35 @@
                 </thead>
                 <tbody class="divide-y divide-white/5">
                     @foreach($bahanBakus as $bahan)
+                    @php
+                        $warnaBahan = $bahan->warna ?? 'Tidak Ada Warna';
+                        $warnaMaster = $warnaMasterLookup[$warnaBahan] ?? null;
+                        $isNullWarna = empty($bahan->warna) || $bahan->warna === 'Tidak Ada Warna';
+                    @endphp
                     <tr class="hover:bg-white/5 transition">
+                        <td class="px-4 py-3">
+                            @if($bahan->foto)
+                                <img src="{{ asset('storage/' . $bahan->foto) }}" alt="{{ $bahan->nama_material }}" class="w-12 h-12 rounded-lg object-cover border border-white/10">
+                            @else
+                                <div class="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center border border-white/5">
+                                    <i class="fa-solid fa-box text-gray-600"></i>
+                                </div>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-gray-400">{{ $bahan->kode_material }}</td>
                         <td class="px-4 py-3 text-white font-medium">{{ $bahan->nama_material }}</td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                @if($warnaMaster && $warnaMaster->gambar)
+                                    <img src="{{ asset('storage/' . $warnaMaster->gambar) }}" alt="{{ $warnaBahan }}" class="w-5 h-5 rounded-full object-cover border border-white/10">
+                                @elseif($isNullWarna)
+                                    <span class="w-5 h-5 rounded-full inline-block border border-white/10" style="background-color: {{ \App\Helpers\WarnaHelper::getColorForNull($bahan->nama_material) }};"></span>
+                                @else
+                                    <span class="w-5 h-5 rounded-full inline-block border border-white/10" style="background-color: {{ $warnaMaster && $warnaMaster->kode_warna ? $warnaMaster->kode_warna : \App\Helpers\WarnaHelper::detectColor($warnaBahan) }};"></span>
+                                @endif
+                                <span class="text-gray-300 text-xs">{{ $warnaBahan }}</span>
+                            </div>
+                        </td>
                         <td class="px-4 py-3 text-gray-400">{{ $bahan->kategori }}</td>
                         <td class="px-4 py-3 text-right text-green-400 font-bold">Rp {{ number_format($bahan->harga_satuan, 0, ',', '.') }}</td>
                         <td class="px-4 py-3 text-center text-gray-400">{{ $bahan->satuan }}</td>

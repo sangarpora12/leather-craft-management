@@ -16,7 +16,10 @@ class BahanStokLayer extends Model
         'qty_masuk',
         'qty_sisa',
         'harga_beli',
-        'sumber_harga'
+        'sumber_harga',
+        'supplier',
+        'ref_no',
+        'foto_nota',
     ];
 
     protected $casts = [

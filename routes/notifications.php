@@ -19,8 +19,11 @@ Route::middleware(['auth', RoleMiddleware::class . ':admin'])->group(function ()
     // AJAX mark one notification as read
     Route::post('/admin/notifications/mark-read', [NotificationController::class, 'markRead'])->name('admin.notifications.mark-read');
 
-    // Mark a notification as read then redirect to its stored URL (or dashboard)
+    // Mark a notification as read then show detail page
     Route::get('/admin/notifications/{id}/read', [NotificationController::class, 'markAsReadAndRedirect'])->name('admin.notifications.read');
+
+    // Detail notifikasi (halaman detail dengan info lengkap)
+    Route::get('/admin/notifications/{id}', [NotificationController::class, 'show'])->name('admin.notifications.show');
 
     // Bulk actions
     Route::post('/admin/notifications/mark-all', [NotificationController::class, 'markAllRead'])->name('admin.notifications.mark-all');

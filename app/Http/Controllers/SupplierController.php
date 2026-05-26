@@ -32,7 +32,10 @@ class SupplierController extends Controller
             ->sortBy('harga_satuan')
             ->values();
 
-        return view('admin.supplier.index', compact('suppliers', 'rekomendasiTermurah'));
+        // Load master Warna untuk lookup gambar
+        $warnaMasterLookup = \App\Models\Warna::all()->keyBy('nama_warna');
+
+        return view('admin.supplier.index', compact('suppliers', 'rekomendasiTermurah', 'warnaMasterLookup'));
     }
 
     /**

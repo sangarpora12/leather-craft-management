@@ -109,7 +109,8 @@ class BahanBakuController extends Controller
                 'bahan_bakus.warna',
                 DB::raw('SUM(qty_masuk) as total_masuk'),
                 DB::raw('SUM(qty_sisa) as total_sisa'),
-                DB::raw('MAX(tanggal_masuk) as terakhir_masuk')
+                DB::raw('MAX(tanggal_masuk) as terakhir_masuk'),
+                DB::raw('MAX(bahan_bakus.supplier) as supplier')
             )
             ->groupBy('bahan_stok_layers.harga_beli', 'bahan_bakus.warna')
             ->orderBy('terakhir_masuk', 'desc')
@@ -1274,7 +1275,8 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
         'bahan_bakus.warna',
         DB::raw('SUM(qty_masuk) as total_masuk'),
         DB::raw('SUM(qty_sisa) as total_sisa'),
-        DB::raw('MAX(tanggal_masuk) as terakhir_masuk')
+        DB::raw('MAX(tanggal_masuk) as terakhir_masuk'),
+        DB::raw('MAX(bahan_bakus.supplier) as supplier')
     )
     ->groupBy('bahan_stok_layers.harga_beli', 'bahan_bakus.warna')
     ->orderBy('terakhir_masuk', 'desc')
@@ -1292,20 +1294,6 @@ $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTa
         ->orderBy('tanggal_masuk', 'desc')
         ->orderBy('created_at', 'desc')
         ->get();
-        // 5. Ringkasan per harga beli (Gunakan $idsTargetFifo di sini juga)
-    $ringkasanPerHarga = \App\Models\BahanStokLayer::whereIn('bahan_baku_id', $idsTargetFifo)
-    ->leftJoin('bahan_bakus', 'bahan_stok_layers.bahan_baku_id', '=', 'bahan_bakus.id')
-    
-    ->select(
-        'bahan_stok_layers.harga_beli',
-        'bahan_bakus.warna',
-        DB::raw('SUM(qty_masuk) as total_masuk'),
-        DB::raw('SUM(qty_sisa) as total_sisa'),
-        DB::raw('MAX(tanggal_masuk) as tgl_terakhir')
-    )
-    ->groupBy('bahan_stok_layers.harga_beli', 'bahan_bakus.warna')
-    ->orderBy('tgl_terakhir', 'desc')
-    ->get();
    
     $warnas = \App\Models\Warna::all();
     

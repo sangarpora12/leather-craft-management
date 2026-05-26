@@ -198,11 +198,62 @@
                     </button>
                     {{-- Page Title di Navbar --}}
                     <h1 id="navbar-title" class="text-base font-semibold text-white truncate hidden md:block max-w-xs">
-                        @if(\Request::routeIs('admin.laporan.pengaturan.*') || \Request::routeIs('admin.pengaturan.*'))
-                            Pengaturan Sistem
-                        @else
-                            @yield('page_title', 'Dashboard')
-                        @endif
+                        @php
+                            $currentRoute = \Request::route()?->getName();
+                            $titleMap = [
+                                'admin.dashboard' => 'Dashboard',
+                                'admin.bahan.index' => 'Data Bahan Baku',
+                                'admin.bahan.create' => 'Tambah Bahan Baku',
+                                'admin.bahan.show' => 'Detail Bahan Baku',
+                                'admin.bahan.edit' => 'Edit Bahan Baku',
+                                'admin.bahan.edit-varian' => 'Edit Varian Bahan',
+                                'admin.suppliers.index' => 'Data Supplier',
+                                'admin.suppliers.create' => 'Tambah Supplier',
+                                'admin.suppliers.edit' => 'Edit Supplier',
+                                'admin.suppliers.show' => 'Detail Supplier',
+                                'admin.produk-jadi.index' => 'Produk Jadi',
+                                'admin.produk-jadi.create' => 'Tambah Produk Jadi',
+                                'admin.produk-jadi.edit' => 'Edit Produk Jadi',
+                                'admin.produk-jadi.show' => 'Detail Produk Jadi',
+                                'admin.pekerja-master.index' => 'Manajemen Operator',
+                                'admin.pekerja-master.create' => 'Tambah Operator',
+                                'admin.pekerja-master.edit' => 'Edit Operator',
+                                'admin.pekerja-master.kinerja' => 'Kinerja Operator',
+                                'admin.operator.index' => 'Manajemen Operator',
+                                'admin.operator.create' => 'Tambah Operator',
+                                'admin.operator.edit' => 'Edit Operator',
+                                'admin.bom.index' => 'Bill of Materials (BOM)',
+                                'admin.bom.create' => 'Tambah BOM',
+                                'admin.bom.edit' => 'Edit BOM',
+                                'admin.bom.resep' => 'Resep Produk',
+                                'admin.produksi.index' => 'Perintah Produksi (SPK)',
+                                'admin.produksi.perintah' => 'Kirim Perintah Produksi',
+                                'admin.produksi.create' => 'Kirim Perintah Produksi',
+                                'admin.produksi.show' => 'Detail Produksi',
+                                'admin.produksi.edit' => 'Edit Produksi',
+                                'admin.produksi.review' => 'Review Produksi',
+                                'admin.produksi.monitoring' => 'Monitoring Produksi',
+                                'admin.pakai-produk.index' => 'Produk Keluar (Jual)',
+                                'admin.pakai-produk.create' => 'Tambah Produk Keluar',
+                                'admin.pakai-produk.history' => 'Riwayat Produk Keluar',
+                                'admin.pengadaan.index' => 'Pengadaan Material',
+                                'admin.laporan.index' => 'Laporan',
+                                'admin.laporan.analisis' => 'Analisis Laporan',
+                                'admin.laporan.hasil-produksi' => 'Hasil Produksi',
+                                'admin.laporan.harian' => 'Laporan Harian',
+                                'admin.pengaturan.index' => 'Pengaturan Sistem',
+                                'admin.pengaturan.notifikasi' => 'Pengaturan Notifikasi',
+                                'admin.pengaturan.danger-zone' => 'Danger Zone',
+                                'admin.profile' => 'Profil Admin',
+                                'admin.hak-akses.index' => 'Hak Akses',
+                                'admin.log-aktivitas.index' => 'Log Aktivitas',
+                                'admin.scan.pending' => 'Scan Pending',
+                                'admin.scan.detail' => 'Detail Scan',
+                                'admin.ringkasan-operasional' => 'Ringkasan Operasional',
+                            ];
+                            $pageTitle = $titleMap[$currentRoute] ?? \View::getSection('page_title') ?: 'Dashboard';
+                        @endphp
+                        {{ $pageTitle }}
                     </h1>
                 </div>
 
@@ -349,25 +400,6 @@
             hideGlobalLoading();
         });
     })();
-    </script>
-
-    <script>
-    // Auto-set title based on active menu
-    document.addEventListener('DOMContentLoaded', function() {
-        const titleEl = document.getElementById('navbar-title');
-        if (!titleEl) return;
-        
-        // Check if page has set a custom title via @@section
-        const customTitle = titleEl.textContent.trim();
-        if (customTitle && customTitle !== 'Dashboard') return;
-        
-        // Auto-detect from active menu
-        const activeLink = document.querySelector('aside a.bg-\\[\\#2D3139\\]');
-        if (activeLink) {
-            const text = activeLink.textContent.trim();
-            if (text) titleEl.textContent = text;
-        }
-    });
     </script>
 
     @stack('scripts')

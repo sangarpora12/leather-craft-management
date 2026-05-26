@@ -254,16 +254,6 @@
         </div>
 
         <div class="overflow-hidden rounded-xl border border-white/5">
-            @php
-                $bomsGroupedByColor = $product->boms->groupBy(function($bom) {
-                    $warna = $bom->material->warna ?? 'COKELAT MUDA';
-                    if (in_array(strtoupper($warna), ['POLOS', 'N/A', 'NULL', '-', '', 'TIDAK ADA WARNA'])) {
-                        return 'COKELAT MUDA';
-                    }
-                    return strtoupper($warna);
-                });
-            @endphp
-
             <table class="w-full text-left text-xs">
                 <thead class="bg-[#111] text-gray-500 uppercase font-bold text-[9px]">
                     <tr>
@@ -274,33 +264,48 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-white/5">
-                    @forelse($bomsGroupedByColor as $warna => $boms)
-                        <tr class="bg-black/20">
-                            <td colspan="4" class="p-2 pl-4">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-3 h-3 rounded-full" style="background-color: {{ \App\Helpers\WarnaHelper::detectColor($warna) }};"></div>
-                                    <span class="font-bold text-white">{{ $warna }}</span>
-                                    <span class="text-gray-500 text-[10px]">({{ count($boms) }} item)</span>
+                    @forelse($product->boms as $bom)
+                        @php
+                            $mat = $bom->material;
+                            $warnaBahan = $mat->warna ?? 'Tidak Ada Warna';
+                            $warnaMaster = $warnaMasterLookup[$warnaBahan] ?? null;
+                            $isNullWarna = empty($mat->warna) || $mat->warna === 'Tidak Ada Warna';
+                        @endphp
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="p-3 pl-4">
+                                <div class="flex items-center gap-3">
+                                    {{-- Foto Bahan --}}
+                                    @if($mat && $mat->foto)
+                                        <img src="{{ asset('storage/' . $mat->foto) }}" alt="{{ $mat->nama_material }}" class="w-10 h-10 rounded-lg object-cover border border-white/10 flex-shrink-0">
+                                    @else
+                                        <div class="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center border border-white/5 flex-shrink-0">
+                                            <i class="fa-solid fa-box text-gray-600 text-sm"></i>
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-white font-medium">{{ $mat->nama_material ?? 'Material Terhapus' }}</span>
+                                            {{-- Gambar Warna --}}
+                                            @if($warnaMaster && $warnaMaster->gambar)
+                                                <img src="{{ asset('storage/' . $warnaMaster->gambar) }}" alt="{{ $warnaBahan }}" class="w-4 h-4 rounded-full object-cover border border-white/20" title="{{ $warnaBahan }}">
+                                            @elseif(!$isNullWarna)
+                                                <span class="w-4 h-4 rounded-full inline-block border border-white/20" style="background-color: {{ $warnaMaster && $warnaMaster->kode_warna ? $warnaMaster->kode_warna : \App\Helpers\WarnaHelper::detectColor($warnaBahan) }};" title="{{ $warnaBahan }}"></span>
+                                            @endif
+                                        </div>
+                                        <div class="text-[9px] text-gray-500 mt-0.5">{{ $mat->kode_material ?? '-' }}</div>
+                                    </div>
                                 </div>
                             </td>
+                            <td class="p-3 text-center text-gray-400">{{ $bom->jumlah_kebutuhan + 0 }} {{ $bom->satuan }}</td>
+                            <td class="p-3 text-center text-white">{{ ($bom->material->stok ?? 0) + 0 }} {{ $bom->material->satuan ?? '' }}</td>
+                            <td class="p-3 text-right pr-4">
+                                @if(($bom->material->stok ?? 0) < $bom->jumlah_kebutuhan)
+                                    <span class="text-red-500 font-bold">Kurang</span>
+                                @else
+                                    <span class="text-green-500 font-bold">Ready</span>
+                                @endif
+                            </td>
                         </tr>
-                        @foreach($boms as $bom)
-                            <tr class="hover:bg-white/[0.02]">
-                                <td class="p-3 pl-8 text-white">
-                                    {{ $bom->material->nama_material ?? 'Material Terhapus' }}
-                                    <div class="text-[9px] text-gray-500 mt-0.5">{{ $bom->material->kode_material ?? '-' }}</div>
-                                </td>
-                                <td class="p-3 text-center text-gray-400">{{ $bom->jumlah_kebutuhan + 0 }} {{ $bom->satuan }}</td>
-                                <td class="p-3 text-center text-white">{{ ($bom->material->stok ?? 0) + 0 }} {{ $bom->material->satuan ?? '' }}</td>
-                                <td class="p-3 text-right pr-4">
-                                    @if(($bom->material->stok ?? 0) < $bom->jumlah_kebutuhan)
-                                        <span class="text-red-500 font-bold">Kurang</span>
-                                    @else
-                                        <span class="text-green-500 font-bold">Ready</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
                     @empty
                         <tr>
                             <td colspan="4" class="p-6 text-center text-gray-500 italic">Belum ada resep BOM. Silakan tambahkan.</td>

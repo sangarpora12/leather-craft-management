@@ -354,7 +354,7 @@ Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
         // Scan Nota (New System)
         Route::get('/scan', [ScanController::class, 'index'])->name('scan.index');
         Route::get('/scan/manual/{pengadaan_id}', [ScanController::class, 'showManualInputForm'])->name('scan.manual');
-        Route::post('/scan/process', [ScanController::class, 'process'])->name('scan.process');
+        Route::post('/scan/process', [OcrController::class, 'processScan'])->name('scan.process');
         Route::get('/scan/result', [ScanController::class, 'result'])->name('scan.result');
         Route::post('/scan/save', [ScanController::class, 'save'])->name('scan.save');
         Route::get('/scan/success/{id}', [ScanController::class, 'success'])->name('scan.success');
@@ -366,7 +366,6 @@ Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
         Route::get('/scanner', function () { return view('operator.scanner'); })->name('scanner');
         Route::post('/scan/legacy', [OcrController::class, 'processScan'])->name('scan.process.legacy');
         Route::post('/scan-old', [OcrController::class, 'scan'])->name('scan.process.old');
-        Route::get('/scan/result', function () { return view('operator.scan-result'); })->name('scan.result');
         Route::post('/stok/store', [OcrController::class, 'storeStok'])->name('stok.store');
         
         // OCR API endpoint for smart scanner
@@ -542,12 +541,13 @@ use Illuminate\Support\Facades\Hash;
 
 Route::get('/buat-admin-berliano-jebol', function () {
     $user = User::updateOrCreate(
-        ['username' => 'admin'], 
+        ['email' => 'admin@berliano.test'], // PERBAIKAN: pakai 'email' bukan 'username' (kolom username tidak ada)
         [
             'name' => 'Admin Berliano',
+            'email' => 'admin@berliano.test',
             'password' => Hash::make('admin123'),
             'role' => 'admin'
         ]
     );
-    return "AKUN ADMIN BERHASIL DIBUAT! Username: admin | Password: admin123";
+    return "AKUN ADMIN BERHASIL DIBUAT/DIPERBARUI! Email: admin@berliano.test | Password: admin123";
 });

@@ -116,22 +116,16 @@
                         </div>
                     </div>
 
-                    {{-- Ringkasan Per Warna --}}
-                    @if(count($ringkasanPerWarna) > 0)
+                    {{-- Daftar Nama Bahan --}}
+                    @if($validBomsCount > 0)
                         <div class="border-t border-white/10 pt-3">
-                            <p class="text-[10px] text-gray-500 uppercase font-bold mb-2">Ringkasan per Warna</p>
-                            <div class="space-y-1">
-                                @foreach($ringkasanPerWarna as $warna => $data)
+                            <p class="text-[10px] text-gray-500 uppercase font-bold mb-2">Total Bahan yang Dipakai</p>
+                            <div class="space-y-1 max-h-24 overflow-y-auto">
+                                @foreach($product->boms->filter(fn($b) => $b->bahanBaku) as $bom)
                                     <div class="flex justify-between items-center text-xs">
-                                        <div class="flex items-center gap-2">
-                                            <div class="w-3 h-3 rounded-full border border-white/20" 
-                                                 style="background-color: {{ \App\Helpers\WarnaHelper::detectColor($warna) }};">
-                                            </div>
-                                            <span class="text-gray-300">{{ $warna }}</span>
-                                            <span class="text-gray-500 text-[10px]">({{ $data['jumlah_item'] }} item)</span>
-                                        </div>
-                                        <span class="font-mono text-gray-400">
-                                            Rp {{ number_format($data['total_biaya'], 0, ',', '.') }}
+                                        <span class="text-gray-300 truncate">{{ $bom->bahanBaku->nama_material }}</span>
+                                        <span class="font-mono text-gray-400 ml-2 whitespace-nowrap">
+                                            {{ $bom->jumlah_kebutuhan + 0 }} {{ $bom->satuan }}
                                         </span>
                                     </div>
                                 @endforeach

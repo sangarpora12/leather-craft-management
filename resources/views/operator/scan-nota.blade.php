@@ -3,79 +3,57 @@
 @section('title', 'Scan Nota - Berliano Leather')
 
 @section('content')
-<div class="w-full max-w-md mx-auto bg-[#0B0E14] min-h-screen">
+<div class="w-full mx-auto bg-[#0B0E14] min-h-screen flex flex-col">
 
-    @include('components.operator-header', ['title' => 'SCAN NOTA'])
+    <div id="headerSection" class="hidden transition-all duration-300">
+        @include('components.operator-header', ['title' => 'SCAN NOTA'])
+    </div>
 
-    <div class="px-6 py-6 space-y-6">
-        <!-- Tab Navigation -->
-        <div class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-3 border border-white/5 shadow-xl">
+    <div id="mainContainer" class="p-2 flex-1 flex flex-col space-y-4">
+        <div class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-2 border border-white/5 shadow-xl">
             <div class="flex gap-2">
-                <button id="tabScan" class="flex-1 text-center py-2 px-3 text-sm font-semibold rounded-xl transition-all duration-300 bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400">
+                <button id="tabScan" class="flex-1 text-center py-2 px-2 text-sm font-semibold rounded-xl transition-all duration-300 bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400">
                     <div class="flex items-center justify-center gap-1.5">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
-                        <span>Scan Kamera</span>
+                        <span>Kamera</span>
                     </div>
                 </button>
-                <button id="tabManual" class="flex-1 text-center py-2 px-3 text-sm font-semibold rounded-xl transition-all duration-300 bg-emerald-500/20 border-2 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/30 hover:border-emerald-500">
+                <button id="tabManual" class="flex-1 text-center py-2 px-2 text-sm font-semibold rounded-xl transition-all duration-300 bg-emerald-500/20 border-2 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/30 hover:border-emerald-500">
                     <div class="flex items-center justify-center gap-1.5">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
-                        <span>Input Manual</span>
+                        <span>Manual</span>
                     </div>
                 </button>
-                <button id="tabPelengkap" class="flex-1 text-center py-2 px-3 text-sm font-semibold rounded-xl transition-all duration-300 bg-emerald-500/20 border-2 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/30 hover:border-emerald-500">
+                <button id="tabPelengkap" class="flex-1 text-center py-2 px-2 text-sm font-semibold rounded-xl transition-all duration-300 bg-emerald-500/20 border-2 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/30 hover:border-emerald-500">
                     <div class="flex items-center justify-center gap-1.5">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                         </svg>
-                        <span>Bahan Pelengkap</span>
+                        <span>Pelengkap</span>
                     </div>
                 </button>
             </div>
         </div>
 
-@include('operator.partials._scan-kamera')
-
-@include('operator.partials._bahan-pelengkap')
-
-@include('operator.partials._input-manual', ['pengadaan_id' => $pengadaan_id])
-
-        <!-- Preview Area -->
-        <div id="previewArea" class="bg-[#1C222D] backdrop-blur-sm rounded-2xl p-6 border border-white/5 shadow-xl hidden">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-white">Preview Foto</h3>
-                <div class="flex gap-2">
-                    <button id="retakeBtn" class="text-blue-400 hover:text-blue-300 font-medium text-sm">Ambil Ulang</button>
-                    <button id="cancelBtn" class="text-gray-400 hover:text-gray-300 font-medium text-sm">Batal</button>
-                </div>
-            </div>
-            <div class="border-2 border-dashed border-white/10 rounded-lg p-4 mb-4">
-                <img id="previewImage" class="w-full h-auto rounded-lg shadow-md" alt="Preview Nota">
-            </div>
-            <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
-                <p class="text-sm text-blue-300">Pastikan foto nota terlihat jelas sebelum diproses.</p>
-            </div>
-            <button id="confirmBtn" class="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 font-semibold">
-                Proses OCR
-            </button>
+        <div class="flex-1 flex flex-col">
+            @include('operator.partials._scan-kamera')
+            @include('operator.partials._bahan-pelengkap')
+            @include('operator.partials._input-manual', ['pengadaan_id' => $pengadaan_id])
         </div>
 
-        <!-- Error Message -->
         <div id="errorMessage" class="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl mb-6 hidden">
             <p id="errorText" class="font-medium"></p>
         </div>
 
-        <!-- Success Message -->
         <div id="successMessage" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-xl mb-6 hidden">
             <p id="successText" class="font-medium"></p>
         </div>
 
-        <!-- Loading Overlay -->
         <div id="loadingOverlay" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
             <div class="bg-[#1C222D] rounded-xl p-8 text-center shadow-2xl max-w-sm mx-4 border border-gray-700">
                 <div class="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -96,10 +74,12 @@ const tabPelengkap = document.getElementById('tabPelengkap');
 const contentScan      = document.getElementById('contentScan');
 const contentManual    = document.getElementById('contentManual');
 const contentPelengkap = document.getElementById('contentPelengkap');
-const previewArea      = document.getElementById('previewArea');
+
+const headerSection = document.getElementById('headerSection');
+const mainContainer = document.getElementById('mainContainer');
 
 const allTabs     = [tabScan, tabManual, tabPelengkap];
-const allContents = [contentScan, contentManual, contentPelengkap, previewArea];
+const allContents = [contentScan, contentManual, contentPelengkap];
 
 let currentActiveTab = tabScan;
 
@@ -109,6 +89,25 @@ function switchTab(activeTab, activeContent) {
         if (document.getElementById('pelengkapForm')) resetPelengkapForm();
     }
     currentActiveTab = activeTab;
+
+    // LOGIKA MENYEMBUNYIKAN HEADER & MENGUNCI SCROLL
+    if (activeTab === tabScan) {
+        headerSection.classList.add('hidden');
+        mainContainer.classList.remove('p-4');
+        mainContainer.classList.add('p-2');
+        
+        // KUNCI LAYAR AGAR TIDAK BISA DI-SCROLL
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+    } else {
+        headerSection.classList.remove('hidden');
+        mainContainer.classList.remove('p-2');
+        mainContainer.classList.add('p-4');
+        
+        // BUKA KEMBALI SCROLL UNTUK TAB MANUAL/PELENGKAP
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+    }
 
     allContents.forEach(c => c.classList.add('hidden'));
     allTabs.forEach(t => {
@@ -124,15 +123,12 @@ tabScan.addEventListener('click',      () => switchTab(tabScan,      contentScan
 tabManual.addEventListener('click',    () => switchTab(tabManual,    contentManual));
 tabPelengkap.addEventListener('click', () => switchTab(tabPelengkap, contentPelengkap));
 
+// Inisialisasi awal saat halaman dimuat
+switchTab(tabScan, contentScan);
+
 // ==========================================
-// CAMERA SCAN
+// CAMERA SCAN - WebRTC (di _scan-kamera.blade.php)
 // ==========================================
-const scanBtn        = document.getElementById('scanBtn');
-const cameraInput    = document.getElementById('cameraInput');
-const previewImage   = document.getElementById('previewImage');
-const retakeBtn      = document.getElementById('retakeBtn');
-const cancelBtn      = document.getElementById('cancelBtn');
-const confirmBtn     = document.getElementById('confirmBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const loadingText    = document.getElementById('loadingText');
 const errorMessage   = document.getElementById('errorMessage');
@@ -140,74 +136,7 @@ const errorText      = document.getElementById('errorText');
 const successMessage = document.getElementById('successMessage');
 const successText    = document.getElementById('successText');
 
-const flashOverlay = document.createElement('div');
-flashOverlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:white;opacity:0;pointer-events:none;z-index:9999;transition:opacity 0.1s;';
-document.body.appendChild(flashOverlay);
-
-let currentImageBase64 = null;
-
-scanBtn.addEventListener('click', () => cameraInput.click());
-
-cameraInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { showError('Ukuran file terlalu besar. Maksimal 10MB.'); return; }
-    processFile(file);
-});
-
-function processFile(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const maxWidth = 1200, maxHeight = 800;
-            let width = img.width, height = img.height;
-            if (width > height) {
-                if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth; }
-            } else {
-                if (height > maxHeight) { width = Math.round(width * maxHeight / height); height = maxHeight; }
-            }
-            canvas.width = width; canvas.height = height;
-            ctx.drawImage(img, 0, 0, width, height);
-            const imageData = ctx.getImageData(0, 0, width, height);
-            const data = imageData.data;
-            for (let i = 0; i < data.length; i += 4) {
-                const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-                let val = Math.min(255, Math.max(0, (gray - 128) * 1.5 + 128 + 10));
-                data[i] = data[i+1] = data[i+2] = val;
-            }
-            ctx.putImageData(imageData, 0, 0);
-            currentImageBase64 = canvas.toDataURL('image/jpeg', 0.9);
-            previewImage.src = currentImageBase64;
-            allContents.forEach(c => c.classList.add('hidden'));
-            previewArea.classList.remove('hidden');
-            flashOverlay.style.opacity = '1';
-            setTimeout(() => flashOverlay.style.opacity = '0', 100);
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-}
-
-retakeBtn.addEventListener('click', () => {
-    previewArea.classList.add('hidden');
-    contentScan.classList.remove('hidden');
-    currentImageBase64 = null;
-    cameraInput.value = '';
-});
-
-cancelBtn.addEventListener('click', () => {
-    currentImageBase64 = null;
-    cameraInput.value = '';
-    switchTab(tabScan, contentScan);
-});
-
-confirmBtn.addEventListener('click', () => {
-    if (currentImageBase64) processOCR(currentImageBase64);
-});
-
+// Override processOCR dari _scan-kamera untuk langsung kirim ke server
 async function processOCR(base64) {
     loadingOverlay.classList.remove('hidden');
     try {
@@ -218,7 +147,7 @@ async function processOCR(base64) {
         });
         const result = await response.json();
         if (result.success) {
-            loadingText.textContent = 'OCR Berhasil!';
+            loadingText.textContent = 'Scan Berhasil!';
             setTimeout(() => { window.location.href = result.redirect_url || '/operator/scan/result'; }, 500);
         } else {
             loadingOverlay.classList.add('hidden');
@@ -231,13 +160,7 @@ async function processOCR(base64) {
 }
 
 // ==========================================
-// CANCEL BUTTONS
-// ==========================================
-document.getElementById('cancelManualBtn').addEventListener('click', () => switchTab(tabScan, contentScan));
-document.getElementById('cancelPelengkapBtn').addEventListener('click', () => switchTab(tabScan, contentScan));
-
-// ==========================================
-// HELPERS
+// HELPERS & AUTOCOMPLETE
 // ==========================================
 function showError(msg) {
     errorText.textContent = msg;
@@ -249,16 +172,13 @@ function showSuccess(msg) {
     successMessage.classList.remove('hidden');
     setTimeout(() => successMessage.classList.add('hidden'), 3000);
 }
+
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        if (!previewArea.classList.contains('hidden')) cancelBtn.click();
-        else window.location.href = "{{ route('operator.dashboard') }}";
+        window.location.href = "{{ route('operator.dashboard') }}";
     }
 });
 
-// ==========================================
-// AUTOCOMPLETE & RESET FUNCTIONS (GLOBAL)
-// ==========================================
 function selectMaterial(itemElement) {
     document.getElementById('nama_material').value = itemElement.dataset.nama;
     document.getElementById('kodeMaterial').value  = itemElement.dataset.kode;
@@ -271,13 +191,8 @@ function selectMaterial(itemElement) {
     const kategoriVal = itemElement.dataset.kategori || '';
     const satuanVal   = itemElement.dataset.satuan || '';
 
-    if (kategoriVal !== '') {
-        kategoriSelect.value = kategoriVal;
-    }
-
-    if (satuanVal !== '') {
-        satuanSelect.value = satuanVal;
-    }
+    if (kategoriVal !== '') kategoriSelect.value = kategoriVal;
+    if (satuanVal !== '') satuanSelect.value = satuanVal;
 
     const lastPrice = parseFloat(itemElement.dataset.harga);
     const lastPriceInfo = document.getElementById('lastPriceInfo');
@@ -325,9 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     input.addEventListener('input', function() {
         document.getElementById('lastPriceInfo').classList.add('hidden');
-        if (document.getElementById('kodeMaterial').value) {
-            resetManualForm(false);
-        }
+        if (document.getElementById('kodeMaterial').value) resetManualForm(false);
         const query = this.value.trim();
         if (query.length < 1) { suggestions.classList.add('hidden'); suggestions.innerHTML = ''; return; }
         clearTimeout(timeout);
@@ -361,10 +274,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         itemDiv.dataset.nama     = item.nama_material || '';
                         itemDiv.dataset.kode     = item.kode_material || '';
-                        itemDiv.dataset.kategori = (item.kategori && typeof item.kategori === 'object')
-                                                    ? (item.kategori.nama_kategori || '') : (item.kategori || '');
-                        itemDiv.dataset.satuan   = (item.satuan && typeof item.satuan === 'object')
-                                                    ? (item.satuan.nama_satuan || '') : (item.satuan || '');
+                        itemDiv.dataset.kategori = (item.kategori && typeof item.kategori === 'object') ? (item.kategori.nama_kategori || '') : (item.kategori || '');
+                        itemDiv.dataset.satuan   = (item.satuan && typeof item.satuan === 'object') ? (item.satuan.nama_satuan || '') : (item.satuan || '');
                         itemDiv.dataset.supplier = item.supplier || '';
                         itemDiv.dataset.refNo    = item.ref_no || '';
                         itemDiv.dataset.harga    = item.harga_satuan || '0';
@@ -376,8 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     suggestions.classList.add('hidden');
                 }
-            })
-            .catch(() => suggestions.classList.add('hidden'));
+            }).catch(() => suggestions.classList.add('hidden'));
         }, 250);
     });
 
@@ -394,7 +304,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-
 </script>
 
 <style>

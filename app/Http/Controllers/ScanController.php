@@ -11,6 +11,7 @@ use App\Models\Bahan;
 use App\Models\BahanBaku;
 use App\Models\BahanStokLayer;
 use App\Notifications\ScanNotaNotification;
+use App\Notifications\ScanNotaBulkNotification;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,7 @@ class ScanController extends Controller
     /**
      * Display scan page for operator
      */
-public function index(Request $request)
+    public function index(Request $request)
     {
         $pengadaan_id = $request->query('pengadaan_id');
         $satuans = Satuan::all();
@@ -35,13 +36,10 @@ public function index(Request $request)
 
     public function showManualInputForm($pengadaan_id)
     {
-        // Ambil semua kategori untuk dropdown di form
         $kategories = \App\Models\Kategori::all();
-
         $satuans = \App\Models\Satuan::all();
         $warnas = \App\Models\Warna::all();
 
-        // Teruskan semua data yang dibutuhkan ke view.
         return view('operator.scan.index', [
             'pengadaan_id' => $pengadaan_id,
             'kategories' => $kategories,
@@ -52,16 +50,11 @@ public function index(Request $request)
 
     /**
      * Process OCR and save bahan masuk
-     * Mendukung dua mode:
-     * 1. OCR Mode: image_base64 only -> proses OCR -> simpan ke session -> redirect ke result
-     * 2. Manual Mode: nama_material, jumlah, satuan -> langsung simpan
      */
     public function process(Request $request)
     {
-        // Set JSON response header
         $request->headers->set('Accept', 'application/json');
-        
-        // Cek mode: Manual atau OCR
+
         if ($request->has('nama_material') && $request->has('jumlah')) {
             return $this->processManual($request);
         } elseif ($request->has('image_base64')) {
@@ -90,7 +83,7 @@ public function index(Request $request)
             'kategori' => 'nullable|string',
             'foto' => 'nullable|image|max:20480',
         ]);
-        
+
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
@@ -101,23 +94,18 @@ public function index(Request $request)
         try {
             DB::beginTransaction();
 
-            // Generate unique transaction number
             $noTransaksi = 'BM-' . date('Ymd') . '-' . strtoupper(Str::random(6));
 
-            // Save image if provided
             $imageName = null;
             if ($request->has('image_base64') && !empty($request->image_base64)) {
                 $imageData = $request->image_base64;
                 $imageData = str_replace('data:image/jpeg;base64,', '', $imageData);
                 $imageData = str_replace(' ', '+', $imageData);
-                
                 $imageName = $noTransaksi . '.jpg';
                 $imagePath = 'bukti_nota/' . $imageName;
-                
                 Storage::disk('public')->put($imagePath, base64_decode($imageData));
             }
 
-            // Create bahan masuk record
             $bahanMasuk = BahanMasuk::create([
                 'no_transaksi' => $noTransaksi,
                 'operator_id' => auth()->id(),
@@ -135,23 +123,18 @@ public function index(Request $request)
                 'notes' => null,
             ]);
 
-            // Update stok bahan baku & distribusi ke PENGADAAN (FIFO)
             $namaMaterial = $request->nama_material;
             $warnaInput = $request->warna ?? 'Tidak Ada Warna';
             $jumlahMasuk = (float) $request->jumlah;
-            
-            // 1. CARI ATAU BUAT VARIAN BAHAN BAKU BERDASARKAN NAMA + WARNA (case-insensitive)
+
             $bahan = BahanBaku::whereRaw('LOWER(nama_material) = LOWER(?)', [$namaMaterial])
                 ->whereRaw('LOWER(warna) = LOWER(?)', [$warnaInput])
                 ->first();
 
-            // ✅ PERBAIKAN 1: Eksekusi foto DULU sebelum ngecek bahan. Utamakan cek 'hasFile'
             $fotoPath = null;
             if ($request->hasFile('foto')) {
-                // Foto dikirim dari form manual (berupa file asli)
                 $fotoPath = $request->file('foto')->store('bahan_baku', 'public');
             } elseif ($request->has('foto') && is_string($request->foto)) {
-                // Foto dikirim dari kamera OCR (berupa teks Base64)
                 $fotoData = $request->foto;
                 if (preg_match('/^data:image\/\w+;base64,/', $fotoData)) {
                     $fotoData = substr($fotoData, strpos($fotoData, ',') + 1);
@@ -162,10 +145,8 @@ public function index(Request $request)
             }
 
             if (!$bahan) {
-                // Buat varian baru
                 $existingMaster = BahanBaku::where('nama_material', $namaMaterial)->first();
-                
-                // Logika Pembuat Kode Sakti
+
                 if ($existingMaster) {
                     $kodeMaterial = $existingMaster->kode_material;
                 } else {
@@ -173,7 +154,7 @@ public function index(Request $request)
                     $prefix = trim($prefix);
                     $maxNum = 0;
                     $allCodes = BahanBaku::lockForUpdate()->where('kode_material', 'like', $prefix . '%')->pluck('kode_material');
-                    
+
                     foreach ($allCodes as $code) {
                         $numericPart = preg_replace('/[^0-9]/', '', substr($code, strlen($prefix)));
                         if ($numericPart !== '' && is_numeric($numericPart)) {
@@ -184,13 +165,13 @@ public function index(Request $request)
                         }
                     }
                     $next = $maxNum + 1;
-                    
+
                     do {
                         $kodeMaterial = $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
                         $next++;
                     } while (BahanBaku::where('kode_material', $kodeMaterial)->exists());
                 }
-                
+
                 $bahan = BahanBaku::create([
                     'kode_material' => $kodeMaterial,
                     'nama_material' => $namaMaterial,
@@ -203,18 +184,15 @@ public function index(Request $request)
                     'foto'          => $fotoPath,
                 ]);
             } else {
-                // ✅ PERBAIKAN 2: Jika bahan sudah ada, dan user upload foto baru, TIMPA foto lamanya!
                 if ($fotoPath) {
                     $bahan->foto = $fotoPath;
                     $bahan->save();
                 }
             }
 
-            // 2. UPDATE STOK BAHAN BAKU
             $bahan->increment('stok', $jumlahMasuk);
 
-            // 3. FIFO: Distribusikan ke SEMUA pengadaan PENDING dengan JOIN langsung
-            // (lebih reliable daripada whereHas)
+            // FIFO: Distribusikan ke pengadaan PENDING
             $query = \Illuminate\Support\Facades\DB::table('pengadaans')
                 ->join('bahan_bakus', 'bahan_bakus.id', '=', 'pengadaans.bahan_baku_id')
                 ->whereRaw('LOWER(bahan_bakus.nama_material) = LOWER(?)', [$namaMaterial])
@@ -222,15 +200,14 @@ public function index(Request $request)
                 ->select('pengadaans.*')
                 ->orderBy('pengadaans.created_at', 'asc');
 
-            // Filter warna
             $warnaBersih = trim($warnaInput);
             $isWarnaKosong = empty($warnaBersih) || strtolower($warnaBersih) === 'tidak ada warna';
             if (!$isWarnaKosong) {
-                $query->where(function($q) use ($warnaBersih) {
+                $query->where(function ($q) use ($warnaBersih) {
                     $q->whereRaw('LOWER(pengadaans.warna) = LOWER(?)', [$warnaBersih])
-                      ->orWhereNull('pengadaans.warna')
-                      ->orWhere('pengadaans.warna', '')
-                      ->orWhereRaw('LOWER(pengadaans.warna) = ?', ['tidak ada warna']);
+                        ->orWhereNull('pengadaans.warna')
+                        ->orWhere('pengadaans.warna', '')
+                        ->orWhereRaw('LOWER(pengadaans.warna) = ?', ['tidak ada warna']);
                 });
             }
 
@@ -242,18 +219,14 @@ public function index(Request $request)
                 if ($sisaDistribusi <= 0) break;
                 $sisaPesanan = $p->jumlah - ($p->received ?? 0);
                 $yangDiambil = min($sisaDistribusi, $sisaPesanan);
-                
                 $p->increment('received', $yangDiambil);
                 $p->refresh();
-                
                 if ($p->received >= $p->jumlah) {
                     $p->update(['status' => 'DONE']);
                 }
-                
                 $sisaDistribusi -= $yangDiambil;
             }
 
-            // 4. CATAT STOK LAYER
             if ($sisaDistribusi < $jumlahMasuk) {
                 $jumlahTerdistribusi = $jumlahMasuk - $sisaDistribusi;
                 BahanStokLayer::create([
@@ -266,7 +239,6 @@ public function index(Request $request)
                 ]);
             }
 
-            // 5. CATAT KE LOG STOK (UNTUK GRAFIK DASHBOARD)
             \App\Models\LogStok::create([
                 'bahan_baku_id' => $bahan->id,
                 'operator_id' => auth()->id(),
@@ -275,17 +247,10 @@ public function index(Request $request)
                 'keterangan' => 'Input Manual - ' . $namaMaterial . ' (' . $warnaInput . ')',
             ]);
 
-            // Send notification Bahan Masuk ke semua admin
+            // Input manual: kirim 1 notifikasi per item (seperti saat ini)
             $admins = User::where('role', 'admin')->get();
             $operatorName = auth()->user()->name ?? 'Operator';
-            
-            $notif = new \App\Notifications\BahanMasukNotification(
-                $bahan, 
-                $jumlahMasuk, 
-                $operatorName, 
-                'Input Manual'
-            );
-            
+            $notif = new \App\Notifications\BahanMasukNotification($bahan, $jumlahMasuk, $operatorName, 'Input Manual');
             Notification::send($admins, $notif);
 
             DB::commit();
@@ -298,7 +263,6 @@ public function index(Request $request)
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyimpan data: ' . $e->getMessage(),
@@ -307,154 +271,155 @@ public function index(Request $request)
     }
 
     /**
-     * Process OCR from image
+     * Process OCR from image using Groq API
      */
     private function processOCR(Request $request)
     {
         set_time_limit(120);
 
         try {
-            // A. TANGKAP GAMBAR
             $base64_final = $request->input('image_base64');
-
             if (!$base64_final) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Gambar tidak ditemukan. Coba foto ulang.'
-                ], 400);
+                return response()->json(['success' => false, 'message' => 'Gambar tidak ditemukan.'], 400);
             }
 
-            // B. SIMPAN ARSIP
+            // Simpan arsip
             $publicPath = null;
             try {
                 $image_parts = explode(";base64,", $base64_final);
                 $image_clean = $image_parts[1] ?? $base64_final;
                 $image_decoded = base64_decode($image_clean);
-
                 $fileName = 'nota_' . date('Ymd_His') . '.jpg';
                 $publicPath = 'notas/' . $fileName;
-
                 if (!Storage::disk('public')->exists('notas')) {
                     Storage::disk('public')->makeDirectory('notas');
                 }
                 Storage::disk('public')->put($publicPath, $image_decoded);
-            } catch (\Exception $e) {
-                \Log::error("Gagal simpan arsip gambar: " . $e->getMessage());
-            }
+            } catch (\Exception $e) {}
 
-            // C. PRE-PROCESSING GAMBAR
-            $base64_for_api = $this->preprocessImage($base64_final);
+            $groqApiKey = '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';
 
-            // D. KIRIM KE OCR.SPACE API
+            $imageDataUrl = $base64_final;
+
+            $prompt = 'Anda adalah asisten OCR untuk nota pembelian bahan baku kulit/leather. Ekstrak informasi dari gambar nota ini dengan format JSON PERSIS seperti ini: {"supplier": "Nama Toko","no_nota": "Nomor Nota","tanggal": "Tanggal","items": [{"nama": "Nama Barang","qty": jumlah_angka,"satuan": "satuan","harga": harga_per_satuan_angka}]} ATURAN: 1. Nama barang BAHASA INDONESIA 2. qty dan harga ANGKA 3. Satuan: Lembar, Kaki, Meter, Pcs, Kg, Roll 4. Hanya JSON valid, tidak ada teks lain';
+
             $response = Http::timeout(120)
-                ->asForm()
-                ->post('https://api.ocr.space/parse/image', [
-                    'apikey' => 'K85657372788957',
-                    'base64Image' => $base64_for_api,
-                    'language' => 'eng',
-                    'OCREngine' => '2',
-                    'isTable' => 'true',
-                    'scale' => 'true',
-                    'detectOrientation' => 'true',
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . $groqApiKey,
+                ])
+                ->post('https://api.groq.com/openai/v1/chat/completions', [
+                    'model' => 'llama-3.2-11b-vision-preview',
+                    'messages' => [
+                        [
+                            'role' => 'user',
+                            'content' => [
+                                ['type' => 'text', 'text' => $prompt],
+                                ['type' => 'image_url', 'image_url' => ['url' => $imageDataUrl]]
+                            ]
+                        ]
+                    ],
+                    'temperature' => 0.1,
+                    'max_tokens' => 2048,
                 ]);
 
             if ($response->failed()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Gagal menghubungi server OCR.'
-                ], 500);
+                $statusCode = $response->status();
+                $errorBody = $response->body();
+                \Log::error("Groq API error: HTTP $statusCode - " . substr($errorBody, 0, 200));
+
+                \Log::info("Mencoba Groq dengan model llama-3.2-90b-vision-preview...");
+                $response2 = Http::timeout(120)
+                    ->withHeaders([
+                        'Content-Type' => 'application/json',
+                        'Authorization' => 'Bearer ' . $groqApiKey,
+                    ])
+                    ->post('https://api.groq.com/openai/v1/chat/completions', [
+                        'model' => 'llama-3.2-90b-vision-preview',
+                        'messages' => [
+                            [
+                                'role' => 'user',
+                                'content' => [
+                                    ['type' => 'text', 'text' => $prompt],
+                                    ['type' => 'image_url', 'image_url' => ['url' => $imageDataUrl]]
+                                ]
+                            ]
+                        ],
+                        'temperature' => 0.1,
+                        'max_tokens' => 2048,
+                    ]);
+
+                if ($response2->failed()) {
+                    $statusCode2 = $response2->status();
+                    \Log::error("Groq 90b juga gagal: HTTP $statusCode2");
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Gagal memproses gambar dengan AI. Coba lagi.'
+                    ], 500);
+                }
+
+                $response = $response2;
             }
 
             $result = $response->json();
+            $textResponse = $result['choices'][0]['message']['content'] ?? '';
 
-            // E. CEK HASIL PARSING
-            if (isset($result['ParsedResults'][0]['ParsedText'])) {
-                $text = $result['ParsedResults'][0]['ParsedText'];
-                
-                // F. POST-PROCESSING
-                $text = $this->cleanOcrText($text);
-                
-                // Hapus session lama
-                session()->forget(['ocr_metadata', 'ocr_result']);
-                
-                // G. PARSER PINTAR
-                $parsedData = $this->simpleParser($text);
-                
-                // Ambil metadata
-                $metadata = session('ocr_metadata', []);
-                
-                // Simpan ke Session
-                session(['ocr_result' => [
-                    'supplier' => $metadata['supplier'] ?? 'Supplier Tidak Terdeteksi',
-                    'metadata' => [
-                        'no_nota' => $metadata['no_nota'] ?? '',
-                        'tanggal' => $metadata['tanggal'] ?? date('Y-m-d'),
-                        'alamat_kontak' => $metadata['alamat'] ?? '',
-                        'total_bayar' => 0
-                    ],
-                    'items' => $parsedData,
-                    'image_url' => $publicPath ? asset('storage/' . $publicPath) : null
-                ]]);
+            $textResponse = trim(preg_replace('/^```json\s*/i', '', $textResponse));
+            $textResponse = trim(preg_replace('/```\s*$/', '', $textResponse));
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Scan Berhasil!',
-                    'redirect_url' => route('operator.scan.result')
-                ]);
+            $parsedResult = json_decode($textResponse, true);
 
-            } else {
-                $errMsg = $result['ErrorMessage'][0] ?? 'Gagal mendeteksi teks. Pastikan cahaya cukup dan label terlihat fokus.';
-                \Log::error("OCR Error: " . $errMsg);
+            if (!$parsedResult || !isset($parsedResult['items']) || count($parsedResult['items']) == 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => $errMsg
+                    'message' => 'Tidak dapat membaca nota. Pastikan foto jelas.'
                 ], 400);
             }
 
+            session()->forget(['ocr_metadata', 'ocr_result']);
+
+            session(['ocr_metadata' => [
+                'no_nota' => $parsedResult['no_nota'] ?? '',
+                'tanggal' => $parsedResult['tanggal'] ?? date('Y-m-d'),
+                'supplier' => $parsedResult['supplier'] ?? '',
+                'alamat' => '',
+                'total_harga' => 0
+            ]]);
+
+            $items = [];
+            foreach ($parsedResult['items'] as $item) {
+                $items[] = [
+                    'nama' => $item['nama'] ?? '',
+                    'qty' => (int)($item['qty'] ?? 1),
+                    'satuan' => $item['satuan'] ?? 'Pcs',
+                    'harga' => (int)($item['harga'] ?? 0)
+                ];
+            }
+
+            session(['ocr_result' => [
+                'supplier' => $parsedResult['supplier'] ?? 'Supplier Tidak Terdeteksi',
+                'metadata' => [
+                    'no_nota' => $parsedResult['no_nota'] ?? '',
+                    'tanggal' => $parsedResult['tanggal'] ?? date('Y-m-d'),
+                    'alamat_kontak' => '',
+                    'total_bayar' => 0
+                ],
+                'items' => $items,
+                'image_url' => $publicPath ? asset('storage/' . $publicPath) : null
+            ]]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Scan Berhasil!',
+                'redirect_url' => route('operator.scan.result')
+            ]);
+
         } catch (\Throwable $e) {
-            \Log::error("System Error: " . $e->getMessage());
+            \Log::error("Gemini System Error: " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Server Error: ' . $e->getMessage() . ' (Line: ' . $e->getLine() . ')'
+                'message' => 'Server Error: ' . $e->getMessage()
             ], 500);
-        }
-    }
-
-    // ==========================================
-    // PRE-PROCESSING GAMBAR
-    // ==========================================
-    private function preprocessImage($base64Image)
-    {
-        try {
-            $image_parts = explode(";base64,", $base64Image);
-            $image_clean = $image_parts[1] ?? $base64Image;
-            $image_decoded = base64_decode($image_clean);
-            
-            $img = Image::make($image_decoded);
-            
-            // 1. Grayscale
-            $img->greyscale();
-            
-            // 2. Tingkatkan kontras
-            $img->contrast(20);
-            
-            // 3. Sesuaikan brightness
-            $img->brightness(10);
-            
-            // 4. Resize agar file < 1MB
-            $maxWidth = 1200;
-            if ($img->width() > $maxWidth) {
-                $img->resize($maxWidth, null, function ($constraint) {
-                    $constraint->aspectRatio();
-                    $constraint->upsize();
-                });
-            }
-            
-            return (string) $img->encode('data-url', 90);
-            
-        } catch (\Exception $e) {
-            \Log::error("Pre-processing error: " . $e->getMessage());
-            return $base64Image;
         }
     }
 
@@ -464,23 +429,13 @@ public function index(Request $request)
     private function cleanOcrText($text)
     {
         $replacements = [
-            'Sa i' => 'Sapi',
-            'Sap i' => 'Sapi',
-            'Sap' => 'Sapi',
-            'Kult' => 'Kulit',
-            'Kuit' => 'Kulit',
-            'Kuli' => 'Kulit',
-            'Benan' => 'Benang',
-            'Benng' => 'Benang',
-            'Iem' => 'Lem',
-            'Lm' => 'Lem',
-            'Kambin' => 'Kambing',
-            'Kambng' => 'Kambing',
-            'Ve efable' => 'Vegetable',
-            'Vegetble' => 'Vegetable',
-            'Taned' => 'Tanned',
-            'Scra s' => 'Scrap',
-            'POI' => 'Polyester',
+            'Sa i' => 'Sapi', 'Sap i' => 'Sapi', 'Sap' => 'Sapi',
+            'Kult' => 'Kulit', 'Kuit' => 'Kulit', 'Kuli' => 'Kulit',
+            'Benan' => 'Benang', 'Benng' => 'Benang',
+            'Iem' => 'Lem', 'Lm' => 'Lem',
+            'Kambin' => 'Kambing', 'Kambng' => 'Kambing',
+            'Ve efable' => 'Vegetable', 'Vegetble' => 'Vegetable',
+            'Taned' => 'Tanned', 'Scra s' => 'Scrap', 'POI' => 'Polyester',
         ];
 
         $text = str_ireplace(array_keys($replacements), array_values($replacements), $text);
@@ -492,210 +447,13 @@ public function index(Request $request)
         return $text;
     }
 
-    // ==========================================
-    // PARSER PINTAR
-    // ==========================================
-    private function simpleParser($text)
+    /**
+     * Show OCR result page with parsed items
+     */
+    public function result()
     {
-        $lines = explode("\n", $text);
-        $data = [];
-
-        $noNota = null;
-        $tanggal = date('Y-m-d');
-        $supplier = null;
-        $alamat = null;
-        $totalHarga = 0;
-
-        $sampah = [
-            'Subtotal', 'Diskon', 'TOTAL', 'BAYAR', 'Kembali', 'Terima Kasih', 'Hormat', 
-            'BCA', 'Mandiri', 'Debit', 'Transfer', 'Item', 'Qty', 'Harga', 'Satuan', 
-            'Total', 'Jl-', 'Telp', 'Waktu', 'No. Transaksi', 'Tanggal', 'PPN',
-            'Grand Total', 'Grandtotal', 'Payment', 'Cash', 'Card',
-            'Invoice', 'Faktur', 'Receipt', 'Struk', 'Nota', 'Bill', 'Tagihan',
-            'Customer', 'Pelanggan', 'Kasir', 'Cashier', 'Operator', 'Staff',
-            'Harga Satuan', 'Harga Total', 'Jumlah', 'Quantity', 'Amount', 'Nominal',
-            'Terbilang', 'Material Description', 'NOTA PENJUALAN', 'Nama Barang',
-        ];
-
-        $kataBahan = [
-            'kulit', 'kain', 'benang', 'lem', 'cat', 'minyak', 'sabun', 
-            'pewarna', 'bahan', 'tekstil', 'wol', 'kapas', 'sutra',
-            'nilon', 'polyester', 'karet', 'plastik', 'logam', 'besi',
-            'kayu', 'kertas', 'karton', 'gabus', 'busa', 'kapuk',
-            'resleting', 'kancing', 'aksesoris', 'jahit', 'bordir',
-            'sol', 'hak', 'tali', 'ritsleting', 'velcro', 'gesper',
-            'pelapis', 'perekat', 'pengeras', 'pelunak', 'pewangi',
-            'dompet', 'tas', 'sepatu', 'ikat pinggang', 'jaket',
-            'sapi', 'kambing', 'vegetable', 'tanned', 'scrap', 'chrom', 'brown',
-            'nabati', 'krom', 'lilin', 'potongan'
-        ];
-
-        $satuanList = 'Lembar|Kaki|Rol|Pcs|Unit|Kg|Liter|Box|Sak|Lusin|Kodi|Pack|Botol|Kaleng|Tube|Sachet|Bungkus|Buah|Batang|Helai|Potong|Set|Pasang|Biji|Lbr|Btl|Bks';
-
-        // TAHAP 1: EKSTRAK METADATA
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (preg_match('/^(UD\.?|TOKO|CV\.?|PT\.?)\s+(.+)/i', $line, $m)) {
-                $supplier = trim($line);
-                break;
-            }
-        }
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (preg_match('/(?:No\.?|Inv)\s*[:\-]?\s*([A-Za-z0-9\-\/]+)/i', $line, $m)) {
-                if (!empty($m[1]) && strlen($m[1]) > 2 && strlen($m[1]) < 25) {
-                    $noNota = $m[1];
-                    break;
-                }
-            }
-        }
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (preg_match('/(?:Tanggal|Tgl)\s*[:\-]?\s*(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i', $line, $m)) {
-                $tanggal = $m[1];
-                break;
-            } elseif (preg_match('/(?:Tanggal|Tgl)\s*[:\-]?\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/', $line, $m)) {
-                $tanggal = $m[1];
-                break;
-            }
-        }
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (preg_match('/^(Jl\.?|Jalan|Telp|Phone|Tel)\.?\s*[:\-]?\s*(.+)/i', $line, $m)) {
-                $alamat = trim($line);
-                break;
-            }
-        }
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (preg_match('/(?:TOTAL|Total|Jumlah|Bayar)\s*[:\-]?\s*Rp\s*([\d\.,]+)/i', $line, $m)) {
-                $totalHarga = (int) str_replace(['.', ','], '', $m[1]);
-                break;
-            }
-        }
-
-        // TAHAP 2: EKSTRAK ITEM BAHAN
-        foreach ($lines as $line) {
-            $line = trim($line);
-            
-            if (strlen($line) < 3) continue;
-            if (strlen($line) > 150) continue;
-
-            $isSampah = false;
-            foreach ($sampah as $word) {
-                if (stripos($line, $word) !== false) { 
-                    $isSampah = true; 
-                    break; 
-                }
-            }
-            if ($isSampah) continue;
-
-            if (preg_match('/(?:TOTAL|Subtotal|Grand Total)/i', $line)) continue;
-            if (preg_match('/(?:TERBILANG|Hormat|Tanda Terima)/i', $line)) continue;
-
-            $nama = "";
-            $qty = 1;
-            $harga = 0;
-            $satuan = 'Pcs';
-
-            // POLA 1: Format lengkap dengan satuan
-            if (preg_match('/^(\d+)[\.\-\)]\s*(.+?)\s+(\d+)\s+(Kaki Persegi|Kaki|Lembar|Rol|Pcs|Unit|Kg|Liter|Box|Sak|Lusin|Kodi|Pack|Botol|Kaleng|Tube|Sachet|Bungkus|Buah|Batang|Helai|Potong|Set|Pasang|Biji|Lbr|Btl|Bks)\s+([\d\.,]+)/i', $line, $matches)) {
-                $nama = trim($matches[2]);
-                $qty = (int) $matches[3];
-                $satuan = $matches[4];
-                $harga = (int) str_replace(['.', ','], '', $matches[5]);
-            }
-            // POLA 1B: Format tanpa titik
-            elseif (preg_match('/^(\d+)\s+(.+?)\s+(Kaki Persegi|Kaki|Lembar|Rol|Pcs|Unit|Kg|Liter|Box|Sak|Lusin|Kodi|Pack|Botol|Kaleng|Tube|Sachet|Bungkus|Buah|Batang|Helai|Potong|Set|Pasang|Biji|Lbr|Btl|Bks)\s+([\d\.,]+)\s+([\d\.,]+)/i', $line, $matches)) {
-                $nama = trim($matches[2]);
-                $satuan = $matches[3];
-                $hargaSatuan = (int) str_replace(['.', ','], '', $matches[4]);
-                $totalHargaItem = (int) str_replace(['.', ','], '', $matches[5]);
-                $qty = ($hargaSatuan > 0) ? (int) ($totalHargaItem / $hargaSatuan) : 1;
-                $harga = $hargaSatuan;
-            }
-            // POLA 2: Format dengan titik, satuan tanpa qty
-            elseif (preg_match('/^(\d+)[\.\-\)]\s*(.+?)\s+(Kaki Persegi|Kaki|Lembar|Rol|Pcs|Unit|Kg|Liter|Box|Sak|Lusin|Kodi|Pack|Botol|Kaleng|Tube|Sachet|Bungkus|Buah|Batang|Helai|Potong|Set|Pasang|Biji|Lbr|Btl|Bks)\s+([\d\.,]+)/i', $line, $matches)) {
-                $nama = trim($matches[2]);
-                $qty = 1;
-                $satuan = $matches[3];
-                $harga = (int) str_replace(['.', ','], '', $matches[4]);
-            }
-            // POLA 3: Format sederhana
-            elseif (preg_match('/^(\d+)\s+(.+?)\s+(\d+)\s+([\d\.,]+)/i', $line, $matches)) {
-                $nama = trim($matches[2]);
-                $qty = (int) $matches[3];
-                $harga = (int) str_replace(['.', ','], '', $matches[4]);
-                $satuan = 'Pcs';
-            }
-            // POLA 4: Format dengan kata bahan
-            else {
-                $lineLower = strtolower($line);
-                $adaKataBahan = false;
-                foreach ($kataBahan as $kata) {
-                    if (stripos($lineLower, $kata) !== false) {
-                        $adaKataBahan = true;
-                        break;
-                    }
-                }
-                
-                if ($adaKataBahan && preg_match('/\d+/', $line)) {
-                    if (preg_match('/^(\d+)[\.\-\)\s]\s*(.+?)\s+(\d+)\s+(.+?)\s+(\d[\d\.,]*)/', $line, $matches)) {
-                        $nama = trim($matches[2]);
-                        $qty = (int) $matches[3];
-                        if (preg_match('/(' . $satuanList . ')/i', $matches[4], $satMatch)) {
-                            $satuan = $satMatch[1];
-                        }
-                        $harga = (int) str_replace(['.', ','], '', $matches[5]);
-                    } elseif (preg_match('/^(\d+)[\.\-\)\s]\s*(.+)/', $line, $matches)) {
-                        $nama = trim($matches[2]);
-                        if (preg_match('/(\d+)\s*(' . $satuanList . ')?\s*(\d[\d\.,]*)/', $nama, $angkaMatch)) {
-                            if (!empty($angkaMatch[2])) {
-                                $satuan = $angkaMatch[2];
-                            }
-                            $harga = (int) str_replace(['.', ','], '', $angkaMatch[3]);
-                            $qty = (int) $angkaMatch[1];
-                            $nama = trim(preg_replace('/\d+\s*(' . $satuanList . ')?\s*\d[\d\.,]*$/', '', $nama));
-                        }
-                    }
-                }
-            }
-
-            if (empty($nama)) continue;
-            
-            $nama = trim($nama, " .-");
-            $nama = preg_replace('/^\d+[\.\-\)]\s*/', '', $nama);
-            $nama = preg_replace('/^\d+\s*/', '', $nama);
-            $nama = preg_replace('/\s+/', ' ', $nama);
-
-            if (strlen($nama) < 3 || ctype_digit($nama)) {
-                continue;
-            }
-
-            if (strlen($nama) > 2) {
-                $data[] = [
-                    'nama' => $nama,
-                    'qty' => $qty,
-                    'satuan' => $satuan,
-                    'harga' => $harga
-                ];
-            }
-        }
-
-        // Simpan Metadata
-        session(['ocr_metadata' => [
-            'no_nota' => $noNota,
-            'tanggal' => $tanggal,
-            'supplier' => $supplier,
-            'alamat' => $alamat,
-            'total_harga' => $totalHarga
-        ]]);
-
-        return $data;
+        $warnas = \App\Models\Warna::all();
+        return view('operator.scan-result', compact('warnas'));
     }
 
     /**
@@ -708,17 +466,175 @@ public function index(Request $request)
     }
 
     /**
+     * Simpan hasil OCR ke Database - 1 notifikasi bulk untuk semua item
+     */
+    public function save(Request $request)
+    {
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.nama' => 'required|string',
+            'items.*.qty' => 'required|numeric',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $operatorName = auth()->user()->name ?? 'Operator';
+            $savedItems = [];
+
+            // Kumpulkan semua item untuk notifikasi bulk
+            $notifItems = [];
+
+            foreach ($request->input('items') as $item) {
+                $namaInput = trim($item['nama']);
+                $qtyTotal  = (float) $item['qty'];
+                $hargaBeli = (int) ($item['harga'] ?? 0);
+                $satuan    = $item['satuan'] ?? 'Pcs';
+
+                // Ambil data warna (array multidimensi dari form pecah warna)
+                $warnaData = $item['warna'] ?? [];
+
+                if (empty($warnaData) || !is_array($warnaData)) {
+                    $warnaData = [['nama' => 'Tidak Ada Warna', 'qty' => $qtyTotal]];
+                }
+
+                $warnaItems = [];
+                foreach ($warnaData as $wItem) {
+                    $warnaNama = trim($wItem['nama'] ?? '');
+                    $warnaQty  = (float) ($wItem['qty'] ?? 0);
+                    if (empty($warnaNama) || $warnaQty <= 0) continue;
+                    $warnaItems[] = ['nama' => $warnaNama, 'qty' => $warnaQty];
+                }
+
+                if (empty($warnaItems)) {
+                    $warnaItems[] = ['nama' => 'Tidak Ada Warna', 'qty' => $qtyTotal];
+                }
+
+                foreach ($warnaItems as $warnaItem) {
+                    $warnaNama = $warnaItem['nama'];
+                    $warnaQty  = $warnaItem['qty'];
+
+                    // Cari berdasarkan NAMA + WARNA (case-insensitive)
+                    $barang = BahanBaku::whereRaw('LOWER(TRIM(nama_material)) = LOWER(TRIM(?))', [$namaInput])
+                        ->whereRaw('LOWER(TRIM(warna)) = LOWER(TRIM(?))', [$warnaNama])
+                        ->first();
+
+                    if (!$barang) {
+                        $existingMaster = BahanBaku::where('nama_material', $namaInput)->first();
+
+                        if ($existingMaster) {
+                            $kodeMaterial = $existingMaster->kode_material;
+                        } else {
+                            $prefix = \App\Models\Pengaturan::where('nama_pengaturan', 'prefix_bahan')->value('nilai') ?? 'BHN-';
+                            $prefix = trim($prefix);
+                            $maxNum = 0;
+                            $allCodes = BahanBaku::lockForUpdate()->where('kode_material', 'like', $prefix . '%')->pluck('kode_material');
+
+                            foreach ($allCodes as $code) {
+                                $numericPart = preg_replace('/[^0-9]/', '', substr($code, strlen($prefix)));
+                                if ($numericPart !== '' && is_numeric($numericPart)) {
+                                    $num = (int) $numericPart;
+                                    if ($num > $maxNum) $maxNum = $num;
+                                }
+                            }
+                            $next = $maxNum + 1;
+                            do {
+                                $kodeMaterial = $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+                                $next++;
+                            } while (BahanBaku::where('kode_material', $kodeMaterial)->exists());
+                        }
+
+                        $barang = BahanBaku::create([
+                            'kode_material' => $kodeMaterial,
+                            'nama_material' => $namaInput,
+                            'warna'         => $warnaNama,
+                            'stok'          => 0,
+                            'satuan'        => $satuan,
+                            'kategori'      => 'Bahan Utama',
+                            'harga_satuan'  => $hargaBeli,
+                            'is_inventory'  => true,
+                        ]);
+                    }
+
+                    // Tambah stok per warna
+                    $barang->increment('stok', $warnaQty);
+                    if ($hargaBeli > 0) {
+                        $barang->harga_satuan = $hargaBeli;
+                        $barang->save();
+                    }
+
+                    // Catat log stok
+                    \App\Models\LogStok::create([
+                        'bahan_baku_id' => $barang->id,
+                        'operator_id' => auth()->id(),
+                        'jenis_transaksi' => 'TAMBAH_STOK',
+                        'jumlah' => $warnaQty,
+                        'keterangan' => 'Scan Nota - ' . $namaInput . ' (' . $warnaNama . ')',
+                    ]);
+
+                    // Buat stok layer
+                    BahanStokLayer::create([
+                        'bahan_baku_id' => $barang->id,
+                        'tanggal_masuk' => now()->toDateString(),
+                        'qty_masuk'     => $warnaQty,
+                        'qty_sisa'      => $warnaQty,
+                        'harga_beli'    => $hargaBeli,
+                        'sumber_harga'  => 'Scan Nota',
+                    ]);
+
+                    // Kumpulkan untuk notifikasi bulk (bukan kirim per item)
+                    $notifItems[] = [
+                        'nama' => $namaInput,
+                        'warna' => $warnaNama,
+                        'qty' => $warnaQty,
+                        'satuan' => $satuan,
+                        'harga' => $hargaBeli,
+                    ];
+
+                    $savedItems[] = "$namaInput ($warnaNama: $warnaQty)";
+                }
+            }
+
+            // Kirim 1 notifikasi bulk untuk semua item
+            if (!empty($notifItems)) {
+                $ocrResult = session('ocr_result', []);
+                $supplier = $ocrResult['supplier'] ?? 'Supplier Tidak Terdeteksi';
+                $noNota = $ocrResult['metadata']['no_nota'] ?? '';
+                $fotoNotaUrl = $ocrResult['image_url'] ?? null;
+
+                $admins = User::where('role', 'admin')->get();
+                $bulkNotif = new ScanNotaBulkNotification(
+                    $operatorName,
+                    $supplier,
+                    $noNota,
+                    $notifItems,
+                    0,
+                    $fotoNotaUrl
+                );
+                Notification::send($admins, $bulkNotif);
+            }
+
+            session()->forget(['ocr_metadata', 'ocr_result']);
+            DB::commit();
+
+            return redirect()->route('operator.bahan.index')->with('success', 'Data tersimpan: ' . implode(', ', $savedItems));
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error("Scan Save Error: " . $e->getMessage());
+            return back()->with('error', 'Gagal menyimpan data: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Display detail transaksi for admin
      */
     public function show($id)
     {
         $bahanMasuk = BahanMasuk::with(['operator', 'verifiedBy'])->findOrFail($id);
-        
-        // Check if user is admin
         if (auth()->user()->role !== 'admin') {
             abort(403);
         }
-
         return view('admin.scan-detail', compact('bahanMasuk'));
     }
 
@@ -734,8 +650,6 @@ public function index(Request $request)
         ]);
 
         $bahanMasuk = BahanMasuk::findOrFail($id);
-
-        // Check if user is admin
         if (auth()->user()->role !== 'admin') {
             abort(403);
         }
@@ -743,7 +657,6 @@ public function index(Request $request)
         try {
             DB::beginTransaction();
 
-            // Update data bahan masuk dengan data terverifikasi
             $bahanMasuk->update([
                 'status' => 'verified',
                 'verified_by' => auth()->id(),
@@ -753,7 +666,6 @@ public function index(Request $request)
                 'notes' => $request->notes,
             ]);
 
-            // Cari atau buat bahan baku
             $bahanBaku = \App\Models\BahanBaku::firstOrCreate(
                 ['nama' => $bahanMasuk->nama_material],
                 [
@@ -763,11 +675,9 @@ public function index(Request $request)
                 ]
             );
 
-            // Tambah stok
             $bahanBaku->stok += $request->jumlah;
             $bahanBaku->save();
 
-            // Catat ke log stok
             \App\Models\LogStok::create([
                 'bahan_baku_id' => $bahanBaku->id,
                 'bahan_masuk_id' => $bahanMasuk->id,
@@ -778,7 +688,6 @@ public function index(Request $request)
             ]);
 
             DB::commit();
-
             return redirect()->back()->with('success', 'Data berhasil diverifikasi dan stok diperbarui');
 
         } catch (\Exception $e) {
@@ -792,16 +701,9 @@ public function index(Request $request)
      */
     public function reject(Request $request, $id)
     {
-        $request->validate([
-            'notes' => 'required|string',
-        ]);
-
+        $request->validate(['notes' => 'required|string']);
         $bahanMasuk = BahanMasuk::findOrFail($id);
-
-        // Check if user is admin
-        if (auth()->user()->role !== 'admin') {
-            abort(403);
-        }
+        if (auth()->user()->role !== 'admin') abort(403);
 
         try {
             $bahanMasuk->update([
@@ -810,9 +712,7 @@ public function index(Request $request)
                 'verified_at' => now(),
                 'notes' => $request->notes,
             ]);
-
             return redirect()->back()->with('success', 'Data ditolak');
-
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal menolak data: ' . $e->getMessage());
         }
@@ -823,15 +723,11 @@ public function index(Request $request)
      */
     public function pendingList()
     {
-        if (auth()->user()->role !== 'admin') {
-            abort(403);
-        }
-
+        if (auth()->user()->role !== 'admin') abort(403);
         $bahanMasukList = BahanMasuk::with('operator')
             ->where('status', 'pending')
             ->orderBy('created_at', 'desc')
             ->paginate(10);
-
         return view('admin.scan-pending', compact('bahanMasukList'));
     }
 }

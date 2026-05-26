@@ -55,24 +55,30 @@ class NotificationController extends Controller
     }
 
     /**
-     * BACA 1 NOTIFIKASI & REDIRECT
+     * TAMPILKAN DETAIL NOTIFIKASI
      */
-    public function markAsReadAndRedirect($id)
+    public function show($id)
     {
         $notification = Auth::user()
             ->notifications()
             ->where('id', $id)
             ->first();
 
-        if ($notification) {
-            $notification->markAsRead();
-
-            return redirect(
-                $notification->data['url'] ?? route('admin.dashboard')
-            );
+        if (!$notification) {
+            return redirect()->route('admin.notifications.index')->with('error', 'Notifikasi tidak ditemukan.');
         }
 
-        return back();
+        $notification->markAsRead();
+
+        return view('admin.notifications.show', compact('notification'));
+    }
+
+    /**
+     * BACA 1 NOTIFIKASI & REDIRECT (legacy - sekarang redirect ke detail)
+     */
+    public function markAsReadAndRedirect($id)
+    {
+        return $this->show($id);
     }
 
     /**
