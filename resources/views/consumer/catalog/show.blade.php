@@ -51,21 +51,40 @@
                     @endif
                 </div>
 
-                <!-- Add to Cart Button -->
+                <!-- Add to Cart & Buy Now Buttons -->
                 <div class="mt-auto">
                     @auth
                         @if(Auth::user()->role === 'customer')
-                            <form method="POST" action="{{ route('consumer.cart.add', $product->id) }}" class="flex gap-3">
-                                @csrf
-                                <div class="flex items-center border border-gray-300 rounded-lg">
-                                    <button type="button" onclick="this.nextElementSibling.stepDown()" class="px-3 py-2 text-gray-600 hover:bg-gray-100">-</button>
-                                    <input type="number" name="quantity" value="1" min="1" max="{{ $product->stok }}" class="w-16 text-center py-2 border-x border-gray-300 outline-none text-sm">
-                                    <button type="button" onclick="this.previousElementSibling.stepUp()" class="px-3 py-2 text-gray-600 hover:bg-gray-100">+</button>
+                            <div class="flex flex-col gap-3">
+                                <!-- Quantity Selector -->
+                                <div>
+                                    <label class="text-xs text-gray-500 mb-1 block">Jumlah</label>
+                                    <div class="flex items-center border border-gray-300 rounded-lg w-fit">
+                                        <button type="button" onclick="decreaseQty()" class="px-3 py-2 text-gray-600 hover:bg-gray-100">-</button>
+                                        <input type="number" id="qty-input" value="1" min="1" max="{{ $product->stok }}" class="w-16 text-center py-2 border-x border-gray-300 outline-none text-sm">
+                                        <button type="button" onclick="increaseQty()" class="px-3 py-2 text-gray-600 hover:bg-gray-100">+</button>
+                                    </div>
                                 </div>
-                                <button type="submit" class="flex-1 btn-primary text-white px-6 py-2.5 rounded-lg font-medium text-sm" {{ $product->stok <= 0 ? 'disabled' : '' }}>
-                                    <i class="fas fa-shopping-cart mr-2"></i> + Keranjang
-                                </button>
-                            </form>
+
+                                <!-- Buttons Row -->
+                                <div class="flex gap-3">
+                                    <form method="POST" action="{{ route('consumer.cart.add', $product->id) }}" class="flex-1">
+                                        @csrf
+                                        <input type="hidden" name="quantity" id="cart-qty" value="1">
+                                        <button type="submit" class="w-full btn-outline bg-white px-4 py-3 rounded-lg font-medium text-sm transition hover:bg-[#ee4d2d] hover:text-white" {{ $product->stok <= 0 ? 'disabled' : '' }}>
+                                            🛒 Keranjang
+                                        </button>
+                                    </form>
+
+                                    <form method="POST" action="{{ route('consumer.cart.buynow', $product->id) }}" class="flex-1">
+                                        @csrf
+                                        <input type="hidden" name="quantity" id="buy-qty" value="1">
+                                        <button type="submit" class="w-full btn-primary text-white px-4 py-3 rounded-lg font-medium text-sm" {{ $product->stok <= 0 ? 'disabled' : '' }}>
+                                            ⚡ Beli Langsung
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
                         @else
                             <a href="{{ route('consumer.register') }}" class="block w-full text-center btn-primary text-white px-6 py-3 rounded-lg font-medium">
                                 Daftar untuk Membeli
@@ -100,13 +119,33 @@
 </div>
 
 <script>
-    function decreaseQty(btn) {
-        const input = btn.nextElementSibling;
-        if (input.value > 1) input.value = parseInt(input.value) - 1;
+    const maxQty = {{ $product->stok }};
+    function decreaseQty() {
+        const input = document.getElementById('qty-input');
+        if (input.value > 1) {
+            input.value = parseInt(input.value) - 1;
+            document.getElementById('cart-qty').value = input.value;
+            document.getElementById('buy-qty').value = input.value;
+        }
     }
-    function increaseQty(btn) {
-        const input = btn.previousElementSibling;
-        if (parseInt(input.value) < parseInt(input.max)) input.value = parseInt(input.value) + 1;
+    function increaseQty() {
+        const input = document.getElementById('qty-input');
+        if (parseInt(input.value) < maxQty) {
+            input.value = parseInt(input.value) + 1;
+            document.getElementById('cart-qty').value = input.value;
+            document.getElementById('buy-qty').value = input.value;
+        }
     }
+    document.addEventListener('DOMContentLoaded', function() {
+        const input = document.getElementById('qty-input');
+        input.addEventListener('change', function() {
+            let val = parseInt(this.value) || 1;
+            if (val < 1) val = 1;
+            if (val > maxQty) val = maxQty;
+            this.value = val;
+            document.getElementById('cart-qty').value = val;
+            document.getElementById('buy-qty').value = val;
+        });
+    });
 </script>
 @endsection
