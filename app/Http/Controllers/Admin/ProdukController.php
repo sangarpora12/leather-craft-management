@@ -12,7 +12,8 @@ class ProdukController extends Controller
     public function index()
     {
         $produks = ProdukJadi::latest()->paginate(10);
-        return view('admin.produk-jadi.index', compact('produks'));
+        $allCategories = ProdukJadi::select('kategori')->distinct()->get()->pluck('kategori');
+        return view('admin.produk-jadi.index', compact('produks', 'allCategories'));
     }
 
     public function create()
