@@ -257,7 +257,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/admin/bahan-baku/data', [AdminBahanBakuController::class, 'getData'])->name('admin.bahan-baku.data');
         Route::resource('/admin/bahan-baku', AdminBahanBakuController::class)->parameters([
             'bahan-baku' => 'bahanBaku'
-        ]);
+        ])->names('admin.bahan-baku');
         Route::get('/admin/bahan-baku/{bahanBaku}/varian/create', [AdminBahanBakuController::class, 'createVarian'])->name('admin.bahan-baku.varian.create');
         Route::post('/admin/bahan-baku/{bahanBaku}/varian', [AdminBahanBakuController::class, 'storeVarian'])->name('admin.bahan-baku.varian.store');
         Route::get('/admin/bahan-baku/{bahanBaku}/varian/{varian}/edit', [AdminBahanBakuController::class, 'editVarian'])->name('admin.bahan-baku.varian.edit');
@@ -268,7 +268,7 @@ Route::middleware(['auth'])->group(function () {
         // --- ADMIN PRODUK JADI ---
         Route::resource('/admin/produk-jadi', AdminProdukController::class)->parameters([
             'produk-jadi' => 'produkJadi'
-        ]);
+        ])->names('admin.produk-jadi');
 
         // --- SISTEM ---
         Route::get('/sistem', [SistemController::class, 'index'])->name('sistem');

@@ -9,26 +9,17 @@ use Illuminate\Support\Facades\Storage;
 
 class ProdukController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $produks = ProdukJadi::latest()->paginate(10);
         return view('admin.produk-jadi.index', compact('produks'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         return view('admin.produk-jadi.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -47,13 +38,10 @@ class ProdukController extends Controller
 
         ProdukJadi::create($validated);
 
-        return redirect()->route('produk.index')
+        return redirect()->route('admin.produk-jadi.index')
             ->with('success', 'Produk berhasil ditambahkan.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show($produkJadi)
     {
         $product = ProdukJadi::with('boms.material')->findOrFail($produkJadi);
@@ -62,18 +50,12 @@ class ProdukController extends Controller
         return view('admin.produk-jadi.show', compact('product', 'warnaMasterLookup', 'margin'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit($produkJadi)
     {
         $product = ProdukJadi::findOrFail($produkJadi);
         return view('admin.produk-jadi.edit', compact('product'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, $produkJadi)
     {
         $product = ProdukJadi::findOrFail($produkJadi);
@@ -92,19 +74,15 @@ class ProdukController extends Controller
             if ($product->foto && Storage::disk('public')->exists($product->foto)) {
                 Storage::disk('public')->delete($product->foto);
             }
-            
             $validated['foto'] = $request->file('foto')->store('produk', 'public');
         }
 
         $product->update($validated);
 
-        return redirect()->route('produk.index')
+        return redirect()->route('admin.produk-jadi.index')
             ->with('success', 'Produk berhasil diperbarui.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy($produkJadi)
     {
         $product = ProdukJadi::findOrFail($produkJadi);
@@ -115,7 +93,7 @@ class ProdukController extends Controller
 
         $product->delete();
 
-        return redirect()->route('produk.index')
+        return redirect()->route('admin.produk-jadi.index')
             ->with('success', 'Produk berhasil dihapus.');
     }
 }
