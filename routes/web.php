@@ -26,6 +26,12 @@ use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\HakAksesController;
 use App\Http\Controllers\LogAktivitasController;
 use App\Http\Controllers\ScanController;
+use App\Http\Controllers\Consumer\AuthController as ConsumerAuthController;
+use App\Http\Controllers\Consumer\CatalogController;
+use App\Http\Controllers\Consumer\CartController;
+use App\Http\Controllers\Consumer\CheckoutController;
+use App\Http\Controllers\Admin\NotifikasiController;
+use App\Http\Controllers\Admin\DangerZoneController;
 
 // --- 2. IMPORT MIDDLEWARE ---
 use App\Http\Middleware\CheckRole as RoleMiddleware;
@@ -96,6 +102,37 @@ Route::post('/reset-password', [App\Http\Controllers\AuthController::class, 'res
     ->name('password.update');
 
 // ==========================================
+// 1.5 AREA KONSUMEN (CUSTOMER)
+// ==========================================
+Route::prefix('consumer')->name('consumer.')->group(function () {
+    // Auth
+    Route::get('/register', [ConsumerAuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [ConsumerAuthController::class, 'register'])->name('register.process');
+    Route::get('/login', [ConsumerAuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [ConsumerAuthController::class, 'login'])->name('login.process');
+    Route::post('/logout', [ConsumerAuthController::class, 'logout'])->name('logout');
+
+    // Catalog - /consumer langsung tampil semua produk jadi (publik, tanpa wajib login)
+    Route::get('/', [CatalogController::class, 'index'])->name('catalog');
+    Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.alt');
+    Route::get('/catalog/{id}', [CatalogController::class, 'show'])->name('catalog.show');
+
+    // Cart (requires auth)
+    Route::middleware('auth')->group(function () {
+        Route::get('/cart', [CartController::class, 'index'])->name('cart');
+        Route::post('/cart/add/{produkJadiId}', [CartController::class, 'add'])->name('cart.add');
+        Route::put('/cart/{id}', [CartController::class, 'update'])->name('cart.update');
+        Route::delete('/cart/{id}', [CartController::class, 'remove'])->name('cart.remove');
+        Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+
+        // Checkout
+        Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
+        Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+        Route::get('/order/success/{orderId}', [CheckoutController::class, 'success'])->name('order.success');
+    });
+});
+
+// ==========================================
 // 2. AREA MEMBER (SUDAH LOGIN)
 // ==========================================
 Route::middleware(['auth'])->group(function () {
@@ -144,6 +181,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('pekerja-master', WorkerMasterController::class)->names('pekerja-master');
         Route::resource('operator', OperatorController::class)->names('operator');
         Route::resource('suppliers', SupplierController::class)->names('suppliers');
+        Route::get('/operator/{id}/check-tasks', [OperatorController::class, 'checkActiveTasks'])->name('operator.check-tasks');
         Route::patch('/operator/{id}/toggle-status', [OperatorController::class, 'toggleStatus'])->name('operator.toggle-status');
         Route::patch('/operator/{id}/toggle-role', [OperatorController::class, 'toggleRole'])->name('operator.toggle-role');
         Route::post('/operator/{id}/resend-verification', [OperatorController::class, 'resendVerification'])->name('operator.resend-verification');
@@ -312,11 +350,16 @@ Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
         Route::post('/notifications/mark-read', [DashboardController::class, 'markOperatorNotificationRead'])->name('notifications.mark-read');
         Route::post('/notifications/mark-all-read', [DashboardController::class, 'markAllOperatorNotificationsRead'])->name('notifications.mark-all-read');
         Route::get('/notifications/{id}/read', [DashboardController::class, 'markOperatorNotificationReadAndRedirect'])->name('notifications.read');
+        Route::post('/notifications/{id}/destroy', [DashboardController::class, 'destroyOperatorNotification'])->name('notifications.destroy');
+        Route::delete('/notifications/delete-all-read', [DashboardController::class, 'deleteAllReadOperatorNotifications'])->name('notifications.delete-all-read');
+        Route::post('/notifications/mark-selected', [DashboardController::class, 'markSelectedOperatorNotifications'])->name('notifications.mark-selected');
+        Route::post('/notifications/delete-selected', [DashboardController::class, 'deleteSelectedOperatorNotifications'])->name('notifications.delete-selected');
 
         Route::get('/bahan', [BahanBakuController::class, 'indexOperator'])->name('bahan.index');
         Route::get('/bahan/{id}', [BahanBakuController::class, 'show'])->name('bahan.show');
-        Route::get('/bahan/{id}/edit', [BahanBakuController::class, 'editOperator'])->name('bahan.edit');
-        Route::put('/bahan/{id}', [BahanBakuController::class, 'updateOperator'])->name('bahan.update');
+        // Edit bahan oleh operator telah dinonaktifkan
+        // Route::get('/bahan/{id}/edit', [BahanBakuController::class, 'editOperator'])->name('bahan.edit');
+        // Route::put('/bahan/{id}', [BahanBakuController::class, 'updateOperator'])->name('bahan.update');
         Route::delete('/bahan/{id}', [BahanBakuController::class, 'destroy'])->name('bahan.destroy');
 
         // Laporan operator (ringkasan + riwayat)
@@ -394,10 +437,11 @@ Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
         Route::post('/bahan/simpan', [BahanBakuController::class, 'storeOperator'])->name('bahan.store');
         Route::get('/bahan', [BahanBakuController::class, 'indexOperator'])->name('bahan.index');
         Route::get('/bahan/{id}', [BahanBakuController::class, 'showOperator'])->name('bahan.show');
-        Route::get('/bahan/{id}/edit', [BahanBakuController::class, 'editOperator'])->name('bahan.edit');
-        Route::put('/bahan/{id}', [BahanBakuController::class, 'updateOperator'])->name('bahan.update');
-        Route::get('/bahan/{id}/edit-varian', [BahanBakuController::class, 'editVarian'])->name('bahan.edit-varian');
-        Route::post('/bahan/{id}/update-varian', [BahanBakuController::class, 'updateVarian'])->name('bahan.update-varian');
+        // Edit bahan oleh operator telah dinonaktifkan
+        // Route::get('/bahan/{id}/edit', [BahanBakuController::class, 'editOperator'])->name('bahan.edit');
+        // Route::put('/bahan/{id}', [BahanBakuController::class, 'updateOperator'])->name('bahan.update');
+        // Route::get('/bahan/{id}/edit-varian', [BahanBakuController::class, 'editVarian'])->name('bahan.edit-varian');
+        // Route::post('/bahan/{id}/update-varian', [BahanBakuController::class, 'updateVarian'])->name('bahan.update-varian');
         Route::get('/api/bahan-baku/search', [BahanBakuController::class, 'search'])->name('bahan-baku.search');
         
         // Pengadaan / Penerimaan Bahan
