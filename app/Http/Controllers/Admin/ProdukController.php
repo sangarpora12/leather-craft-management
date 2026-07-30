@@ -54,27 +54,30 @@ class ProdukController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Produk $produk)
+    public function show($produkJadi)
     {
-        // Load master warna untuk lookup gambar
+        $product = Produk::findOrFail($produkJadi);
         $warnaMasterLookup = \App\Models\Warna::all()->keyBy('nama_warna');
         $margin = (float) (\App\Models\Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->value('nilai') ?? 30);
-        return view('admin.produk-jadi.show', compact('produk', 'warnaMasterLookup', 'margin'));
+        return view('admin.produk-jadi.show', compact('product', 'warnaMasterLookup', 'margin'));
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Produk $produk)
+    public function edit($produkJadi)
     {
-        return view('admin.produk-jadi.edit', compact('produk'));
+        $product = Produk::findOrFail($produkJadi);
+        return view('admin.produk-jadi.edit', compact('product'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Produk $produk)
+    public function update(Request $request, $produkJadi)
     {
+        $product = Produk::findOrFail($produkJadi);
+
         $validated = $request->validate([
             'nama_produk' => 'required|string|max:255',
             'kategori' => 'required|string|max:255',
@@ -86,15 +89,14 @@ class ProdukController extends Controller
         ]);
 
         if ($request->hasFile('foto')) {
-            // Hapus foto lama jika ada
-            if ($produk->foto && Storage::disk('public')->exists($produk->foto)) {
-                Storage::disk('public')->delete($produk->foto);
+            if ($product->foto && Storage::disk('public')->exists($product->foto)) {
+                Storage::disk('public')->delete($product->foto);
             }
             
             $validated['foto'] = $request->file('foto')->store('produk', 'public');
         }
 
-        $produk->update($validated);
+        $product->update($validated);
 
         return redirect()->route('produk.index')
             ->with('success', 'Produk berhasil diperbarui.');
@@ -103,14 +105,15 @@ class ProdukController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Produk $produk)
+    public function destroy($produkJadi)
     {
-        // Hapus foto jika ada
-        if ($produk->foto && Storage::disk('public')->exists($produk->foto)) {
-            Storage::disk('public')->delete($produk->foto);
+        $product = Produk::findOrFail($produkJadi);
+
+        if ($product->foto && Storage::disk('public')->exists($product->foto)) {
+            Storage::disk('public')->delete($product->foto);
         }
 
-        $produk->delete();
+        $product->delete();
 
         return redirect()->route('produk.index')
             ->with('success', 'Produk berhasil dihapus.');
