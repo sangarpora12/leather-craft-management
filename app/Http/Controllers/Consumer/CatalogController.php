@@ -24,7 +24,28 @@ class CatalogController extends Controller
             $query->where('kategori', 'like', '%' . $request->kategori . '%');
         }
 
-        $products = $query->where('stok', '>', 0)->paginate(12);
+        // Sort
+        if ($request->filled('sort')) {
+            switch ($request->sort) {
+                case 'termurah':
+                    $query->orderBy('harga_jual', 'asc');
+                    break;
+                case 'termahal':
+                    $query->orderBy('harga_jual', 'desc');
+                    break;
+                case 'nama':
+                    $query->orderBy('nama_produk', 'asc');
+                    break;
+                case 'terbaru':
+                default:
+                    $query->orderBy('created_at', 'desc');
+                    break;
+            }
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $products = $query->paginate(20);
 
         // Get unique categories for filter
         $kategoris = ProdukJadi::select('kategori')->distinct()->get()->pluck('kategori');
