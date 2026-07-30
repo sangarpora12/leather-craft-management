@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Berliano Leather - @yield('title', 'Katalog Produk Kulit')</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,6 +12,9 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>
+    @php
+        $logoPerusahaan = \App\Models\Pengaturan::where('nama_pengaturan', 'logo_perusahaan')->first()?->nilai;
+    @endphp
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Navigation -->
@@ -19,9 +23,13 @@
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <a href="{{ route('consumer.catalog') }}" class="flex items-center space-x-2">
-                        <div class="w-8 h-8 bg-amber-700 rounded-lg flex items-center justify-center">
-                            <span class="text-white font-bold text-sm">BL</span>
-                        </div>
+                        @if($logoPerusahaan)
+                            <img src="{{ asset('storage/' . $logoPerusahaan) }}" alt="Logo" class="h-8 w-8 rounded-lg object-cover border border-gray-200">
+                        @else
+                            <div class="w-8 h-8 bg-amber-700 rounded-lg flex items-center justify-center">
+                                <span class="text-white font-bold text-sm">BL</span>
+                            </div>
+                        @endif
                         <span class="text-xl font-bold text-gray-900">Berliano Leather</span>
                     </a>
                 </div>
