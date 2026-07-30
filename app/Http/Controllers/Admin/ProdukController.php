@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Produk;
+use App\Models\ProdukJadi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -14,7 +14,7 @@ class ProdukController extends Controller
      */
     public function index()
     {
-        $produks = Produk::latest()->paginate(10);
+        $produks = ProdukJadi::latest()->paginate(10);
         return view('admin.produk-jadi.index', compact('produks'));
     }
 
@@ -45,7 +45,7 @@ class ProdukController extends Controller
             $validated['foto'] = $request->file('foto')->store('produk', 'public');
         }
 
-        Produk::create($validated);
+        ProdukJadi::create($validated);
 
         return redirect()->route('produk.index')
             ->with('success', 'Produk berhasil ditambahkan.');
@@ -56,7 +56,7 @@ class ProdukController extends Controller
      */
     public function show($produkJadi)
     {
-        $product = Produk::findOrFail($produkJadi);
+        $product = ProdukJadi::with('boms.material')->findOrFail($produkJadi);
         $warnaMasterLookup = \App\Models\Warna::all()->keyBy('nama_warna');
         $margin = (float) (\App\Models\Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->value('nilai') ?? 30);
         return view('admin.produk-jadi.show', compact('product', 'warnaMasterLookup', 'margin'));
@@ -67,7 +67,7 @@ class ProdukController extends Controller
      */
     public function edit($produkJadi)
     {
-        $product = Produk::findOrFail($produkJadi);
+        $product = ProdukJadi::findOrFail($produkJadi);
         return view('admin.produk-jadi.edit', compact('product'));
     }
 
@@ -76,7 +76,7 @@ class ProdukController extends Controller
      */
     public function update(Request $request, $produkJadi)
     {
-        $product = Produk::findOrFail($produkJadi);
+        $product = ProdukJadi::findOrFail($produkJadi);
 
         $validated = $request->validate([
             'nama_produk' => 'required|string|max:255',
@@ -107,7 +107,7 @@ class ProdukController extends Controller
      */
     public function destroy($produkJadi)
     {
-        $product = Produk::findOrFail($produkJadi);
+        $product = ProdukJadi::findOrFail($produkJadi);
 
         if ($product->foto && Storage::disk('public')->exists($product->foto)) {
             Storage::disk('public')->delete($product->foto);
