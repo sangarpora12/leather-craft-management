@@ -23,7 +23,7 @@
         <div class="bg-[#1A1C24] p-6 rounded-2xl border border-[#2D3139] shadow-xl flex justify-between items-center">
             <div>
                 <p class="text-gray-200 text-[10px] font-bold uppercase tracking-widest mb-2">Total Bahan </p>
-                <h3 class="text-2xl font-extrabold text-white">{{ $bahans->total() }} <span class="text-sm font-normal text-gray-200">Item</span></h3>
+                <h3 class="text-2xl font-extrabold text-white">{{ $bahanBakus->total() }} <span class="text-sm font-normal text-gray-200">Item</span></h3>
             </div>
             <div class="w-12 h-12 shrink-0 rounded-xl bg-[#2D3139] flex items-center justify-center">
                 <i class="fa-solid fa-boxes-stacked text-white text-xl"></i>
@@ -53,7 +53,7 @@
     </div>
 
     {{-- SEARCH & FILTER BAR --}}
-    <form action="{{ route('admin.bahan.index') }}" method="GET" class="mb-6">
+    <form action="{{ route('admin.bahan-baku.index') }}" method="GET" class="mb-6">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {{-- Kolom Pencarian --}}
             <div class="lg:col-span-2">
@@ -97,7 +97,7 @@
 
             {{-- Info Stok Minimum --}}
             <div class="bg-[#2D3139] rounded-lg px-4 py-2.5 flex items-center justify-center">
-                <span class="text-xs text-gray-100 uppercase tracking-wider font-semibold">Min. Stok: <span class="text-orange-200 font-bold">{{ \App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5 }}</span></span>
+                <span class="text-xs text-gray-100 uppercase tracking-wider font-semibold">Min. Stok: <span class="text-orange-200 font-bold">{{ \App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 5 }}</span></span>
             </div>
         </div>
         
@@ -115,7 +115,7 @@
 
             {{-- Tombol Reset Filter --}}
             @if(request()->hasAny(['search', 'kategori', 'warna', 'status_stok', 'sort_by']))
-                <a href="{{ route('admin.bahan.index') }}" class="bg-red-500/20 hover:bg-red-500/40 text-red-400 px-4 py-2.5 rounded-lg text-xs font-bold shadow-sm flex items-center transition">
+                <a href="{{ route('admin.bahan-baku.index') }}" class="bg-red-500/20 hover:bg-red-500/40 text-red-400 px-4 py-2.5 rounded-lg text-xs font-bold shadow-sm flex items-center transition">
                     <i class="fa-solid fa-xmark mr-2"></i>Reset Filter
                 </a>
             @endif
@@ -127,7 +127,7 @@
         
         <div class="px-6 py-5 border-b border-[#2D3139] flex justify-between items-center bg-[#1A1C24]">
             <h2 class="text-sm font-bold text-white tracking-wide">Daftar Bahan Baku</h2>
-            <span class="text-[11px] text-gray-500 font-medium">Total: {{ $bahans->total() }} Item</span>
+            <span class="text-[11px] text-gray-500 font-medium">Total: {{ $bahanBakus->total() }} Item</span>
         </div>
 
         <div class="custom-scrollbar">
@@ -144,24 +144,24 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-[#2D3139] text-sm">
-                    @forelse($bahans as $b)
+                    @forelse($bahanBakus as $b)
                     @php
                         // Cek status kritis berdasarkan total_stok (SUM dari semua varian)
                         // IKUTI PENGATURAN GUDANG: stok_minimum_global adalah acuan utama
                         // (fallback 5 bila belum diset)
-                        $batasStokItem = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_global')->value('nilai') ?? 5);
+                        $batasStokItem = (int) (\App\Models\Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 5);
                         $stokItem = (float) ($b->total_stok ?? $b->stok ?? 0);
                         $isKritis = $stokItem <= $batasStokItem;
                     @endphp
                     <tr class="hover:bg-[#20232A]/80 transition-colors cursor-pointer {{ $isKritis ? 'bg-[#FF5252]/5' : '' }}"
-    data-href="{{ route('admin.bahan.show', $b->id) }}">
+    data-href="{{ route('admin.bahan-baku.show', $b->id) }}">
                         
                         <td class="px-6 py-4">
-                            @if($b->foto)
+                            @if($b->foto && \Storage::disk('public')->exists($b->foto))
                                 <img src="{{ asset('storage/' . $b->foto) }}" alt="Foto {{ $b->nama_material }}" class="w-12 h-12 rounded-lg object-cover border border-[#2D3139]">
                             @else
-                                <div class="w-12 h-12 rounded-lg bg-[#2D3139] flex items-center justify-center border border-gray-700/50">
-                                    <i class="fa-solid fa-image text-gray-500 text-sm"></i>
+                                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-[#FD730D] to-orange-700 flex items-center justify-center border border-[#2D3139]">
+                                    <i class="fa-solid fa-box text-white text-sm"></i>
                                 </div>
                             @endif
                         </td>
@@ -238,7 +238,7 @@
         </div>
         
         <div class="px-6 py-4 border-t border-[#2D3139] bg-[#1A1C24] text-xs text-gray-500">
-            {{ $bahans->links() }}
+            {{ $bahanBakus->links() }}
         </div>
     </div>
 </div>

@@ -23,5 +23,8 @@ class DatabaseSeeder extends Seeder
         $this->call(ProdukBaruBOMSeeder::class);
 
         $this->call(UserSeeder::class);
+
+        // Tambahkan testimonial untuk produk e-commerce
+        $this->call(TestimonialSeeder::class);
     }
 }

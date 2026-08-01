@@ -141,7 +141,7 @@
                                  class="absolute right-0 mt-2 w-56 bg-[#1C222D] border border-gray-700 rounded-xl shadow-xl shadow-black/50 z-20 overflow-hidden"
                                  style="display: none;">
 
-                                <a href="{{ route('admin.operator.edit', $op->id) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition border-b border-gray-800/50">
+                                <a href="{{ route('operator.edit', $op->id) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition border-b border-gray-800/50">
                                     <i class="fa-solid fa-pen text-blue-400 text-xs"></i> Edit User
                                 </a>
 
@@ -149,7 +149,7 @@
                                     {{-- AKUN BELUM VERIFIKASI: menu terbatas --}}
 
                                     {{-- Kirim Ulang Verifikasi --}}
-                                    <form action="{{ route('admin.operator.resend-verification', $op->id) }}" method="POST" class="block w-full" id="form-kirim-verif-{{ $op->id }}">
+                                    <form action="{{ route('operator.resend-verification', $op->id) }}" method="POST" class="block w-full" id="form-kirim-verif-{{ $op->id }}">
                                         @csrf
                                         <button type="button" onclick="swalConfirm({title: 'Kirim Ulang Verifikasi?', text: 'Email verifikasi akan dikirim ulang ke {{ $op->email }}. Pastikan email aktif dan benar.', icon: 'question', confirmText: 'Ya, Kirim', onConfirm: () => document.getElementById('form-kirim-verif-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-purple-400 hover:bg-purple-900/20 hover:text-purple-300 transition w-full text-left border-b border-gray-800/50">
                                             <i class="fa-solid fa-envelope text-xs"></i> Kirim Ulang Verifikasi Email
@@ -161,14 +161,14 @@
 
                                     {{-- Promote/Demote --}}
                                     @if(!$isKepalaGudang)
-                                    <form action="{{ route('admin.operator.toggle-role', $op->id) }}" method="POST" class="block w-full" id="form-promote-{{ $op->id }}">
+                                    <form action="{{ route('operator.toggle-active', $op->id) }}" method="POST" class="block w-full" id="form-promote-{{ $op->id }}">
                                         @csrf @method('PATCH')
                                         <button type="button" onclick="swalConfirm({title: 'Angkat jadi Kepala Gudang?', text: '{{ $op->name }} akan mendapatkan akses login & hak semi-penuh. Akun akan otomatis diaktifkan.', icon: 'question', confirmText: 'Ya, Angkat', onConfirm: () => document.getElementById('form-promote-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-emerald-400 hover:bg-emerald-900/20 hover:text-emerald-300 transition w-full text-left border-b border-gray-800/50">
                                             <i class="fa-solid fa-arrow-up text-xs"></i> Angkat jadi Kepala Gudang
                                         </button>
                                     </form>
                                     @else
-                                    <form action="{{ route('admin.operator.toggle-role', $op->id) }}" method="POST" class="block w-full" id="form-demote-{{ $op->id }}">
+                                    <form action="{{ route('operator.toggle-active', $op->id) }}" method="POST" class="block w-full" id="form-demote-{{ $op->id }}">
                                         @csrf @method('PATCH')
                                         <button type="button" onclick="swalConfirm({title: 'Turunkan jadi Pekerja?', text: '{{ $op->name }} akan kehilangan akses login. Tapi MASIH tetap bisa terima notifikasi Gmail selama akun aktif.', icon: 'warning', confirmText: 'Ya, Turunkan', onConfirm: () => document.getElementById('form-demote-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-yellow-400 hover:bg-yellow-900/20 hover:text-yellow-300 transition w-full text-left border-b border-gray-800/50">
                                             <i class="fa-solid fa-arrow-down text-xs"></i> Turunkan jadi Pekerja
@@ -177,14 +177,14 @@
                                     @endif
 
                                     @if($isActive)
-                                    <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full" id="form-nonaktif-{{ $op->id }}">
+                                    <form action="{{ route('operator.toggle-active', $op->id) }}" method="POST" class="block w-full" id="form-nonaktif-{{ $op->id }}">
                                         @csrf @method('PATCH')
                                         <button type="button" onclick="swalConfirm({title: 'Nonaktifkan Akun?', text: 'Akun {{ $op->name }} akan dinonaktifkan. Tidak akan terima notifikasi Gmail lagi.', icon: 'warning', confirmText: 'Ya, Nonaktifkan', onConfirm: () => document.getElementById('form-nonaktif-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-orange-400 hover:bg-orange-900/20 hover:text-orange-300 transition w-full text-left border-b border-gray-800/50">
                                             <i class="fa-solid fa-ban text-xs"></i> Nonaktifkan Akun
                                         </button>
                                     </form>
                                     @else
-                                    <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="block w-full" id="form-aktif-{{ $op->id }}">
+                                    <form action="{{ route('operator.toggle-active', $op->id) }}" method="POST" class="block w-full" id="form-aktif-{{ $op->id }}">
                                         @csrf @method('PATCH')
                                         <button type="button" onclick="swalConfirm({title: 'Aktifkan Akun?', text: 'Akun {{ $op->name }} akan diaktifkan kembali. Notifikasi Gmail akan kembali dikirim jika email sudah terverifikasi.', icon: 'question', confirmText: 'Ya, Aktifkan', onConfirm: () => document.getElementById('form-aktif-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-green-400 hover:bg-green-900/20 hover:text-green-300 transition w-full text-left border-b border-gray-800/50">
                                             <i class="fa-solid fa-check-circle text-xs"></i> Aktifkan Akun
@@ -193,7 +193,7 @@
                                     @endif
                                 @endif
 
-                                <form action="{{ route('admin.pekerja-master.destroy', $op->id) }}" method="POST" class="block w-full" id="form-hapus-{{ $op->id }}">
+                                <form action="{{ route('pekerja-master.destroy', $op->id) }}" method="POST" class="block w-full" id="form-hapus-{{ $op->id }}">
                                     @csrf @method('DELETE')
                                     <button type="button" onclick="swalConfirm({title: 'Hapus Operator?', text: 'Data {{ $op->name }} tidak bisa dikembalikan!', icon: 'error', confirmText: 'Ya, Hapus', onConfirm: () => document.getElementById('form-hapus-{{ $op->id }}').submit()})" class="flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition w-full text-left">
                                         <i class="fa-solid fa-trash text-xs"></i> Hapus User
@@ -283,19 +283,19 @@
                     {{-- ACTION BUTTONS --}}
                     <div class="flex gap-3">
                         @if($isActive)
-                            <a href="{{ route('admin.operator.edit', $op->id) }}"
+                            <a href="{{ route('operator.edit', $op->id) }}"
                                class="flex-1 h-9 bg-[#1A1D29] hover:bg-[#252836] border border-white/5 rounded-lg flex items-center justify-center text-gray-300 text-xs font-semibold transition-colors"
                                title="Edit akun operator">
                                 <i class="fa-solid fa-pen mr-1.5 text-[10px]"></i> Edit Akun
                             </a>
-                            <a href="{{ route('admin.pekerja-master.kinerja', $op->id) }}"
+                            <a href="{{ route('pekerja-master.kinerja', $op->id) }}"
                                class="flex-1 h-9 bg-[#1A1D29] hover:bg-[#252836] border border-white/5 rounded-lg text-white text-xs font-semibold flex items-center justify-center transition-colors"
                                title="Lihat detail kinerja operator">
                                 <i class="fa-solid fa-chart-simple mr-1.5 text-[10px]"></i> Lihat Kinerja
                             </a>
                         @elseif($isVerified)
                             {{-- AKUN SUDAH VERIF TAPI NONAKTIF: tampilkan tombol Aktifkan --}}
-                            <form action="{{ route('admin.operator.toggle-status', $op->id) }}" method="POST" class="w-full" id="form-aktifkan-{{ $op->id }}">
+                            <form action="{{ route('operator.toggle-active', $op->id) }}" method="POST" class="w-full" id="form-aktifkan-{{ $op->id }}">
                                 @csrf @method('PATCH')
                                 <button type="button" onclick="swalConfirm({title: 'Aktifkan Kembali?', text: 'Akun {{ $op->name }} akan diaktifkan kembali. Notifikasi Gmail akan kembali dikirim.', icon: 'question', confirmText: 'Ya, Aktifkan', onConfirm: () => document.getElementById('form-aktifkan-{{ $op->id }}').submit()})"
                                         class="w-full h-9 bg-[#1A1D29] hover:bg-[#252836] border border-white/5 rounded-lg text-white text-xs font-semibold flex items-center justify-center transition-colors">
@@ -352,7 +352,7 @@
             <button onclick="closeModal('modalTambahOperator')" class="text-gray-500 hover:text-white transition"><i class="fa-solid fa-xmark text-lg"></i></button>
         </div>
 
-        <form action="{{ route('admin.pekerja-master.store') }}" method="POST" class="space-y-4">
+        <form action="{{ route('pekerja-master.store') }}" method="POST" class="space-y-4">
             @csrf
 
             {{-- Nama --}}

@@ -155,11 +155,95 @@
                     <div class="text-center py-10 text-gray-500 text-xs italic">Belum ada aktivitas produksi.</div>
                 @endforelse
                 
-                <a href="{{ route('admin.produksi.create') }}" class="w-full flex items-center justify-center gap-2 bg-[#FD730D] hover:bg-[#E6670B] text-white font-bold text-xs py-4 rounded-xl transition mt-4 active:scale-95 shadow-lg shadow-orange-950/20">
+                <a href="{{ route('produksi.create') }}" class="w-full flex items-center justify-center gap-2 bg-[#FD730D] hover:bg-[#E6670B] text-white font-bold text-xs py-4 rounded-xl transition mt-4 active:scale-95 shadow-lg shadow-orange-950/20">
                     <i class="fa-solid fa-plus text-xs"></i> BUAT SPK BARU
                 </a>
             </div>
         </div>
+    </div>
+
+    {{-- E-COMMERCE: PESANAN BARU MASUK --}}
+    @php
+        $pendingOrders = \App\Models\Order::where('status', 'pending')->latest()->limit(5)->get();
+        $pendingCount = \App\Models\Order::where('status', 'pending')->count();
+        $totalRevenue = \App\Models\Order::where('status', '!=', 'cancelled')->sum('total_amount');
+        $totalOrders = \App\Models\Order::count();
+    @endphp
+    <div class="bg-[#1A1C24] border border-[#2D3139] rounded-2xl p-6 shadow-xl">
+        <h3 class="text-white font-bold mb-1 flex items-center gap-2 text-sm">
+            <span class="w-2 h-2 bg-[#FF6B00] rounded-full animate-pulse"></span> E-Commerce: Pesanan Baru Masuk
+        </h3>
+        <p class="text-xs text-gray-400 mb-4">Pesanan dari konsumen yang menunggu konfirmasi admin.</p>
+        
+        {{-- Summary Cards --}}
+        <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 text-center">
+                <p class="text-[10px] text-orange-400 font-bold uppercase">Pending</p>
+                <p class="text-lg font-extrabold text-orange-400">{{ $pendingCount }}</p>
+            </div>
+            <div class="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-center">
+                <p class="text-[10px] text-green-400 font-bold uppercase">Total Order</p>
+                <p class="text-lg font-extrabold text-green-400">{{ $totalOrders }}</p>
+            </div>
+            <div class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center">
+                <p class="text-[10px] text-blue-400 font-bold uppercase">Pendapatan</p>
+                <p class="text-sm font-extrabold text-blue-400">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</p>
+            </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-[10px] text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left py-2 px-3">No. Pesanan</th>
+                        <th class="text-left py-2 px-3">Pelanggan</th>
+                        <th class="text-right py-2 px-3">Total</th>
+                        <th class="text-center py-2 px-3">Status</th>
+                        <th class="text-center py-2 px-3">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#2D3139]">
+                    @forelse($pendingOrders as $order)
+                    <tr>
+                        <td class="py-3 px-3 whitespace-nowrap">
+                            <span class="text-white font-mono text-xs">{{ $order->order_number }}</span>
+                        </td>
+                        <td class="py-3 px-3 whitespace-nowrap">
+                            <div class="text-white font-medium">{{ $order->shipping_name }}</div>
+                            <div class="text-xs text-gray-500">{{ $order->shipping_phone ?? '-' }}</div>
+                        </td>
+                        <td class="py-3 px-3 text-right whitespace-nowrap">
+                            <span class="text-green-400 font-bold">Rp {{ number_format($order->total_amount, 0, ',', '.') }}</span>
+                        </td>
+                        <td class="py-3 px-3 text-center">
+                            <span class="px-2 py-1 rounded-full text-[10px] font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">PENDING</span>
+                        </td>
+                        <td class="py-3 px-3 text-center">
+                            <a href="{{ route('admin.penjualan.show', $order->id) }}" class="text-blue-400 hover:text-blue-300 text-xs font-bold">
+                                <i class="fa-solid fa-eye"></i> Detail
+                            </a>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="fas fa-check-circle text-3xl text-emerald-500 mb-2"></i>
+                                <p class="font-semibold text-gray-300">Tidak ada pesanan pending.</p>
+                                <p class="text-xs text-gray-500 mt-1">Semua pesanan sudah diproses.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        
+        @if($pendingCount > 0)
+        <a href="{{ route('admin.penjualan.index', ['status' => 'pending']) }}" class="mt-4 w-full flex items-center justify-center gap-2 bg-[#FF6B00] hover:bg-[#E55B00] text-white font-bold text-xs py-3 rounded-xl transition shadow-lg">
+            <i class="fa-solid fa-store text-xs"></i> LIHAT SEMUA PESANAN PENDING ({{ $pendingCount }})
+        </a>
+        @endif
     </div>
 
     {{-- PENGADAAN BAHAN YANG PENDING --}}

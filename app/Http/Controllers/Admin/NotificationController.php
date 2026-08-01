@@ -74,11 +74,30 @@ class NotificationController extends Controller
     }
 
     /**
-     * BACA 1 NOTIFIKASI & REDIRECT (legacy - sekarang redirect ke detail)
+     * BACA 1 NOTIFIKASI & REDIRECT KE URL YANG DIDEFINISIKAN NOTIFIKASI
+     * Jika notifikasi memiliki 'url' di data, redirect ke sana.
+     * Jika tidak, tampilkan halaman detail notifikasi.
      */
     public function markAsReadAndRedirect($id)
     {
-        return $this->show($id);
+        $notification = Auth::user()
+            ->notifications()
+            ->where('id', $id)
+            ->first();
+
+        if (!$notification) {
+            return redirect()->route('admin.notifications.index')->with('error', 'Notifikasi tidak ditemukan.');
+        }
+
+        $notification->markAsRead();
+
+        // Jika notifikasi memiliki URL tujuan, redirect ke sana
+        if (isset($notification->data['url']) && !empty($notification->data['url'])) {
+            return redirect()->to($notification->data['url']);
+        }
+
+        // Jika tidak ada URL, tampilkan halaman detail notifikasi
+        return view('admin.notifications.show', compact('notification'));
     }
 
     /**

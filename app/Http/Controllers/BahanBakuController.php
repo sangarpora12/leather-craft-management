@@ -207,18 +207,18 @@ class BahanBakuController extends Controller
                     break;
                 case 'terbaru':
                 default:
-                    $q->orderByDesc('bahan_bakus.id');
+                    $q->orderByDesc('id');
                     break;
             }
         }, function ($q) {
             // Default sorting: terbaru
-            $q->orderByDesc('bahan_bakus.id');
+            $q->orderByDesc('id');
         });
     
-        $bahans = $query->paginate(15)->withQueryString();
+        $bahanBakus = $query->paginate(15)->withQueryString();
 
         // LOGIKA BARU: Set warna default jika perlu
-        $bahans->each(function ($bahan) {
+        $bahanBakus->each(function ($bahan) {
             // Ambil semua varian untuk kode_material ini
             $variants = BahanBaku::where('kode_material', $bahan->kode_material)->get();
             if ($variants->count() > 0) {
@@ -258,8 +258,18 @@ class BahanBakuController extends Controller
             $criticalQuery->where('stok', '<=', $batasStokGlobal);
         }
         $totalKritis = $criticalQuery->count();
+        
+        // Hitung Total SKU dari grup master (inventory + pelengkap)
+        $totalSKUInventory = BahanBaku::select('kode_material')->where('is_inventory', 1)->groupBy('kode_material')->get()->count();
+        $totalSKUPelengkap = BahanBaku::select('kode_material')->where('is_inventory', 0)->groupBy('kode_material')->get()->count();
+        $totalSKU = $totalSKUInventory + $totalSKUPelengkap;
     
-        return view('admin.bahan.index', compact('bahans', 'satuans', 'kategories', 'warnas', 'totalAsetBahan', 'totalKritis', 'batasStokGlobal'));
+        // Jika user adalah operator, tampilkan view operator
+        if (auth()->check() && auth()->user()->role === 'operator') {
+            return view('operator.bahan-baku.index', compact('bahanBakus', 'satuans', 'kategories', 'warnas', 'totalAsetBahan', 'totalKritis', 'batasStokGlobal', 'totalSKU'));
+        }
+    
+        return view('admin.bahan.index', compact('bahanBakus', 'satuans', 'kategories', 'warnas', 'totalAsetBahan', 'totalKritis', 'batasStokGlobal'));
     }
 
     public function search(Request $request)

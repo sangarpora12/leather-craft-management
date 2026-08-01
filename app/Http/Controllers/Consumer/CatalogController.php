@@ -24,6 +24,9 @@ class CatalogController extends Controller
             $query->where('kategori', 'like', '%' . $request->kategori . '%');
         }
 
+        // Filter produk yang stoknya habis (stok > 0)
+        $query->where('stok', '>', 0);
+
         // Sort
         if ($request->filled('sort')) {
             switch ($request->sort) {
@@ -56,6 +59,13 @@ class CatalogController extends Controller
     public function show($id)
     {
         $product = ProdukJadi::findOrFail($id);
+        
+        // Jika stok habis, redirect ke katalog dengan pesan error
+        if ($product->stok <= 0) {
+            return redirect()->route('consumer.catalog')
+                ->with('error', 'Maaf, produk ini sedang tidak tersedia.');
+        }
+        
         return view('consumer.catalog.show', compact('product'));
     }
 }

@@ -46,15 +46,46 @@
             </div>
         @endif
 
+        {{-- ====================== TAB NAVIGATION ====================== --}}
+        <div class="px-5 pt-4">
+            <div class="bg-[#1C222D] border border-white/5 rounded-2xl p-1.5 flex gap-1.5">
+                <button onclick="switchTab('pending')" id="tab-pending" class="tab-button flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-300 bg-amber-700 text-white">
+                    <div class="flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Belum Dikerjakan</span>
+                        <span class="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full">{{ $pendingTasks->count() }}</span>
+                    </div>
+                </button>
+                
+                <button onclick="switchTab('proses')" id="tab-proses" class="tab-button flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-300 bg-transparent text-gray-400 hover:text-gray-300">
+                    <div class="flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span>Di Proses</span>
+                        <span class="bg-white/10 text-gray-400 text-xs px-2 py-0.5 rounded-full">{{ $processTasks->count() }}</span>
+                    </div>
+                </button>
+                
+                <button onclick="switchTab('selesai')" id="tab-selesai" class="tab-button flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-300 bg-transparent text-gray-400 hover:text-gray-300">
+                    <div class="flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Selesai</span>
+                        <span class="bg-white/10 text-gray-400 text-xs px-2 py-0.5 rounded-full">{{ $doneTasks->count() }}</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        {{-- ====================== TAB CONTENT ====================== --}}
         <div class="px-5 pb-32 space-y-8">
-
-            {{-- ====================== PENDING ====================== --}}
-            <div>
-                <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-sm font-black tracking-widest text-white uppercase">Produk Belum Dikerjakan</h2>
-                    <span class="text-xs text-gray-400">{{ $pendingTasks->count() }} SPK</span>
-                </div>
-
+            
+            {{-- PENDING TAB --}}
+            <div id="content-pending" class="tab-content">
                 <div class="space-y-4">
                     @forelse($pendingTasks as $spk)
                         @include('operator.tugas.partials.spk-card', ['spk' => $spk])
@@ -66,13 +97,8 @@
                 </div>
             </div>
 
-            {{-- ====================== PROSES ====================== --}}
-            <div>
-                <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-sm font-black tracking-widest text-white uppercase">Produk Di Proses</h2>
-                    <span class="text-xs text-gray-400">{{ $processTasks->count() }} SPK</span>
-                </div>
-
+            {{-- PROSES TAB --}}
+            <div id="content-proses" class="tab-content hidden">
                 <div class="space-y-4">
                     @forelse($processTasks as $spk)
                         @include('operator.tugas.partials.spk-card', ['spk' => $spk])
@@ -84,13 +110,8 @@
                 </div>
             </div>
 
-            {{-- ====================== SELESAI ====================== --}}
-            <div>
-                <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-sm font-black tracking-widest text-white uppercase">Produk Selesai</h2>
-                    <span class="text-xs text-gray-400">{{ $doneTasks->count() }} SPK</span>
-                </div>
-
+            {{-- SELESAI TAB --}}
+            <div id="content-selesai" class="tab-content hidden">
                 <div class="space-y-4">
                     @forelse($doneTasks as $spk)
                         @include('operator.tugas.partials.spk-card', ['spk' => $spk])
@@ -143,7 +164,7 @@
                     }
                 });
     
-                fetch(`/operator/produksi/${id}/start`, {
+                fetch(`/operator/tugas/${id}/ambil`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -181,4 +202,57 @@
         });
     }
 </script>
-@endpush
+    @endpush
+
+    @push('scripts')
+    <script>
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Show selected tab content
+            const selectedContent = document.getElementById('content-' + tabName);
+            if (selectedContent) {
+                selectedContent.classList.remove('hidden');
+            }
+            
+            // Reset all tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('bg-amber-700', 'text-white');
+                button.classList.add('bg-transparent', 'text-gray-400');
+                
+                // Reset badge styles
+                const badge = button.querySelector('span:last-child');
+                if (badge) {
+                    badge.classList.remove('bg-white/20', 'text-white');
+                    badge.classList.add('bg-white/10', 'text-gray-400');
+                }
+            });
+            
+            // Activate selected tab button
+            const activeButton = document.getElementById('tab-' + tabName);
+            if (activeButton) {
+                activeButton.classList.remove('bg-transparent', 'text-gray-400');
+                activeButton.classList.add('bg-amber-700', 'text-white');
+                
+                // Activate badge
+                const activeBadge = activeButton.querySelector('span:last-child');
+                if (activeBadge) {
+                    activeBadge.classList.remove('bg-white/10', 'text-gray-400');
+                    activeBadge.classList.add('bg-white/20', 'text-white');
+                }
+            }
+            
+            // Store selected tab in localStorage
+            localStorage.setItem('selectedTugasTab', tabName);
+        }
+        
+        // Load saved tab on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTab = localStorage.getItem('selectedTugasTab') || 'pending';
+            switchTab(savedTab);
+        });
+    </script>
+    @endpush

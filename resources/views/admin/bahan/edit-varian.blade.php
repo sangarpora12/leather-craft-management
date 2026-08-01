@@ -25,7 +25,7 @@
         <!-- Header -->
         <div class="mb-6 pb-4 border-b border-white/10">
             <div class="flex items-center gap-3 mb-1">
-                <a href="{{ route('admin.bahan.show', $bahan->id) }}" class="p-2 hover:bg-white/5 rounded-xl transition">
+                <a href="{{ route('admin.bahan-baku.show', $bahan->id) }}" class="p-2 hover:bg-white/5 rounded-xl transition">
                     <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                     </svg>
@@ -47,7 +47,7 @@
             </div>
         @endif
 
-        <form action="{{ route('admin.bahan.update-varian', $bahan->id) }}" method="POST">
+        <form action="{{ route('admin.bahan-baku.update-varian', $bahan->id) }}" method="POST">
             @csrf
 
             <!-- Warna -->
@@ -87,7 +87,7 @@
 
             <!-- Tombol -->
             <div class="flex gap-4 pt-4 border-t border-white/10">
-                <a href="{{ route('admin.bahan.show', $bahan->id) }}"
+                <a href="{{ route('admin.bahan-baku.show', $bahan->id) }}"
                     class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl transition text-center text-sm">
                     Batal
                 </a>

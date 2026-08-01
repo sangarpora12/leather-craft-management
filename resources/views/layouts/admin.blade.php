@@ -125,16 +125,13 @@
                 {{-- 2. DATA MASTER --}}
                 <div class="mb-6">
                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Data Master</p>
-                    <a href="{{ route('admin.bahan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.bahan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                    <a href="{{ route('admin.bahan-baku.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.bahan-baku.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-box-open w-5"></i> Bahan Baku
-                    </a>
-                    <a href="{{ route('admin.suppliers.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.suppliers.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
-                        <i class="fa-solid fa-truck-field w-5"></i> Supplier
                     </a>
                     <a href="{{ route('admin.produk-jadi.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.produk-jadi.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-shirt w-5"></i> Produk Jadi
                     </a>
-                    <a href="{{ route('admin.pekerja-master.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.pekerja-master.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                    <a href="{{ route('pekerja-master.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('pekerja-master.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-users w-5"></i> Manajemen Operator
                     </a>
                 </div>
@@ -142,32 +139,37 @@
                 {{-- 3. PRODUKSI --}}
                 <div class="mb-6">
                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Manajemen Produksi</p>
-                    <a href="{{ route('admin.bom.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.bom.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                    <a href="{{ route('bom.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('bom.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-scroll w-5"></i> Bill of Materials (BOM)
                     </a>
-                    <a href="{{ route('admin.produksi.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.produksi.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                    <a href="{{ route('produksi.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('produksi.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-clipboard-list w-5"></i> Perintah Produksi (SPK)
-                    </a>
-                    <a href="{{ route('admin.pakai-produk.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.pakai-produk.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
-                        <i class="fa-solid fa-dolly w-5"></i> Produk Keluar (Jual)
                     </a>
                 </div>
 
                  {{-- 4. LOGISTIK --}}
                  <div class="mb-6">
                      <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Logistik</p>
-                      <a href="{{ route('admin.pengadaan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.pengadaan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
-                          <i class="fa-solid fa-cart-shopping w-5"></i> Pengadaan Material
-                      </a>
+                       <a href="{{ route('pengadaan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('pengadaan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                           <i class="fa-solid fa-cart-shopping w-5"></i> Pengadaan Material
+                       </a>
+                  </div>
+
+                 {{-- 4b. E-COMMERCE --}}
+                 <div class="mb-6">
+                     <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">E-Commerce</p>
+                     <a href="{{ route('admin.penjualan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.penjualan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                         <i class="fa-solid fa-store w-5"></i> Detail Penjualan
+                     </a>
                  </div>
 
                  {{-- 5. PENGATURAN & LAPORAN --}}
                  <div class="mb-4">
                      <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Laporan & Sistem</p>
-                     <a href="{{ route('admin.laporan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.laporan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                     <a href="{{ route('laporan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('laporan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                         <i class="fa-solid fa-file-invoice w-5"></i> Laporan
                     </a>
-                     <a href="{{ route('admin.pengaturan.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('admin.pengaturan.*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
+                     <a href="{{ route('pengaturan') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 {{ request()->routeIs('pengaturan*') ? 'bg-white/10 text-white border-l-4 border-[#FF6B00]' : 'text-[#94A3B8] hover:bg-[#1F2533] hover:text-white border-l-4 border-transparent' }}">
                          <i class="fa-solid fa-gear w-5"></i> Pengaturan Sistem
                      </a>
                  </div>
@@ -228,7 +230,7 @@
                                 'admin.bom.resep' => 'Resep Produk',
                                 'admin.produksi.index' => 'Perintah Produksi (SPK)',
                                 'admin.produksi.perintah' => 'Kirim Perintah Produksi',
-                                'admin.produksi.create' => 'Kirim Perintah Produksi',
+                                'produksi.create' => 'Kirim Perintah Produksi',
                                 'admin.produksi.show' => 'Detail Produksi',
                                 'admin.produksi.edit' => 'Edit Produksi',
                                 'admin.produksi.review' => 'Review Produksi',
@@ -244,6 +246,8 @@
                                 'admin.pengaturan.index' => 'Pengaturan Sistem',
                                 'admin.pengaturan.notifikasi' => 'Pengaturan Notifikasi',
                                 'admin.pengaturan.danger-zone' => 'Danger Zone',
+                                'admin.penjualan.index' => 'Detail Penjualan',
+                                'admin.penjualan.show' => 'Detail Pesanan',
                                 'admin.profile' => 'Profil Admin',
                                 'admin.hak-akses.index' => 'Hak Akses',
                                 'admin.log-aktivitas.index' => 'Log Aktivitas',
@@ -262,10 +266,14 @@
                     <div x-data="{ notifOpen: false }" class="relative">
                         <button @click="notifOpen = !notifOpen" class="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:bg-[#20232A] hover:text-white transition relative">
                             <i class="fa-solid fa-bell text-xl"></i>
-                            @php $unreadCount = auth()->user()->unreadNotifications->count(); @endphp
-                            @if($unreadCount > 0)
+                            @php
+                                $unreadCount = auth()->user()->unreadNotifications->count();
+                                $pendingOrdersCount = \App\Models\Order::where('status', 'pending')->count();
+                                $totalNotifBadge = $unreadCount + $pendingOrdersCount;
+                            @endphp
+                            @if($totalNotifBadge > 0)
                                 <span class="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#FF5252] text-[10px] font-black text-white border-2 border-[#0D1117] shadow-lg">
-                                    {{ $unreadCount }}
+                                    {{ $totalNotifBadge }}
                                 </span>
                                 <span class="absolute top-0 right-0 flex h-5 w-5 animate-ping rounded-full bg-[#FF5252] opacity-75"></span>
                             @endif
@@ -284,14 +292,28 @@
                                     </button>
                                 </div>
                             </div>
-                            <form id="form-mark-all" action="{{ route('admin.notifications.mark-all') }}" method="POST" class="hidden">@csrf</form>
-                            <form id="form-delete-all" action="{{ route('admin.notifications.delete-all') }}" method="POST" class="hidden">@csrf @method('DELETE')</form>
+                            <form id="form-mark-all" action="{{ route('notifications.markAllRead') }}" method="POST" class="hidden">@csrf</form>
+                            
+                            @if($pendingOrdersCount > 0)
+                            <div class="bg-yellow-900/20 border-b border-yellow-700/30 p-3">
+                                <a href="{{ route('admin.penjualan.index', ['status' => 'pending']) }}" class="flex items-center gap-3 hover:bg-yellow-900/30 rounded-lg p-2 transition">
+                                    <div class="w-8 h-8 rounded-full bg-yellow-600/20 flex items-center justify-center">
+                                        <i class="fa-solid fa-clock text-yellow-400 text-sm"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-xs font-bold text-yellow-300">{{ $pendingOrdersCount }} Pesanan Pending</p>
+                                        <p class="text-[10px] text-gray-400">Klik untuk melihat pesanan menunggu</p>
+                                    </div>
+                                </a>
+                            </div>
+                            @endif
+                            
                             <div class="max-h-72 overflow-y-auto custom-scrollbar">
                                 @php
                                     $semuaNotif = auth()->user()->notifications()->take(15)->get();
                                 @endphp
                                 @forelse($semuaNotif as $n)
-                                <a href="{{ route('admin.notifications.read', $n->id) }}" class="block px-4 py-3 border-b border-[#2D3139]/50 hover:bg-[#20232A] transition {{ is_null($n->read_at) ? 'bg-blue-900/10 border-l-2 border-l-blue-500' : '' }}">
+                                <a href="{{ route('notifications.read', $n->id) }}" class="block px-4 py-3 border-b border-[#2D3139]/50 hover:bg-[#20232A] transition {{ is_null($n->read_at) ? 'bg-blue-900/10 border-l-2 border-l-blue-500' : '' }}">
                                     <div class="flex items-start gap-2">
                                         <div class="flex-1 min-w-0">
                                             <p class="text-xs font-bold text-white truncate">{{ $n->data['judul'] ?? 'Notifikasi' }}</p>
@@ -299,7 +321,7 @@
                                             <p class="text-[9px] text-gray-600 mt-1">{{ $n->created_at->diffForHumans() }}</p>
                                         </div>
                                         <div class="flex-shrink-0 ml-2">
-                                            <form action="{{ route('admin.notifications.destroy', $n->id) }}" method="POST" onclick="event.stopPropagation();">
+                                            <form action="{{ route('notifications.markAllRead') }}" method="POST" onclick="event.stopPropagation();">
                                                 @csrf @method('DELETE')
                                                 <button class="text-[9px] px-1.5 py-0.5 bg-gray-700 text-gray-400 rounded hover:bg-red-600/30 hover:text-red-400">✕</button>
                                             </form>
@@ -313,7 +335,7 @@
                                 </div>
                                 @endforelse
                             </div>
-                            <a href="{{ route('admin.notifications.index') }}" class="block text-center text-[11px] py-3 bg-[#20232A] text-gray-400 hover:text-white hover:bg-[#2A3140] transition">
+                            <a href="{{ route('notifications.index') }}" class="block text-center text-[11px] py-3 bg-[#20232A] text-gray-400 hover:text-white hover:bg-[#2A3140] transition">
                                 Lihat Semua Notifikasi →
                             </a>
                         </div>
@@ -325,7 +347,7 @@
                     </button>
 
                     {{-- Profil Link (langsung ke halaman profil) --}}
-                    <a href="{{ route('admin.profile') }}" class="flex items-center gap-3 pl-4 border-l border-[#2D3139] hover:bg-[#20232A] rounded-xl px-3 transition">
+                    <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 pl-4 border-l border-[#2D3139] hover:bg-[#20232A] rounded-xl px-3 transition">
                         @php $userFresh = auth()->user()->fresh(); @endphp
                         <div class="hidden sm:flex flex-col items-end text-right">
                             <span class="text-sm font-bold text-white leading-none">{{ $userFresh->name }}</span>
@@ -333,7 +355,7 @@
                         </div>
                         
                         <div class="w-10 h-10 rounded-full bg-[#20232A] border-2 border-[#2D3139] flex items-center justify-center overflow-hidden">
-                            @if($userFresh->foto_profil)
+                            @if($userFresh->foto_profil && \Storage::disk('public')->exists($userFresh->foto_profil))
                                 <img src="{{ asset('storage/' . $userFresh->foto_profil) }}?v={{ time() }}" class="w-full h-full object-cover">
                             @else
                                 <span class="text-[#00BFA5] font-black uppercase text-sm">

@@ -10,11 +10,42 @@ use Illuminate\Support\Facades\Auth;
 
 class CartController extends Controller
 {
-    public function index()
+    private function getCartIdentifier()
     {
-        $cartItems = Cart::where('user_id', Auth::id())
+        if (Auth::check()) {
+            return ['user_id' => Auth::id(), 'session_id' => null];
+        }
+        return ['user_id' => null, 'session_id' => session()->getId()];
+    }
+
+    private function getCartItems()
+    {
+        $id = $this->getCartIdentifier();
+        return Cart::where('user_id', $id['user_id'])
+            ->where('session_id', $id['session_id'])
             ->with('produkJadi')
             ->get();
+    }
+
+    public function index()
+    {
+        $cartItems = $this->getCartItems();
+
+        $cartItems = $cartItems->filter(function ($item) {
+            return $item->produkJadi->stok > 0;
+        });
+
+        $id = $this->getCartIdentifier();
+        $outOfStockIds = Cart::where('user_id', $id['user_id'])
+            ->where('session_id', $id['session_id'])
+            ->whereHas('produkJadi', function ($query) {
+                $query->where('stok', '<=', 0);
+            })
+            ->pluck('id');
+
+        if ($outOfStockIds->isNotEmpty()) {
+            Cart::whereIn('id', $outOfStockIds)->delete();
+        }
 
         $total = $cartItems->sum(function ($item) {
             return $item->produkJadi->harga_jual * $item->quantity;
@@ -35,7 +66,10 @@ class CartController extends Controller
             return back()->withErrors(['quantity' => 'Stok tidak mencukupi.']);
         }
 
-        $cartItem = Cart::where('user_id', Auth::id())
+        $id = $this->getCartIdentifier();
+
+        $cartItem = Cart::where('user_id', $id['user_id'])
+            ->where('session_id', $id['session_id'])
             ->where('produk_jadi_id', $produkJadiId)
             ->first();
 
@@ -47,7 +81,8 @@ class CartController extends Controller
             $cartItem->update(['quantity' => $newQuantity]);
         } else {
             Cart::create([
-                'user_id' => Auth::id(),
+                'user_id' => $id['user_id'],
+                'session_id' => $id['session_id'],
                 'produk_jadi_id' => $produkJadiId,
                 'quantity' => $request->quantity,
             ]);
@@ -68,11 +103,14 @@ class CartController extends Controller
             return back()->withErrors(['quantity' => 'Stok tidak mencukupi.']);
         }
 
-        // Clear existing cart, add this product, redirect to checkout
-        Cart::where('user_id', Auth::id())->delete();
+        $id = $this->getCartIdentifier();
+        Cart::where('user_id', $id['user_id'])
+            ->where('session_id', $id['session_id'])
+            ->delete();
 
         Cart::create([
-            'user_id' => Auth::id(),
+            'user_id' => $id['user_id'],
+            'session_id' => $id['session_id'],
             'produk_jadi_id' => $produkJadiId,
             'quantity' => $request->quantity,
         ]);
@@ -86,7 +124,10 @@ class CartController extends Controller
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $cartItem = Cart::where('user_id', Auth::id())->findOrFail($id);
+        $identifier = $this->getCartIdentifier();
+        $cartItem = Cart::where('user_id', $identifier['user_id'])
+            ->where('session_id', $identifier['session_id'])
+            ->findOrFail($id);
         $product = $cartItem->produkJadi;
 
         if ($request->quantity > $product->stok) {
@@ -100,7 +141,10 @@ class CartController extends Controller
 
     public function remove($id)
     {
-        $cartItem = Cart::where('user_id', Auth::id())->findOrFail($id);
+        $identifier = $this->getCartIdentifier();
+        $cartItem = Cart::where('user_id', $identifier['user_id'])
+            ->where('session_id', $identifier['session_id'])
+            ->findOrFail($id);
         $cartItem->delete();
 
         return back()->with('success', 'Produk berhasil dihapus dari keranjang.');
@@ -108,7 +152,10 @@ class CartController extends Controller
 
     public function clear()
     {
-        Cart::where('user_id', Auth::id())->delete();
+        $identifier = $this->getCartIdentifier();
+        Cart::where('user_id', $identifier['user_id'])
+            ->where('session_id', $identifier['session_id'])
+            ->delete();
 
         return back()->with('success', 'Keranjang berhasil dikosongkan.');
     }

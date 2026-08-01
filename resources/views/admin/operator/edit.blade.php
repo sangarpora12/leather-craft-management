@@ -11,7 +11,7 @@
             <p class="text-xs text-gray-400">Perbarui informasi akun operator.</p>
         </div>
 
-        <form action="{{ route('admin.operator.update', $operator->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+        <form action="{{ route('operator.update', $operator->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
             @csrf
             @method('PUT')
 
@@ -69,7 +69,7 @@
                 <button type="submit" class="bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold py-2.5 px-6 rounded-xl transition shadow-lg shadow-orange-900/20">
                     Simpan Perubahan
                 </button>
-                <a href="{{ route('admin.pekerja-master.index') }}" class="bg-gray-600 hover:bg-gray-500 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition">
+                <a href="{{ route('pekerja-master.index') }}" class="bg-gray-600 hover:bg-gray-500 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition">
                     Batal
                 </a>
             </div>

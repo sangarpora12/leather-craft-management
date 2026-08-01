@@ -17,7 +17,7 @@ Route::get('/kategoris', [KategoriController::class, 'index']);
 
 // Bahan API Routes
 Route::prefix('bahan')->group(function () {
-    Route::get('search', [BahanController::class, 'search']);
+    Route::get('search', [BahanController::class, 'search'])->name('api.bahan.search');
     Route::post('generate-kode-bahan', [BahanController::class, 'generateKodeBahan']);
     Route::post('manual', [BahanController::class, 'manualInput']);
 });

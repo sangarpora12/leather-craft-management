@@ -42,7 +42,7 @@
     <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-6 shadow-xl">
         <h2 class="text-xl font-bold text-white mb-6">Tambah Material Baru</h2>
 
-        <form action="{{ route('admin.bahan.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+        <form action="{{ route('admin.bahan-baku.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
             @csrf
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -128,7 +128,7 @@
             </div>
 
             <div class="flex gap-4 pt-6">
-                <a href="{{ route('admin.bahan.index') }}"
+                <a href="{{ route('admin.bahan-baku.index') }}"
                    class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg font-bold text-center transition">
                     Batal
                 </a>

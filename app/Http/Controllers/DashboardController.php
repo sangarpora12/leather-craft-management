@@ -93,6 +93,11 @@ class DashboardController extends Controller
      */
     public function index()
     {
+        // Jika user adalah operator, redirect ke dashboard operator
+        if (auth()->check() && auth()->user()->role === 'operator') {
+            return $this->operatorDashboard();
+        }
+
         // 1. Ambil Pengaturan Stok Minimum Global dari nama_pengaturan 'stok_minimum_bahan'
         $globalMinStok = Pengaturan::where('nama_pengaturan', 'stok_minimum_bahan')->value('nilai') ?? 0;
 

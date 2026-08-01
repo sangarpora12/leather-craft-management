@@ -26,9 +26,9 @@
                 <span class="text-gray-400 text-sm font-medium min-w-[40px]">Stok:</span>
                 <select onchange="window.location.href = this.value" class="bg-[#2A3140] text-white px-4 py-2 rounded-lg border-0 outline-none cursor-pointer text-sm min-w-[150px]">
                     <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('status_stok', 'page'))) }}" {{ !request('status_stok') ? 'selected' : '' }}>Semua</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->query(), ['status_stok' => 'tersedia', 'page' => 1])) }}" {{ request('status_stok') == 'tersedia' ? 'selected' : '' }}>Stok Tersedia</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->query(), ['status_stok' => 'menipis', 'page' => 1])) }}" {{ request('status_stok') == 'menipis' ? 'selected' : '' }}>Stok Menipis</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->query(), ['status_stok' => 'habis', 'page' => 1])) }}" {{ request('status_stok') == 'habis' ? 'selected' : '' }}>Stok Habis</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('status_stok', 'page'), ['status_stok' => 'tersedia', 'page' => 1])) }}" {{ request('status_stok') == 'tersedia' ? 'selected' : '' }}>Stok Tersedia</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('status_stok', 'page'), ['status_stok' => 'menipis', 'page' => 1])) }}" {{ request('status_stok') == 'menipis' ? 'selected' : '' }}>Stok Menipis</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('status_stok', 'page'), ['status_stok' => 'habis', 'page' => 1])) }}" {{ request('status_stok') == 'habis' ? 'selected' : '' }}>Stok Habis</option>
                 </select>
             </div>
 
@@ -38,7 +38,8 @@
                 <select onchange="window.location.href = this.value" class="bg-[#2A3140] text-white px-4 py-2 rounded-lg border-0 outline-none cursor-pointer text-sm min-w-[150px]">
                     <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('kategori', 'page'))) }}" {{ !request('kategori') ? 'selected' : '' }}>Semua Kategori</option>
                     @foreach($allCategories as $kategori)
-                        <option value="{{ route('admin.produk-jadi.index', array_merge(request()->query(), ['kategori' => $kategori, 'page' => 1])) }}" {{ request('kategori') == $kategori ? 'selected' : '' }}>{{ $kategori }}</option>
+                        @php $kategoriStr = is_array($kategori) ? implode(', ', $kategori) : $kategori; @endphp
+                        <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('kategori', 'page'), ['kategori' => $kategoriStr, 'page' => 1])) }}" {{ request('kategori') == $kategoriStr ? 'selected' : '' }}>{{ $kategoriStr }}</option>
                     @endforeach
                 </select>
             </div>
@@ -50,10 +51,10 @@
                 <span class="text-gray-400 text-sm font-medium min-w-[60px]">Urutkan:</span>
                 <select onchange="window.location.href = this.value" class="bg-[#2A3140] text-white px-4 py-2 rounded-lg border-0 outline-none cursor-pointer text-sm min-w-[150px]">
                     <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('sort_by', 'page'))) }}" {{ !request('sort_by') ? 'selected' : '' }}>Default</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->query(), ['sort_by' => 'harga_termahal', 'page' => 1])) }}" {{ request('sort_by') == 'harga_termahal' ? 'selected' : '' }}>Termahal</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->query(), ['sort_by' => 'harga_termurah', 'page' => 1])) }}" {{ request('sort_by') == 'harga_termurah' ? 'selected' : '' }}>Termurah</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->query(), ['sort_by' => 'stok_terbanyak', 'page' => 1])) }}" {{ request('sort_by') == 'stok_terbanyak' ? 'selected' : '' }}>Stok Terbanyak</option>
-                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->query(), ['sort_by' => 'stok_terkecil', 'page' => 1])) }}" {{ request('sort_by') == 'stok_terkecil' ? 'selected' : '' }}>Stok Terkecil</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('sort_by', 'page'), ['sort_by' => 'harga_termahal', 'page' => 1])) }}" {{ request('sort_by') == 'harga_termahal' ? 'selected' : '' }}>Termahal</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('sort_by', 'page'), ['sort_by' => 'harga_termurah', 'page' => 1])) }}" {{ request('sort_by') == 'harga_termurah' ? 'selected' : '' }}>Termurah</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('sort_by', 'page'), ['sort_by' => 'stok_terbanyak', 'page' => 1])) }}" {{ request('sort_by') == 'stok_terbanyak' ? 'selected' : '' }}>Stok Terbanyak</option>
+                    <option value="{{ route('admin.produk-jadi.index', array_merge(request()->except('sort_by', 'page'), ['sort_by' => 'stok_terkecil', 'page' => 1])) }}" {{ request('sort_by') == 'stok_terkecil' ? 'selected' : '' }}>Stok Terkecil</option>
                 </select>
             </div>
 

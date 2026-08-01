@@ -66,6 +66,14 @@ class ProdukJadi extends Model
     }
 
     /**
+     * Relasi ke Testimonials (ulasan pelanggan)
+     */
+    public function testimonials(): HasMany
+    {
+        return $this->hasMany(Testimonial::class, 'produk_jadi_id');
+    }
+
+    /**
      * Relasi ke RiwayatPenguranganStok
      */
     public function riwayatPenguranganStok(): HasMany

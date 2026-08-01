@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="max-w-6xl mx-auto">
-{{-- JUDUL HALAMAN --}}
+ {{-- JUDUL HALAMAN --}}
     {{-- Header --}}
     <div class="mb-6">
 
@@ -18,7 +18,7 @@
         Edit Data
     </a>
 
-    <a href="{{ route('admin.bom.edit', $product->id) }}"
+    <a href="{{ route('bom.edit', $product->id) }}"
        class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition">
         Kelola Resep (BOM)
     </a>
@@ -184,6 +184,30 @@
                             @endif
                         </div>
                     </div>
+
+                    {{-- FORM KELOLA STOK --}}
+                    <div class="bg-[#111] rounded-lg p-4 border border-white/5">
+                        <h4 class="text-xs text-gray-500 uppercase font-bold mb-3">Kelola Stok Produk</h4>
+                        <form action="{{ route('produk-jadi.adjust-stock', $product->id) }}" method="POST">
+                            @csrf
+                            <div class="space-y-3">
+                                <div class="flex gap-2">
+                                    <select name="type" class="bg-[#1A1A1A] border border-white/10 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500/50">
+                                        <option value="add">Tambah Stok</option>
+                                        <option value="reduce">Kurangi Stok</option>
+                                    </select>
+                                    <input type="number" name="amount" min="1" required placeholder="Jumlah" 
+                                        class="flex-1 bg-[#1A1A1A] border border-white/10 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500/50">
+                                </div>
+                                <input type="text" name="alasan" placeholder="Alasan (opsional)" 
+                                    class="w-full bg-[#1A1A1A] border border-white/10 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500/50">
+                                <button type="submit" class="w-full bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2.5 rounded-lg transition">
+                                    <i class="fa-solid fa-boxes-stacked mr-1"></i> Simpan Perubahan Stok
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
                     <div>
                         <h4 class="text-xs text-gray-500 uppercase font-bold mb-2">Dimensi Pola</h4>
                         @if($product->panjang || $product->lebar || $product->tinggi)

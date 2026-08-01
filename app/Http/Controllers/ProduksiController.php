@@ -66,6 +66,42 @@ class ProduksiController extends Controller
         $produksis = $query->paginate(10)->withQueryString();
         $operators = User::where('role', 'operator')->orderBy('name')->get();
 
+        // Jika user adalah operator, tampilkan view operator
+        if (auth()->check() && auth()->user()->role === 'operator') {
+            // Group data untuk view operator
+            $grouped = $produksis->groupBy(fn($item) => $item->produk_jadi_id . '-' . $item->status);
+            $pendingTasks = collect();
+            $processTasks = collect();
+            $doneTasks = collect();
+            
+            foreach ($grouped as $items) {
+                $first = $items->first();
+                $groupedItem = (object)[
+                    'id' => $first->id,
+                    'produk_jadi_id' => $first->produk_jadi_id,
+                    'product' => $first->produk_jadi,
+                    'jumlah_produksi' => (int) $items->sum('jumlah_produksi'),
+                    'jumlah_selesai' => (int) $items->sum('jumlah_selesai'),
+                    'status' => $first->status,
+                    'created_at' => $items->max('created_at'),
+                    'tanggal_target' => $items->min('tanggal_target'),
+                    'tanggal_mulai' => $items->min('tanggal_mulai'),
+                    'kode_spk_list' => $items->pluck('kode_spk')->unique()->values(),
+                    'total_spk' => $items->count(),
+                ];
+                
+                if ($first->status === 'PENDING') {
+                    $pendingTasks->push($groupedItem);
+                } elseif ($first->status === 'PROSES') {
+                    $processTasks->push($groupedItem);
+                } elseif ($first->status === 'SELESAI') {
+                    $doneTasks->push($groupedItem);
+                }
+            }
+            
+            return view('operator.tugas.index', compact('produksis', 'pendingTasks', 'processTasks', 'doneTasks', 'operators'));
+        }
+
         return view('admin.produksi.index', compact('produksis', 'operators'));
     }
 
@@ -878,6 +914,11 @@ if (empty($idsToFinish)) {
         // Gunakan tampilan khusus jika status SELESAI
         if ($produksi->status === 'SELESAI') {
             return view('admin.produksi.review_selesai', compact('produksi', 'formatQty'));
+        }
+
+        // Jika user adalah operator, tampilkan view operator
+        if (auth()->check() && auth()->user()->role === 'operator') {
+            return view('operator.produksi.detail', compact('produksi'));
         }
 
         return view('admin.produksi.show', compact('produksi', 'formatQty'));

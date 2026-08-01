@@ -184,7 +184,7 @@
             <div class="mb-8 flex items-center justify-between">
                 <div>
                     <div class="flex items-center gap-3 mb-2">
-                        <a href="{{ route('admin.bahan.index') }}" class="p-2 hover:bg-white/5 rounded-xl transition">
+                        <a href="{{ route('admin.bahan-baku.index') }}" class="p-2 hover:bg-white/5 rounded-xl transition">
                             <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                             </svg>
@@ -199,7 +199,7 @@
 
             {{-- Card --}}
             <div class="bg-gradient-to-b from-[#1A1A1A] to-[#0F0F0F] border border-white/10 rounded-3xl p-6 shadow-2xl shadow-black/50">
-                <form action="{{ route('admin.bahan.update', $bahan->id) }}" method="POST" enctype="multipart/form-data">
+                <form action="{{ route('admin.bahan-baku.update', $bahan->id) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
@@ -335,7 +335,7 @@
 
                     {{-- Footer --}}
                     <div class="flex gap-4 pt-8 mt-8 border-t border-white/10">
-                        <a href="{{ route('admin.bahan.index') }}"
+                        <a href="{{ route('admin.bahan-baku.index') }}"
                             class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-xl transition text-center">
                             Batal
                         </a>

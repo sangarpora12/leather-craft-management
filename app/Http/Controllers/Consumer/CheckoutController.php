@@ -8,17 +8,34 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProdukJadi;
 use App\Models\ProdukKeluar;
+use App\Models\User;
+use App\Notifications\NewOrderNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class CheckoutController extends Controller
 {
-    public function index()
+    private function getCartIdentifier()
     {
-        $cartItems = Cart::where('user_id', Auth::id())
+        if (Auth::check()) {
+            return ['user_id' => Auth::id(), 'session_id' => null];
+        }
+        return ['user_id' => null, 'session_id' => session()->getId()];
+    }
+
+    private function getCartItems()
+    {
+        $id = $this->getCartIdentifier();
+        return Cart::where('user_id', $id['user_id'])
+            ->where('session_id', $id['session_id'])
             ->with('produkJadi')
             ->get();
+    }
+
+    public function index()
+    {
+        $cartItems = $this->getCartItems();
 
         if ($cartItems->isEmpty()) {
             return redirect()->route('consumer.cart')->withErrors(['cart' => 'Keranjang belanja kosong.']);
@@ -39,11 +56,10 @@ class CheckoutController extends Controller
             'shipping_address' => 'required|string',
             'payment_method' => 'required|in:transfer,qris,cod',
             'notes' => 'nullable|string',
+            'guest_email' => 'nullable|email|max:255',
         ]);
 
-        $cartItems = Cart::where('user_id', Auth::id())
-            ->with('produkJadi')
-            ->get();
+        $cartItems = $this->getCartItems();
 
         if ($cartItems->isEmpty()) {
             return redirect()->route('consumer.cart')->withErrors(['cart' => 'Keranjang belanja kosong.']);
@@ -59,9 +75,12 @@ class CheckoutController extends Controller
         DB::beginTransaction();
 
         try {
+            $identifier = $this->getCartIdentifier();
+
             // Create order
             $order = Order::create([
-                'user_id' => Auth::id(),
+                'user_id' => $identifier['user_id'],
+                'guest_email' => $identifier['user_id'] ? null : $request->guest_email,
                 'order_number' => 'ORD-' . date('Ymd') . '-' . strtoupper(uniqid()),
                 'status' => 'pending',
                 'payment_method' => $request->payment_method,
@@ -93,19 +112,27 @@ class CheckoutController extends Controller
                     'produk_jadi_id' => $item->produk_jadi_id,
                     'jumlah_keluar' => $item->quantity,
                     'alasan' => 'Penjualan',
-                    'catatan' => 'Order: ' . $order->order_number . ' - Customer: ' . Auth::user()->name,
+                    'catatan' => 'Order: ' . $order->order_number . ' - Customer: ' . ($identifier['user_id'] ? Auth::user()->name : ($request->shipping_name . ' (Guest)')),
                     'tanggal_keluar' => now(),
-                    'user_id' => Auth::id(),
+                    'user_id' => $identifier['user_id'],
                 ]);
             }
 
             // Clear cart
-            Cart::where('user_id', Auth::id())->delete();
+            Cart::where('user_id', $identifier['user_id'])
+                ->where('session_id', $identifier['session_id'])
+                ->delete();
 
             DB::commit();
 
+            // Send notification to all admin users about new order
+            $admins = User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new NewOrderNotification($order));
+            }
+
             return redirect()->route('consumer.order.success', $order->id)
-                ->with('success', 'Pesanan berhasil dibuat!');
+                ->with('success', 'Pesanan berhasil dibuat! Nomor pesanan: ' . $order->order_number);
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'Gagal membuat pesanan: ' . $e->getMessage()]);
@@ -114,9 +141,13 @@ class CheckoutController extends Controller
 
     public function success($orderId)
     {
-        $order = Order::where('user_id', Auth::id())
-            ->with('items.produkJadi')
-            ->findOrFail($orderId);
+        $order = Order::with('items.produkJadi')->findOrFail($orderId);
+
+        // Only allow owner or guest with matching session
+        $identifier = $this->getCartIdentifier();
+        if ($order->user_id && $order->user_id !== $identifier['user_id']) {
+            abort(403);
+        }
 
         return view('consumer.checkout.success', compact('order'));
     }

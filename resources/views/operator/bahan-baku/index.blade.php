@@ -103,11 +103,11 @@
                 <div class="flex items-center gap-3">
                     <!-- ✅ FOTO BAHAN KIRI -->
                     <div class="w-14 h-14 overflow-hidden rounded-xl bg-gray-700 border border-white/5 flex-shrink-0">
-                        @if($bahan->foto)
+                        @if($bahan->foto && \Storage::disk('public')->exists($bahan->foto))
                             <img src="{{ asset('storage/' . $bahan->foto) }}" class="w-full h-full object-cover">
                         @else
-                            <div class="w-full h-full flex items-center justify-center">
-                                <i class="fa-solid fa-box text-gray-500 text-xl"></i>
+                            <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#FD730D] to-orange-700">
+                                <i class="fa-solid fa-box text-white text-xl"></i>
                             </div>
                         @endif
                     </div>

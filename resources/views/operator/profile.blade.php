@@ -113,6 +113,34 @@
             </form>
         </div>
 
+        {{-- HAPUS AKUN --}}
+        <button type="button" onclick="document.getElementById('deleteModal').showModal()" class="w-full bg-red-600/15 border border-red-500/30 hover:bg-red-600/30 text-red-400 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2 mb-4">
+            <i class="fa-solid fa-trash"></i>Hapus Akun
+        </button>
+
+        {{-- MODAL KONFIRMASI HAPUS AKUN --}}
+        <dialog id="deleteModal" class="bg-[#1C222D] rounded-2xl border border-white/10 p-6 max-w-sm mx-auto shadow-2xl backdrop:bg-black/70">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-exclamation-triangle text-red-400 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">Yakin hapus akun?</h3>
+                <p class="text-gray-400 text-sm mb-6">Semua data kamu akan dihapus permanen dan tidak bisa dikembalikan.</p>
+                <div class="flex gap-3">
+                    <button type="button" onclick="document.getElementById('deleteModal').close()" class="flex-1 bg-white/10 hover:bg-white/20 text-white font-medium py-2.5 rounded-xl transition">
+                        Batal
+                    </button>
+                    <form action="{{ route('operator.deleteAccount') }}" method="POST" class="flex-1">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="w-full bg-red-600 hover:bg-red-500 text-white font-medium py-2.5 rounded-xl transition">
+                            Hapus
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </dialog>
+
         {{-- LOGOUT --}}
         <form action="{{ route('logout') }}" method="POST">
             @csrf

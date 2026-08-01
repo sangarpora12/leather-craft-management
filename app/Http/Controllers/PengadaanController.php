@@ -72,6 +72,23 @@ $allBahanBakus = BahanBaku::whereRaw('LOWER(kategori) != ?', ['bahan pelengkap']
         $lowStockMaterials = $criticalQuery->get()->groupBy('kode_material');
     
         // 4. Kirim semua ke view
+        // Jika user adalah operator, tampilkan view operator
+        if (auth()->check() && auth()->user()->role === 'operator') {
+            // Group data untuk view operator (sama seperti di indexOperator)
+            $groupedPengadaan = $pengadaans->groupBy('bahan.nama_material');
+            
+            return view('operator.belanja.index', compact(
+                'pengadaans', 
+                'kategories', 
+                'suppliers', 
+                'operators', 
+                'bahanBakus',        // <--- Pastikan namanya persis
+                'lowStockMaterials', 
+                'allBahanBakus',      // <--- Tambahkan ini juga buat Alpine.js
+                'groupedPengadaan'
+            ));
+        }
+
         return view('admin.pengadaan.index', compact(
             'pengadaans', 
             'kategories', 

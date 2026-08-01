@@ -8,7 +8,7 @@
     {{-- HEADER --}}
     <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
 
-        <a href="{{ route('admin.produksi.create') }}" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-900/20 flex items-center gap-2 transition whitespace-nowrap">
+        <a href="{{ route('produksi.create') }}" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-900/20 flex items-center gap-2 transition whitespace-nowrap">
             <i class="fa-solid fa-plus"></i> Buat SPK Baru
         </a>
     </div>

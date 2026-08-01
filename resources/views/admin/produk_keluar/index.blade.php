@@ -35,7 +35,18 @@
                                 {{ $transaksi->tanggal_keluar->format('d M Y, H:i') }}
                             </td>
                             <td class="px-6 py-4">
-                                {{ $transaksi->produk_jadi->nama_produk ?? 'Produk tidak ditemukan' }}
+                                <div class="flex items-center gap-2">
+                                    @if($transaksi->produk_jadi && $transaksi->produk_jadi->foto)
+                                        <img src="{{ asset('storage/' . $transaksi->produk_jadi->foto) }}" 
+                                             alt="{{ $transaksi->produk_jadi->nama_produk }}" 
+                                             class="w-10 h-10 rounded-lg object-cover">
+                                    @else
+                                        <div class="w-10 h-10 rounded-lg bg-[#2D3139] flex items-center justify-center">
+                                            <i class="fa-solid fa-image text-gray-600 text-xs"></i>
+                                        </div>
+                                    @endif
+                                    <span>{{ $transaksi->produk_jadi->nama_produk ?? 'Produk tidak ditemukan' }}</span>
+                                </div>
                             </td>
                             <td class="px-6 py-4 font-bold text-red-400">
                                 -{{ $transaksi->jumlah_keluar }}

@@ -11,10 +11,10 @@
                 <p class="text-sm text-gray-400 mt-1">Informasi lengkap mengenai material.</p>
             </div>
             <div class="flex items-center space-x-2 mt-4 sm:mt-0">
-                <a href="{{ route('admin.bahan.index') }}" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
+                <a href="{{ route('admin.bahan-baku.index') }}" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
                     <i class="fa-solid fa-arrow-left mr-2"></i>Kembali
                 </a>
-                <a href="{{ route('admin.bahan.edit', ['bahan' => $bahan]) }}" class="bg-orange-500 hover:bg-orange-400 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
+                <a href="{{ route('admin.bahan-baku.edit', ['bahanBaku' => $bahan]) }}" class="bg-orange-500 hover:bg-orange-400 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
                     <i class="fa-solid fa-pen-to-square mr-2"></i>Edit
                 </a>
                 <button type="button" onclick="if(confirm('Yakin ingin menghapus bahan ini?')){document.getElementById('delete-form-{{ $bahan->id }}').submit();}" class="bg-red-500/20 hover:bg-red-500/40 text-red-400 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out text-sm">
@@ -23,7 +23,7 @@
             </div>
         </div>
 
-        <form id="delete-form-{{ $bahan->id }}" action="{{ route('admin.bahan.destroy', $bahan->id) }}" method="POST" style="display: none;">
+        <form id="delete-form-{{ $bahan->id }}" action="{{ route('admin.bahan-baku.destroy', $bahan->id) }}" method="POST" style="display: none;">
             @csrf
             @method('DELETE')
         </form>
@@ -267,7 +267,7 @@
                                         {{ (int) $firstV->total_stok_warna }}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <a href="{{ route('admin.bahan.edit-varian', $firstV->id) }}" class="inline-block bg-gray-700/50 hover:bg-orange-500 text-white p-2 rounded-lg transition duration-200" title="Edit">
+                                        <a href="{{ route('admin.bahan-baku.varian.edit', ['bahanBaku' => $bahan->id, 'varian' => $firstV->id]) }}" class="inline-block bg-gray-700/50 hover:bg-orange-500 text-white p-2 rounded-lg transition duration-200" title="Edit">
                                             <i class="fa-solid fa-pen-to-square text-xs"></i>
                                         </a>
                                     </td>

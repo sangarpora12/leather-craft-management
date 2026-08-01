@@ -87,6 +87,22 @@ class User extends Authenticatable
         return $this->hasMany(BahanBaku::class);
     }
 
+    /**
+     * Relasi ke orders (untuk e-commerce)
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    /**
+     * Relasi ke carts (untuk e-commerce)
+     */
+    public function carts()
+    {
+        return $this->hasMany(Cart::class);
+    }
+
     public function productions()
     {
         return $this->hasMany(Produksi::class, 'operator_id');
