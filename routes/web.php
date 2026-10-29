@@ -35,10 +35,10 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-// // 1. AREA PUBLIC (BELUM LOGIN)
-// Route::get('/', function () {
-//     return redirect('/login');
-// });
+// 1. AREA PUBLIC (BELUM LOGIN)
+Route::get('/', function () {
+    return redirect('/login');
+});
 
 // Login & Forgot Password
 Route::get('/login', [AuthController::class, 'login'])->name('login');
@@ -361,6 +361,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('/admin/produk-jadi', AdminProdukController::class)->parameters([
             'produk-jadi' => 'produkJadi'
         ])->names('admin.produk-jadi');
+        Route::get('/admin/get-hpp-produk/{produkJadi}', [AdminProdukController::class, 'getHpp'])->name('admin.produk-jadi.get-hpp');
 
         // --- SISTEM ---
         Route::get('/sistem', function () {

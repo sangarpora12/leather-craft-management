@@ -171,6 +171,32 @@ class ProdukController extends Controller
             ->with('success', 'Produk berhasil diperbarui.');
     }
 
+    /**
+     * Get HPP (Harga Pokok Produksi) + Margin untuk perhitungan harga otomatis.
+     * Dipanggil via AJAX dari halaman edit produk.
+     */
+    public function getHpp($produkJadi)
+    {
+        $product = ProdukJadi::with('boms.material')->findOrFail($produkJadi);
+
+        $totalHpp = 0;
+        foreach ($product->boms as $bom) {
+            if ($bom->material) {
+                $hargaSatuan = (float) str_replace(',', '.', $bom->material->harga_satuan);
+                $jumlahKebutuhan = (float) str_replace(',', '.', $bom->jumlah_kebutuhan);
+                $totalHpp += $hargaSatuan * $jumlahKebutuhan;
+            }
+        }
+
+        $margin = (float) (Pengaturan::where('nama_pengaturan', 'margin_keuntungan')->value('nilai') ?? 30);
+
+        return response()->json([
+            'hpp'        => $totalHpp,
+            'margin'     => $margin,
+            'harga_jual' => ceil($totalHpp + ($totalHpp * ($margin / 100))),
+        ]);
+    }
+
     public function destroy($produkJadi)
     {
         $product = ProdukJadi::findOrFail($produkJadi);

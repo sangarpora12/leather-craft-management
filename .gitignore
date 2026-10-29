@@ -1,4 +1,8 @@
 *.log
+*.jpg
+*.jpeg
+*.txt
+/scripts/
 .DS_Store
 .env
 .env.backup
@@ -23,16 +27,8 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 # Ignore problematic directories
-/app/Http ONLY the tool in my response this time - nothing else./
-/app/Http to use the edit_file tool to update the AuthController. Let me do that now./
-/app/Models file with the correct path./
-/resources/views/admin/pengaturan/tabs the wrapper./
-/resources/views/admin wrapper div./
-/resources them./
-/resources wrapper div./
-/routes to use a tool to add the route. Let me use edit_file to add the route for partial production./
-/...
-/app/Http/Controllers/DashboardController.php to use a tool. Let me edit the DashboardController to use the NotificationService.
+/database/database.sqlite
+
 # Laravel specific
 /storage/framework/sessions/*
 !/storage/framework/sessions/.gitkeep

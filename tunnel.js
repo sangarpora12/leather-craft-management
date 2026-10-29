@@ -13,7 +13,7 @@ const envPath = path.join(__dirname, '.env');
 
 console.log(`⏳ Memulai Cloudflare Tunnel untuk Laravel di port ${PORT}...`);
 
-const cloudflared = spawn('cloudflared', ['tunnel', '--url', `http://localhost:${PORT}`]);
+const cloudflared = spawn('cloudflared', ['tunnel', '--config', 'cloudflared-empty.yml', '--url', `http://localhost:${PORT}`]);
 
 let urlFound = false;
 

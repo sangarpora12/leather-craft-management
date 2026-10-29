@@ -402,8 +402,10 @@ function productEditData() {
             // Handle foto yang sudah ada
             const existingFoto = el.dataset.foto;
             if (existingFoto && existingFoto !== 'null' && existingFoto !== '') {
-                this.filePreview = '{{ asset('storage') }}/' + existingFoto;
+                this.hasOldPhoto = true;
+                this.filePreview = ''; // filePreview hanya untuk foto BARU
             } else {
+                this.hasOldPhoto = false;
                 this.filePreview = '';
             }
             
@@ -411,6 +413,21 @@ function productEditData() {
 
             // Format harga awal
             this.price = this.formatRupiah(parseInt(hargaRaw.replace(/[^0-9]/g, '')) || 0);
+
+            // 🔥 FIX: Jika tipe harga sudah "otomatis" sejak awal, langsung hitung harga otomatis
+            const radioOtomatis = document.querySelector('input[name="tipe_harga"][value="otomatis"]');
+            if (radioOtomatis && radioOtomatis.checked) {
+                const hargaInput = document.getElementById('harga_jual_input');
+                const container  = document.getElementById('harga-manual-container');
+                if (hargaInput) {
+                    hargaInput.readOnly = true;
+                    hargaInput.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+                if (container) {
+                    container.classList.add('opacity-75');
+                }
+                this.hitungHargaOtomatis();
+            }
         },
 
         formatRupiah(n) {
@@ -469,6 +486,7 @@ function productEditData() {
 
         async hitungHargaOtomatis() {
             const bantuanEl = document.getElementById('bantuan-harga');
+            if (!bantuanEl) return;
             bantuanEl.innerHTML = '⏳ Menghitung HPP dari BOM...';
             try {
                 const res  = await fetch('/admin/get-hpp-produk/' + this.produkId);
@@ -497,9 +515,10 @@ function productEditData() {
     };
 }
 
-// ✅ toggleHargaField: gunakan Alpine.$data untuk akses component
+// ✅ toggleHargaField: gunakan Alpine.$data (API public & reliable di Alpine v3)
 function toggleHargaField() {
-    const isOtomatis = document.querySelector('input[name="tipe_harga"][value="otomatis"]').checked;
+    const radioOtomatis = document.querySelector('input[name="tipe_harga"][value="otomatis"]');
+    const isOtomatis = radioOtomatis ? radioOtomatis.checked : false;
     const hargaInput = document.getElementById('harga_jual_input');
     const container  = document.getElementById('harga-manual-container');
 
@@ -508,23 +527,36 @@ function toggleHargaField() {
         hargaInput.classList.add('opacity-50', 'cursor-not-allowed');
         container.classList.add('opacity-75');
 
-        // Panggil hitungHargaOtomatis via Alpine
+        // ✅ FIX: Panggil hitungHargaOtomatis via Alpine.$data (lebih reliable dari _x_dataStack)
         const wrapper = document.getElementById('product-edit-wrapper');
-        if (wrapper && wrapper._x_dataStack) {
-            wrapper._x_dataStack[0].hitungHargaOtomatis();
+        if (wrapper && window.Alpine) {
+            const data = window.Alpine.$data(wrapper);
+            if (data && typeof data.hitungHargaOtomatis === 'function') {
+                data.hitungHargaOtomatis();
+            }
         }
     } else {
         hargaInput.readOnly = false;
         hargaInput.classList.remove('opacity-50', 'cursor-not-allowed');
         container.classList.remove('opacity-75');
-        document.getElementById('bantuan-harga').innerHTML =
-            'Harga dihitung otomatis dari HPP BOM + Margin.';
+        const bantuan = document.getElementById('bantuan-harga');
+        if (bantuan) {
+            bantuan.innerHTML = 'Harga dihitung otomatis dari HPP BOM + Margin.';
+        }
     }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Jalankan toggle awal (default = manual, jadi tidak fetch HPP)
-    toggleHargaField();
+    // 🔥 FIX: Tunggu Alpine selesai init sebelum panggil toggleHargaField
+    // agar data component (hitungHargaOtomatis) sudah tersedia via Alpine.$data
+    if (window.Alpine) {
+        document.addEventListener('alpine:initialized', function () {
+            toggleHargaField();
+        });
+    } else {
+        // Fallback jika Alpine belum ter-load
+        setTimeout(toggleHargaField, 500);
+    }
 
     // Select2 init
     if (typeof $.fn.select2 !== 'undefined') {
